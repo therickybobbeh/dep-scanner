@@ -150,39 +150,120 @@ def scan(
                     console.print(f"[red]Invalid severity level: {sev}[/red]")
                     return
             
-            # Create scan options
+            # Set up scan options
             options = ScanOptions(
                 include_dev_dependencies=include_dev,
-                ignore_severities=ignore_severities
+                ignore_severities=ignore_severities,
+                ignore_rules=[]
             )
             
-            # Run scan
+            # Display scan progress
             with Progress(
                 SpinnerColumn(),
-                TextColumn("[progress.description]{task.description}"),
-                console=console
+                TextColumn("[bold blue]{task.description}"),
+                console=console,
             ) as progress:
-                task = progress.add_task("Scanning dependencies...", total=None)
-                
+                task = progress.add_task("Scanning repository...", total=None)
                 report = await scanner.scan_repository(repo_path, options)
-                
-                progress.update(task, description="Scan completed!", total=1, completed=1)
-            
-            # Output results
-            print_report_summary(report)
-            
+                progress.update(task, completed=True)
+
+            # Display results in terminal
+            console.print("\n[bold green]Scan completed![/bold green]")
+
+            if report.vulnerable_packages:
+                console.print(f"\n[bold red]Found {len(report.vulnerable_packages)} vulnerabilities in {report.vulnerable_count} packages[/bold red]")
+
+                # Create a table with vulnerability information
+                table = Table(title="Vulnerability Summary")
+                table.add_column("Package", style="cyan")
+                table.add_column("Version", style="cyan")
+                table.add_column("Vulnerability ID", style="yellow")
+                table.add_column("Severity", style="red")
+                table.add_column("Description", style="white")
+
+                for vuln in report.vulnerable_packages:
+                    severity = vuln.severity.value if vuln.severity else "UNKNOWN"
+                    severity_color = {
+                        "CRITICAL": "[bold red]CRITICAL[/bold red]",
+                        "HIGH": "[red]HIGH[/red]",
+                        "MEDIUM": "[yellow]MEDIUM[/yellow]",
+                        "LOW": "[green]LOW[/green]",
+                        "UNKNOWN": "[blue]UNKNOWN[/blue]"
+                    }.get(severity, severity)
+
+                    table.add_row(
+                        vuln.package,
+                        vuln.version,
+                        vuln.vulnerability_id,
+                        severity_color,
+                        (vuln.summary[:60] + "...") if len(vuln.summary) > 60 else vuln.summary
+                    )
+
+                console.print(table)
+
+                if report.suppressed_count > 0:
+                    console.print(f"\n[yellow]Note: {report.suppressed_count} vulnerabilities were suppressed based on ignore rules[/yellow]")
+            else:
+                console.print("\n[bold green]No vulnerabilities found! Your dependencies look clean.[/bold green]")
+
+            # Output JSON if requested
             if json_output:
-                with open(json_output, 'w') as f:
-                    json.dump(report.dict(), f, indent=2, default=str)
-                console.print(f"[green]JSON report saved to: {json_output}[/green]")
-            
+                with open(json_output, "w") as f:
+                    f.write(report.json(indent=2))
+                console.print(f"\n[blue]Report saved to: {json_output}[/blue]")
+
+            # Start web server if requested
             if open_browser:
-                console.print("[blue]Starting web server...[/blue]")
-                start_web_server(port)
-        
+                # Save report to temporary file for the web server to use
+                temp_report_file = "test_report.json"
+                with open(temp_report_file, "w") as f:
+                    f.write(report.json(indent=2))
+
+                console.print(f"\n[bold green]Starting web server on port {port}...[/bold green]")
+
+                # Launch web server in background
+                import subprocess
+                import time
+                from threading import Thread
+
+                def run_server():
+                    try:
+                        # Use uvicorn to run the API server
+                        from app.main import app as api_app
+                        import uvicorn
+                        uvicorn.run(api_app, host="127.0.0.1", port=port)
+                    except Exception as e:
+                        console.print(f"[red]Error starting web server: {e}[/red]")
+
+                # Start server in a thread
+                server_thread = Thread(target=run_server, daemon=True)
+                server_thread.start()
+
+                # Give the server a moment to start
+                time.sleep(1)
+
+                # Open browser
+                url = f"http://127.0.0.1:{port}/reports/{report.job_id}"
+                console.print(f"[blue]Opening report in browser: {url}[/blue]")
+                webbrowser.open(url)
+
+                # Keep main thread running while browser is open
+                console.print("\nPress Ctrl+C to close the server and exit")
+                try:
+                    while True:
+                        time.sleep(1)
+                except KeyboardInterrupt:
+                    console.print("\n[yellow]Server stopped. Exiting...[/yellow]")
+
+        except FileNotFoundError as e:
+            console.print(f"[red]Error: {e}[/red]")
+        except ValueError as e:
+            console.print(f"[red]Error: {e}[/red]")
+        except Exception as e:
+            console.print(f"[red]Error during scan: {e}[/red]")
         finally:
             await scanner.close()
-    
+
     asyncio.run(run_scan())
 
 def print_report_summary(report: Report):
@@ -285,8 +366,9 @@ def start_web_server(port: int):
 @app.command()
 def version():
     """Show version information"""
-    console.print("[bold]DepScan v1.0.0[/bold]")
-    console.print("Dependency Vulnerability Scanner")
+    console.print("[bold]DepScan - Dependency Vulnerability Scanner[/bold]")
+    console.print("Version: 1.0.0")
+    console.print("Made with ♥ by DepScan Team")
 
 if __name__ == "__main__":
     app()

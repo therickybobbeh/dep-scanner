@@ -8,7 +8,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setup(
-    name="depscan",
+    name="dep-scan",  # Changed from "depscan" to "dep-scan" to match the command
     version="1.0.0",
     author="DepScan Team",
     author_email="depscan@example.com",
