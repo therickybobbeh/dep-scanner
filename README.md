@@ -108,7 +108,8 @@ python backend/cli.py scan . --include-dev --ignore-severity LOW
 
 **HTML Report:**
 ```bash
-# Generate static HTML report and open it in your browser
+# Generate static HTML report (dep-scan-report.html) and open it in your browser
+# The report file is replaced on each run
 python backend/cli.py scan . --open
 ```
 

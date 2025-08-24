@@ -125,10 +125,25 @@ class OSVScanner:
                 if row and datetime.fromisoformat(row["expires_at"]) > datetime.now():
                     # Cache hit and not expired
                     vulns = json.loads(row["vulnerabilities"])
+
+                    # If cached vulnerabilities lack severity info, re-fetch them
+                    missing_severity = False
                     for vuln in vulns:
-                        vuln["package"] = dep.name
-                        vuln["ecosystem"] = dep.ecosystem
-                    cached_results.extend(vulns)
+                        if not vuln.get("severity") and not (
+                            isinstance(vuln.get("database_specific"), dict)
+                            and vuln["database_specific"].get("severity")
+                        ):
+                            missing_severity = True
+                            break
+
+                    if missing_severity:
+                        # Treat as cache miss to refresh with severity data
+                        uncached_deps.append(dep)
+                    else:
+                        for vuln in vulns:
+                            vuln["package"] = dep.name
+                            vuln["ecosystem"] = dep.ecosystem
+                        cached_results.extend(vulns)
                 else:
                     # Cache miss or expired
                     uncached_deps.append(dep)
@@ -371,13 +386,24 @@ class OSVScanner:
 
         # Check database_specific severity (e.g., GitHub advisories)
         if db_specific and isinstance(db_specific, dict):
-            sev_str = db_specific.get("severity")
+            sev_str = db_specific.get("severity") or db_specific.get("github_severity")
             if isinstance(sev_str, str):
                 sev_str = sev_str.upper()
                 if sev_str in ["CRITICAL", "HIGH", "MEDIUM", "LOW"]:
                     return SeverityLevel(sev_str)
                 if sev_str == "MODERATE":
                     return SeverityLevel.MEDIUM
+
+            # Some databases expose numeric score
+            score_val = _to_float(db_specific.get("score"))
+            if score_val:
+                if score_val >= 9.0:
+                    return SeverityLevel.CRITICAL
+                if score_val >= 7.0:
+                    return SeverityLevel.HIGH
+                if score_val >= 4.0:
+                    return SeverityLevel.MEDIUM
+                return SeverityLevel.LOW
 
         return SeverityLevel.UNKNOWN
     

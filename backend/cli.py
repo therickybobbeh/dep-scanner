@@ -178,9 +178,10 @@ def scan(
                 table.add_column("Package", style="cyan")
                 table.add_column("Version", style="cyan")
                 table.add_column("Type", style="magenta")
+                table.add_column("Source", style="magenta")
                 table.add_column("Vulnerability ID", style="yellow")
                 table.add_column("Severity", style="red")
-                table.add_column("Description", style="white")
+                table.add_column("Link", style="white", overflow="fold")
 
                 for vuln in report.vulnerable_packages:
                     severity = vuln.severity.value if vuln.severity else "UNKNOWN"
@@ -194,14 +195,18 @@ def scan(
 
                     dep_match = next((d for d in report.dependencies if d.name == vuln.package and d.version == vuln.version), None)
                     dep_type = "direct" if dep_match and dep_match.is_direct else "transitive"
+                    source = "-"
+                    if dep_match and len(dep_match.path) >= 2:
+                        source = dep_match.path[-2]
 
                     table.add_row(
                         vuln.package,
                         vuln.version,
                         dep_type,
+                        source,
                         vuln.vulnerability_id,
                         severity_color,
-                        (vuln.summary[:60] + "...") if len(vuln.summary) > 60 else vuln.summary
+                        vuln.advisory_url or ""
                     )
 
                 console.print(table)
@@ -238,18 +243,25 @@ def generate_html_report(report: Report) -> str:
     """Generate a simple static HTML report and return its path."""
     from html import escape
 
-    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-    output_path = Path(f"dep-scan-report-{timestamp}.html").resolve()
+    output_path = Path("dep-scan-report.html").resolve()
+    if output_path.exists():
+        output_path.unlink()
 
     rows = []
     for vuln in report.vulnerable_packages:
         severity = vuln.severity.value if vuln.severity else "UNKNOWN"
         dep_match = next((d for d in report.dependencies if d.name == vuln.package and d.version == vuln.version), None)
         dep_type = "direct" if dep_match and dep_match.is_direct else "transitive"
+        source = "-"
+        if dep_match and len(dep_match.path) >= 2:
+            source = dep_match.path[-2]
+        link_html = (
+            f"<a href='{escape(vuln.advisory_url)}'>{escape(vuln.advisory_url)}</a>" if vuln.advisory_url else ""
+        )
         rows.append(
             f"<tr><td>{escape(vuln.package)}</td><td>{escape(vuln.version)}</td>"
-            f"<td>{dep_type}</td><td>{escape(severity)}</td>"
-            f"<td>{escape(vuln.vulnerability_id)}</td><td>{escape(vuln.summary)}</td></tr>"
+            f"<td>{dep_type}</td><td>{escape(source)}</td><td>{escape(severity)}</td>"
+            f"<td>{escape(vuln.vulnerability_id)}</td><td>{link_html}</td><td>{escape(vuln.summary)}</td></tr>"
         )
 
     html = f"""<!DOCTYPE html>
@@ -260,7 +272,7 @@ def generate_html_report(report: Report) -> str:
 <h1>DepScan Report</h1>
 <p>Scanned {report.total_dependencies} dependencies and found {len(report.vulnerable_packages)} vulnerabilities.</p>
 <table>
-<tr><th>Package</th><th>Version</th><th>Type</th><th>Severity</th><th>ID</th><th>Summary</th></tr>
+<tr><th>Package</th><th>Version</th><th>Type</th><th>Source</th><th>Severity</th><th>ID</th><th>Link</th><th>Summary</th></tr>
 {''.join(rows)}
 </table>
 </body></html>"""

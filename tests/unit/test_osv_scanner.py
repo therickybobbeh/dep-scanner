@@ -111,6 +111,14 @@ class TestOSVScanner:
         result = osv_scanner._extract_severity([], {"severity": "moderate"})
         assert result == SeverityLevel.MEDIUM
 
+        # Test database_specific numeric score
+        result = osv_scanner._extract_severity([], {"score": "8.2"})
+        assert result == SeverityLevel.HIGH
+
+        # Test github_severity field
+        result = osv_scanner._extract_severity([], {"github_severity": "low"})
+        assert result == SeverityLevel.LOW
+
         # Test empty list
         result = osv_scanner._extract_severity([])
         assert result == SeverityLevel.UNKNOWN
