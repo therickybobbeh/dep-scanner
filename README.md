@@ -106,9 +106,16 @@ python backend/cli.py scan /path/to/project --json report.json
 python backend/cli.py scan . --include-dev --ignore-severity LOW
 ```
 
+**HTML Report:**
+```bash
+# Generate static HTML report (dep-scan-report.html) and open it in your browser
+# The report file is replaced on each run
+python backend/cli.py scan . --open
+```
+
 **Web Interface:**
 ```bash
-# Start web server
+# Start web server for interactive scanning
 cd backend && python -m uvicorn app.main:app --reload
 
 # Open browser to http://127.0.0.1:8000

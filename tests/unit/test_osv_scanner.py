@@ -97,26 +97,28 @@ class TestOSVScanner:
         assert isinstance(hash1, str) and len(hash1) > 0
 
     def test_extract_severity(self, osv_scanner):
-        # Test CVSS v3 scoring
-        severity_data = [
-            {
-                "type": "CVSS_V3", 
-                "score": 9.5
-            }
-        ]
+        # Test CVSS v3 scoring with numeric score
+        severity_data = [{"type": "CVSS_V3", "score": 9.5}]
         result = osv_scanner._extract_severity(severity_data)
         assert result == SeverityLevel.CRITICAL
-        
-        # Test medium severity
-        severity_data = [
-            {
-                "type": "CVSS_V3",
-                "score": 5.5
-            }
-        ]
+
+        # Test medium severity with string score
+        severity_data = [{"type": "CVSS_V3", "score": "5.5"}]
         result = osv_scanner._extract_severity(severity_data)
         assert result == SeverityLevel.MEDIUM
-        
+
+        # Test database_specific severity fallback
+        result = osv_scanner._extract_severity([], {"severity": "moderate"})
+        assert result == SeverityLevel.MEDIUM
+
+        # Test database_specific numeric score
+        result = osv_scanner._extract_severity([], {"score": "8.2"})
+        assert result == SeverityLevel.HIGH
+
+        # Test github_severity field
+        result = osv_scanner._extract_severity([], {"github_severity": "low"})
+        assert result == SeverityLevel.LOW
+
         # Test empty list
         result = osv_scanner._extract_severity([])
         assert result == SeverityLevel.UNKNOWN

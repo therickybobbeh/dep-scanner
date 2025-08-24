@@ -54,14 +54,10 @@ python cli.py scan <PATH> [OPTIONS]
 - Example: `--ignore-severity LOW --ignore-severity MEDIUM`
 
 **`--open, -o`**
-- Start web server and open browser after scan
-- Useful for interactive result exploration
+- Generate static HTML report (dep-scan-report.html) and open in browser after scan
+- The report file is replaced on each run
+- Useful for quick visual overview of results
 - Example: `--open`
-
-**`--port, -p <PORT>`**
-- Specify port for web server (when using `--open`)
-- Default: `8000`
-- Example: `--port 8080`
 
 #### Examples
 
@@ -81,8 +77,8 @@ python cli.py scan . --json detailed-report.json
 # Multiple options combined
 python cli.py scan ./backend --no-include-dev --ignore-severity LOW --json prod-security.json
 
-# Open web interface after scan
-python cli.py scan . --open --port 8080
+# Open HTML report after scan
+python cli.py scan . --open
 ```
 
 ### `version` Command
@@ -147,7 +143,7 @@ Structured JSON report for integration and further processing.
       "severity": "HIGH",
       "cve_ids": ["CVE-2020-8203"],
       "summary": "Prototype Pollution in lodash",
-      "description": "lodash versions prior to 4.17.21 are vulnerable to Prototype Pollution.",
+      "details": "lodash versions prior to 4.17.21 are vulnerable to Prototype Pollution.",
       "advisory_url": "https://github.com/advisories/GHSA-35jh-r3h4-6jhm",
       "fixed_range": ">=4.17.21",
       "published": "2020-05-08T18:25:00Z",
