@@ -5,7 +5,7 @@ Thank you for your interest in contributing to DepScan! This guide will help you
 ## 🎯 Ways to Contribute
 
 ### 🐛 Bug Reports
-- Found a bug? [Open an issue](https://github.com/yourusername/depscan/issues)
+- Found a bug? [Open an issue](https://github.com/therickybobbeh/dep-scanner/issues)
 - Provide clear reproduction steps
 - Include system information and error messages
 - Check existing issues to avoid duplicates
@@ -37,11 +37,11 @@ Thank you for your interest in contributing to DepScan! This guide will help you
 
 ```bash
 # Fork on GitHub, then clone your fork
-git clone https://github.com/yourusername/depscan.git
-cd depscan
+git clone https://github.com/therickybobbeh/dep-scanner.git
+cd dep-scanner
 
 # Add upstream remote
-git remote add upstream https://github.com/original/depscan.git
+git remote add upstream https://github.com/therickybobbeh/dep-scanner.git
 ```
 
 ### 2. Development Setup

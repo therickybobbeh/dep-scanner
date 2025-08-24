@@ -15,7 +15,7 @@ setup(
     description="Dependency Vulnerability Scanner",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/example/depscan",
+    url="https://github.com/therickybobbeh/dep-scanner",
     packages=find_packages(),  # Changed to find packages in the root directory
     entry_points={
         "console_scripts": [

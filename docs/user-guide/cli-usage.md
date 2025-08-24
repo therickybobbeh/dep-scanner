@@ -273,20 +273,20 @@ jobs:
           
       - name: Install DepScan
         run: |
-          git clone https://github.com/yourusername/depscan.git
-          cd depscan/backend
+          git clone https://github.com/therickybobbeh/dep-scanner.git
+          cd dep-scanner/backend
           pip install -r requirements.txt
           
       - name: Run Security Scan
         run: |
-          cd depscan
+          cd dep-scanner
           python backend/cli.py scan ${{ github.workspace }} --json security-report.json
           
       - name: Upload Results
         uses: actions/upload-artifact@v3
         with:
           name: security-report
-          path: depscan/security-report.json
+          path: dep-scanner/security-report.json
 ```
 
 #### Jenkins
@@ -302,17 +302,17 @@ pipeline {
                     python3 -m venv venv
                     source venv/bin/activate
                     
-                    git clone https://github.com/yourusername/depscan.git
-                    cd depscan/backend
+                    git clone https://github.com/therickybobbeh/dep-scanner.git
+                    cd dep-scanner/backend
                     pip install -r requirements.txt
                     
                     python cli.py scan ${WORKSPACE} --json security-report.json
                 '''
                 
-                archiveArtifacts artifacts: 'depscan/security-report.json'
+                archiveArtifacts artifacts: 'dep-scanner/security-report.json'
                 
                 script {
-                    def report = readJSON file: 'depscan/security-report.json'
+                    def report = readJSON file: 'dep-scanner/security-report.json'
                     if (report.vulnerable_count > 0) {
                         currentBuild.result = 'UNSTABLE'
                         echo "Found ${report.vulnerable_count} vulnerabilities"
@@ -449,7 +449,7 @@ rm backend/osv_cache.db
 1. **Verbose Output**: Add debug information to identify issues
 2. **Log Files**: Check backend logs for detailed error messages  
 3. **Test Environment**: Run `./run_tests.py` to verify installation
-4. **GitHub Issues**: Report bugs at [repository issues](https://github.com/yourusername/depscan/issues)
+4. **GitHub Issues**: Report bugs at [repository issues](https://github.com/therickybobbeh/dep-scanner/issues)
 
 ---
 
