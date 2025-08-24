@@ -3,21 +3,17 @@
 DepScan CLI - Dependency Vulnerability Scanner
 """
 import asyncio
-import json
-import sys
-from pathlib import Path
-from typing import Optional, List
-from datetime import datetime
-import subprocess
 import webbrowser
+from pathlib import Path
+from datetime import datetime
+from typing import Optional
 
 import typer
 from rich.console import Console
 from rich.table import Table
 from rich.progress import Progress, SpinnerColumn, TextColumn
-from rich import print as rprint
 
-from app.models import ScanOptions, Report, JobStatus, SeverityLevel
+from app.models import ScanOptions, SeverityLevel, Report, JobStatus
 from app.resolver import PythonResolver, JavaScriptResolver
 from app.scanner import OSVScanner
 
@@ -116,7 +112,7 @@ class DepScanner:
             meta={
                 "generated_at": datetime.now().isoformat(),
                 "ecosystems": ecosystems_found,
-                "scan_options": options.dict()
+                "scan_options": options.model_dump()
             }
         )
         
@@ -131,7 +127,7 @@ def scan(
     repo_path: str = typer.Argument(..., help="Path to repository or directory to scan"),
     json_output: Optional[str] = typer.Option(None, "--json", "-j", help="Output JSON report to file"),
     include_dev: bool = typer.Option(True, "--dev/--no-dev", help="Include development dependencies"),
-    severity_filter: List[str] = typer.Option([], "--ignore-severity", help="Ignore vulnerabilities of specific severity levels"),
+    severity_filter: list[str] = typer.Option([], "--ignore-severity", help="Ignore vulnerabilities of specific severity levels"),
     open_browser: bool = typer.Option(False, "--open", "-o", help="Start web server and open browser"),
     port: int = typer.Option(8000, "--port", "-p", help="Port for web server"),
 ):
@@ -209,51 +205,15 @@ def scan(
             # Output JSON if requested
             if json_output:
                 with open(json_output, "w") as f:
-                    f.write(report.json(indent=2))
+                    f.write(report.model_dump_json(indent=2))
                 console.print(f"\n[blue]Report saved to: {json_output}[/blue]")
 
             # Start web server if requested
             if open_browser:
-                # Save report to temporary file for the web server to use
-                temp_report_file = "test_report.json"
-                with open(temp_report_file, "w") as f:
-                    f.write(report.json(indent=2))
-
-                console.print(f"\n[bold green]Starting web server on port {port}...[/bold green]")
-
-                # Launch web server in background
-                import subprocess
-                import time
-                from threading import Thread
-
-                def run_server():
-                    try:
-                        # Use uvicorn to run the API server
-                        from app.main import app as api_app
-                        import uvicorn
-                        uvicorn.run(api_app, host="127.0.0.1", port=port)
-                    except Exception as e:
-                        console.print(f"[red]Error starting web server: {e}[/red]")
-
-                # Start server in a thread
-                server_thread = Thread(target=run_server, daemon=True)
-                server_thread.start()
-
-                # Give the server a moment to start
-                time.sleep(1)
-
-                # Open browser
-                url = f"http://127.0.0.1:{port}/reports/{report.job_id}"
-                console.print(f"[blue]Opening report in browser: {url}[/blue]")
-                webbrowser.open(url)
-
-                # Keep main thread running while browser is open
-                console.print("\nPress Ctrl+C to close the server and exit")
-                try:
-                    while True:
-                        time.sleep(1)
-                except KeyboardInterrupt:
-                    console.print("\n[yellow]Server stopped. Exiting...[/yellow]")
+                console.print(f"\n[blue]To view results in web interface:[/blue]")
+                console.print(f"1. Start the web server: cd backend && uvicorn app.main:app --host 127.0.0.1 --port {port}")
+                console.print(f"2. Open: http://127.0.0.1:{port}")
+                console.print(f"3. Upload your dependency files for interactive scanning")
 
         except FileNotFoundError as e:
             console.print(f"[red]Error: {e}[/red]")

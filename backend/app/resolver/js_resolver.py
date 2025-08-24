@@ -1,326 +1,236 @@
-import json
+"""
+Simplified JavaScript dependency resolver
+
+This module provides a clean, easy-to-follow interface for resolving JavaScript
+dependencies from various manifest and lockfile formats.
+"""
 import subprocess
 from pathlib import Path
-from typing import List, Dict, Optional, Set
-import re
+from typing import Union
 
+from .base import ParseError
+from .factories import JavaScriptParserFactory
+from .parsers.javascript import NpmLsParser
 from ..models import Dep, Ecosystem
 
+
 class JavaScriptResolver:
-    """Resolves JavaScript/Node.js dependencies from various manifest formats"""
+    """
+    JavaScript dependency resolver
+    
+    Resolves dependencies using a prioritized approach:
+    1. Lockfiles (package-lock.json, yarn.lock) - Most accurate
+    2. npm ls command - If node_modules exists
+    3. Manifest files (package.json) - Fallback for direct deps only
+    
+    Example usage:
+        resolver = JavaScriptResolver()
+        
+        # From repository directory
+        deps = await resolver.resolve_dependencies("/path/to/repo")
+        
+        # From uploaded files
+        files = {"package.json": content, "package-lock.json": content}
+        deps = await resolver.resolve_dependencies(None, files)
+    """
     
     def __init__(self):
         self.ecosystem: Ecosystem = "npm"
+        self.parser_factory = JavaScriptParserFactory()
     
-    async def resolve_dependencies(self, repo_path: str, manifest_files: Optional[Dict[str, str]] = None) -> List[Dep]:
+    async def resolve_dependencies(
+        self, 
+        repo_path: str | None, 
+        manifest_files: dict[str, str] | None = None
+    ) -> list[Dep]:
         """
         Resolve JavaScript dependencies from repository or manifest files
-        Priority: lockfiles > npm ls > manifest files
+        
+        Args:
+            repo_path: Path to repository directory (None if using manifest_files)
+            manifest_files: Dict of {filename: content} for uploaded files
+            
+        Returns:
+            List of dependency objects with full transitive resolution when possible
+            
+        Raises:
+            FileNotFoundError: If no supported dependency files found
+            ParseError: If parsing fails
         """
         if manifest_files:
-            return await self._resolve_from_manifests(manifest_files)
+            return await self._resolve_from_uploaded_files(manifest_files)
+        elif repo_path:
+            return await self._resolve_from_repository(repo_path)
         else:
-            return await self._resolve_from_repo(repo_path)
+            raise ValueError("Either repo_path or manifest_files must be provided")
     
-    async def _resolve_from_repo(self, repo_path: str) -> List[Dep]:
-        """Resolve dependencies from a repository directory"""
+    async def _resolve_from_repository(self, repo_path: str) -> list[Dep]:
+        """
+        Resolve dependencies from a repository directory
+        
+        Priority order:
+        1. package-lock.json (full transitive resolution)
+        2. yarn.lock (full transitive resolution)  
+        3. npm ls command (full transitive resolution)
+        4. package.json only (direct dependencies only)
+        """
         repo_path_obj = Path(repo_path)
         
-        # Try lockfiles first (deterministic)
-        package_lock = repo_path_obj / "package-lock.json"
-        yarn_lock = repo_path_obj / "yarn.lock"
+        # Step 1: Try lockfiles first (most accurate)
+        lockfiles = [
+            ("package-lock.json", "package-lock.json"),
+            ("yarn.lock", "yarn.lock")
+        ]
         
-        if package_lock.exists():
-            return await self._parse_package_lock(package_lock.read_text())
-        elif yarn_lock.exists():
-            return await self._parse_yarn_lock(yarn_lock.read_text())
+        for filename, format_name in lockfiles:
+            file_path = repo_path_obj / filename
+            if file_path.exists():
+                try:
+                    content = file_path.read_text(encoding='utf-8')
+                    parser = self.parser_factory.get_parser(filename, content)
+                    deps = await parser.parse(content)
+                    
+                    if deps:  # Successfully parsed with dependencies
+                        return deps
+                        
+                except Exception as e:
+                    # Log warning but continue to next method
+                    print(f"Warning: Failed to parse {filename}: {e}")
+                    continue
         
-        # Try npm ls if package.json exists and node_modules is present
-        package_json = repo_path_obj / "package.json"
-        node_modules = repo_path_obj / "node_modules"
+        # Step 2: Try npm ls if node_modules exists
+        if self._can_use_npm_ls(repo_path):
+            try:
+                npm_parser = self.parser_factory.get_parser_by_format("npm-ls")
+                deps = await npm_parser.parse("", repo_path=repo_path)
+                
+                if deps:
+                    return deps
+                    
+            except Exception as e:
+                print(f"Warning: npm ls failed: {e}")
         
-        if package_json.exists() and node_modules.exists():
-            return await self._resolve_with_npm_ls(repo_path)
-        elif package_json.exists():
-            return await self._parse_package_json_only(package_json.read_text())
+        # Step 3: Fallback to package.json (direct dependencies only)
+        package_json_path = repo_path_obj / "package.json"
+        if package_json_path.exists():
+            try:
+                content = package_json_path.read_text(encoding='utf-8')
+                parser = self.parser_factory.get_parser("package.json", content)
+                deps = await parser.parse(content)
+                
+                if deps:
+                    return deps
+                    
+            except Exception as e:
+                print(f"Warning: Failed to parse package.json: {e}")
         
         raise FileNotFoundError("No JavaScript dependency files found in repository")
     
-    async def _resolve_from_manifests(self, manifest_files: Dict[str, str]) -> List[Dep]:
-        """Resolve dependencies from provided manifest file contents"""
+    async def _resolve_from_uploaded_files(self, manifest_files: dict[str, str]) -> list[Dep]:
+        """
+        Resolve dependencies from uploaded manifest files
         
-        # Priority: lockfiles first
-        if "package-lock.json" in manifest_files:
-            return await self._parse_package_lock(manifest_files["package-lock.json"])
-        elif "yarn.lock" in manifest_files:
-            return await self._parse_yarn_lock(manifest_files["yarn.lock"])
-        elif "package.json" in manifest_files:
-            # Without lockfiles or node_modules, we can only get direct dependencies
-            return await self._parse_package_json_only(manifest_files["package.json"])
+        Uses the best available file format based on priority
+        """
+        if not manifest_files:
+            raise ValueError("No manifest files provided")
         
-        raise ValueError("No supported JavaScript dependency files provided")
-    
-    async def _parse_package_lock(self, content: str) -> List[Dep]:
-        """Parse package-lock.json to extract full dependency tree"""
         try:
-            lock_data = json.loads(content)
+            # Detect the best format to use
+            filename, format_name = self.parser_factory.detect_best_format(manifest_files)
+            content = manifest_files[filename]
+            
+            # Get appropriate parser and parse
+            parser = self.parser_factory.get_parser(filename, content)
+            deps = await parser.parse(content)
+            
+            return deps
+            
         except Exception as e:
-            raise ValueError(f"Failed to parse package-lock.json: {e}")
+            raise ParseError("JavaScript manifest files", e)
+    
+    def _can_use_npm_ls(self, repo_path: str) -> bool:
+        """
+        Check if npm ls command can be used for dependency resolution
         
-        dependencies = []
+        Requirements:
+        - package.json exists
+        - node_modules directory exists  
+        - npm command is available
+        """
+        repo_path_obj = Path(repo_path)
         
-        # Handle both lockfileVersion 1 and 2/3 formats
-        lockfile_version = lock_data.get("lockfileVersion", 1)
+        # Check required files/directories
+        if not (repo_path_obj / "package.json").exists():
+            return False
         
-        if lockfile_version >= 2:
-            # v2/v3 format has packages object
-            packages = lock_data.get("packages", {})
-            return await self._parse_package_lock_v2(packages, lock_data)
+        if not (repo_path_obj / "node_modules").exists():
+            return False
+        
+        # Check if npm command is available
+        try:
+            subprocess.run(["npm", "--version"], capture_output=True, check=True)
+            return True
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            return False
+    
+    def get_supported_formats(self) -> list[str]:
+        """Get list of supported JavaScript dependency file formats"""
+        return self.parser_factory.get_supported_formats()
+    
+    def can_resolve_transitive_dependencies(self, filename: str) -> bool:
+        """
+        Check if a file format supports full transitive dependency resolution
+        
+        Args:
+            filename: Name of dependency file
+            
+        Returns:
+            True if format supports transitive dependencies
+        """
+        transitive_formats = {
+            "package-lock.json": True,
+            "yarn.lock": True,
+            "package.json": False  # Only direct dependencies
+        }
+        
+        return transitive_formats.get(filename, False)
+    
+    def get_resolution_info(self, filename: str) -> dict[str, Union[str, bool]]:
+        """
+        Get information about resolution capabilities for a file format
+        
+        Args:
+            filename: Name of dependency file
+            
+        Returns:
+            Dict with resolution information
+        """
+        if filename == "package-lock.json":
+            return {
+                "format": "package-lock.json",
+                "transitive_resolution": True,
+                "deterministic_versions": True,
+                "description": "NPM lockfile with full dependency tree and exact versions"
+            }
+        elif filename == "yarn.lock":
+            return {
+                "format": "yarn.lock", 
+                "transitive_resolution": True,
+                "deterministic_versions": True,
+                "description": "Yarn lockfile with flattened dependency tree and exact versions"
+            }
+        elif filename == "package.json":
+            return {
+                "format": "package.json",
+                "transitive_resolution": False,
+                "deterministic_versions": False,
+                "description": "NPM manifest with direct dependencies and version ranges only"
+            }
         else:
-            # v1 format has dependencies object
-            deps = lock_data.get("dependencies", {})
-            return await self._parse_package_lock_v1(deps)
-    
-    async def _parse_package_lock_v1(self, dependencies: Dict) -> List[Dep]:
-        """Parse package-lock.json v1 format"""
-        deps = []
-        
-        def extract_deps(dep_dict: Dict, path: List[str] = None) -> None:
-            if path is None:
-                path = []
-            
-            for name, info in dep_dict.items():
-                version = info.get("version", "")
-                current_path = path + [name]
-                
-                dep = Dep(
-                    name=name,
-                    version=version,
-                    ecosystem=self.ecosystem,
-                    path=current_path,
-                    is_direct=len(path) == 0,
-                    is_dev=info.get("dev", False)
-                )
-                deps.append(dep)
-                
-                # Recursively process nested dependencies
-                nested_deps = info.get("dependencies", {})
-                if nested_deps:
-                    extract_deps(nested_deps, current_path)
-        
-        extract_deps(dependencies)
-        return deps
-    
-    async def _parse_package_lock_v2(self, packages: Dict, lock_data: Dict) -> List[Dep]:
-        """Parse package-lock.json v2/v3 format"""
-        deps = []
-        root_name = lock_data.get("name", "")
-        
-        for package_path, info in packages.items():
-            if package_path == "":  # Skip root package
-                continue
-            
-            # Extract package name from path
-            name = package_path.split("/")[-1] if "/" in package_path else package_path
-            name = name.replace("node_modules/", "")
-            
-            version = info.get("version", "")
-            is_dev = info.get("dev", False) or info.get("devOptional", False)
-            
-            # Build path from package location
-            path_parts = package_path.split("/node_modules/")
-            if len(path_parts) > 1:
-                # Transitive dependency
-                parent_chain = [p for p in path_parts[:-1] if p and p != ""]
-                current_path = parent_chain + [name]
-            else:
-                # Direct dependency
-                current_path = [name]
-            
-            dep = Dep(
-                name=name,
-                version=version,
-                ecosystem=self.ecosystem,
-                path=current_path,
-                is_direct=len(current_path) == 1,
-                is_dev=is_dev
-            )
-            deps.append(dep)
-        
-        return deps
-    
-    async def _parse_yarn_lock(self, content: str) -> List[Dep]:
-        """Parse yarn.lock file to extract dependencies"""
-        dependencies = []
-        
-        # Parse yarn.lock format (simplified parser)
-        entries = self._parse_yarn_entries(content)
-        
-        for entry in entries:
-            name, version = self._extract_name_version_from_yarn_entry(entry)
-            if name and version:
-                dep = Dep(
-                    name=name,
-                    version=version,
-                    ecosystem=self.ecosystem,
-                    path=[name],  # Yarn.lock doesn't provide full dependency paths easily
-                    is_direct=True,  # Simplified - would need package.json to determine this
-                    is_dev=False
-                )
-                dependencies.append(dep)
-        
-        return dependencies
-    
-    def _parse_yarn_entries(self, content: str) -> List[Dict[str, str]]:
-        """Parse yarn.lock content into individual package entries"""
-        entries = []
-        current_entry = {}
-        in_entry = False
-        
-        for line in content.splitlines():
-            line = line.rstrip()
-            
-            if line and not line.startswith(" ") and not line.startswith("\t"):
-                # New entry
-                if current_entry:
-                    entries.append(current_entry)
-                current_entry = {"header": line}
-                in_entry = True
-            elif in_entry and line.strip():
-                # Entry property
-                if ":" in line:
-                    key, value = line.split(":", 1)
-                    current_entry[key.strip()] = value.strip().strip('"')
-        
-        if current_entry:
-            entries.append(current_entry)
-        
-        return entries
-    
-    def _extract_name_version_from_yarn_entry(self, entry: Dict[str, str]) -> tuple[str, str]:
-        """Extract package name and version from a yarn.lock entry"""
-        header = entry.get("header", "")
-        version = entry.get("version", "")
-        
-        # Parse header like: "package@^1.0.0", "package@npm:other@1.0.0"
-        if "@" in header:
-            parts = header.split("@")
-            if len(parts) >= 2:
-                name = parts[0].strip('"')
-                return name, version
-        
-        return "", ""
-    
-    async def _resolve_with_npm_ls(self, repo_path: str) -> List[Dep]:
-        """Use npm ls to get installed dependency tree"""
-        try:
-            result = subprocess.run([
-                "npm", "ls", "--all", "--json", "--long"
-            ], cwd=repo_path, capture_output=True, text=True, check=True)
-            
-            ls_data = json.loads(result.stdout)
-            return self._parse_npm_ls_output(ls_data)
-            
-        except subprocess.CalledProcessError as e:
-            # npm ls can exit with non-zero code even with valid output
-            if e.stdout:
-                try:
-                    ls_data = json.loads(e.stdout)
-                    return self._parse_npm_ls_output(ls_data)
-                except json.JSONDecodeError:
-                    pass
-            raise RuntimeError(f"Failed to run npm ls: {e}")
-        except Exception as e:
-            raise RuntimeError(f"Failed to resolve dependencies with npm ls: {e}")
-    
-    def _parse_npm_ls_output(self, ls_data: Dict) -> List[Dep]:
-        """Parse npm ls JSON output to create Dep objects"""
-        dependencies = []
-        
-        def extract_deps(node: Dict, path: List[str] = None) -> None:
-            if path is None:
-                path = []
-            
-            name = node.get("name", "")
-            version = node.get("version", "")
-            
-            if name and version and name != ls_data.get("name"):  # Skip root package
-                current_path = path + [name]
-                is_dev = node.get("dev", False) or node.get("devDependencies", False)
-                
-                dep = Dep(
-                    name=name,
-                    version=version,
-                    ecosystem=self.ecosystem,
-                    path=current_path,
-                    is_direct=len(path) == 0,
-                    is_dev=is_dev
-                )
-                dependencies.append(dep)
-                
-                # Process dependencies
-                deps = node.get("dependencies", {})
-                for dep_name, dep_info in deps.items():
-                    extract_deps(dep_info, current_path)
-        
-        # Start processing from root
-        root_deps = ls_data.get("dependencies", {})
-        for dep_name, dep_info in root_deps.items():
-            extract_deps(dep_info, [])
-        
-        return dependencies
-    
-    async def _parse_package_json_only(self, content: str) -> List[Dep]:
-        """Parse package.json to get only direct dependencies (without versions)"""
-        try:
-            package_data = json.loads(content)
-        except Exception as e:
-            raise ValueError(f"Failed to parse package.json: {e}")
-        
-        dependencies = []
-        
-        # Production dependencies
-        prod_deps = package_data.get("dependencies", {})
-        for name, version_spec in prod_deps.items():
-            # Extract version from spec (simplified)
-            version = self._extract_version_from_spec(version_spec)
-            dep = Dep(
-                name=name,
-                version=version or "unknown",
-                ecosystem=self.ecosystem,
-                path=[name],
-                is_direct=True,
-                is_dev=False
-            )
-            dependencies.append(dep)
-        
-        # Development dependencies
-        dev_deps = package_data.get("devDependencies", {})
-        for name, version_spec in dev_deps.items():
-            version = self._extract_version_from_spec(version_spec)
-            dep = Dep(
-                name=name,
-                version=version or "unknown",
-                ecosystem=self.ecosystem,
-                path=[name],
-                is_direct=True,
-                is_dev=True
-            )
-            dependencies.append(dep)
-        
-        return dependencies
-    
-    def _extract_version_from_spec(self, version_spec: str) -> Optional[str]:
-        """Extract specific version from version specifier"""
-        # Handle exact versions, git URLs, file paths, etc.
-        if not version_spec:
-            return None
-        
-        # Remove common prefixes
-        spec = version_spec.lstrip("^~>=<")
-        
-        # Extract version-like strings
-        version_pattern = r'\d+\.\d+\.\d+(?:-[\w.-]+)?'
-        match = re.search(version_pattern, spec)
-        
-        return match.group(0) if match else None
+            return {
+                "format": "unknown",
+                "transitive_resolution": False,
+                "deterministic_versions": False,
+                "description": "Unsupported format"
+            }

@@ -3,29 +3,16 @@ import json
 import sqlite3
 import hashlib
 from datetime import datetime, timedelta
-from pathlib import Path
-from typing import List, Dict, Optional, Tuple, Set
+# Modern type annotations - no imports needed for basic types
 import httpx
-from dataclasses import dataclass
 import random
 
-from ..models import Dep, OSVQuery, OSVBatchQuery, OSVVulnerability, OSVBatchResponse, Vuln, SeverityLevel
-
-@dataclass
-class OSVCacheEntry:
-    """Represents a cached OSV query result"""
-    query_hash: str
-    ecosystem: str
-    name: str
-    version: str
-    vulnerabilities: str  # JSON serialized list
-    cached_at: datetime
-    expires_at: datetime
+from ..models import Dep, OSVQuery, OSVBatchQuery, OSVBatchResponse, Vuln, SeverityLevel
 
 class OSVScanner:
     """OSV.dev API client with batching, caching, and retry logic"""
     
-    def __init__(self, cache_db_path: Optional[str] = None, batch_size: int = 100, 
+    def __init__(self, cache_db_path: str | None = None, batch_size: int = 100, 
                  rate_limit_delay: float = 1.0, max_retries: int = 3):
         self.base_url = "https://api.osv.dev"
         self.batch_size = batch_size
@@ -67,7 +54,7 @@ class OSVScanner:
         conn.commit()
         conn.close()
     
-    async def scan_dependencies(self, dependencies: List[Dep]) -> List[Vuln]:
+    async def scan_dependencies(self, dependencies: list[Dep]) -> list[Vuln]:
         """
         Scan a list of dependencies for vulnerabilities
         Returns a list of vulnerabilities found
@@ -101,7 +88,7 @@ class OSVScanner:
         
         return vulnerabilities
     
-    def _deduplicate_dependencies(self, dependencies: List[Dep]) -> List[Dep]:
+    def _deduplicate_dependencies(self, dependencies: list[Dep]) -> list[Dep]:
         """Remove duplicate dependencies based on (ecosystem, name, version)"""
         seen = set()
         unique_deps = []
@@ -114,7 +101,7 @@ class OSVScanner:
         
         return unique_deps
     
-    async def _check_cache(self, dependencies: List[Dep]) -> Tuple[List[Dict], List[Dep]]:
+    async def _check_cache(self, dependencies: list[Dep]) -> tuple[list[dict], list[Dep]]:
         """
         Check cache for vulnerability data
         Returns: (cached_vulnerabilities, uncached_dependencies)
@@ -150,7 +137,7 @@ class OSVScanner:
         
         return cached_results, uncached_deps
     
-    async def _query_osv_batch(self, dependencies: List[Dep]) -> List[Dict]:
+    async def _query_osv_batch(self, dependencies: list[Dep]) -> list[dict]:
         """Query OSV.dev API in batches with retry logic"""
         all_results = []
         
@@ -165,7 +152,7 @@ class OSVScanner:
         
         return all_results
     
-    async def _query_single_batch(self, batch: List[Dep]) -> List[Dict]:
+    async def _query_single_batch(self, batch: list[Dep]) -> list[dict]:
         """Query a single batch of dependencies with retry logic"""
         queries = []
         for dep in batch:
@@ -181,7 +168,7 @@ class OSVScanner:
             try:
                 response = await self.client.post(
                     f"{self.base_url}/v1/querybatch",
-                    json=batch_query.dict()
+                    json=batch_query.model_dump()
                 )
                 
                 if response.status_code == 200:
@@ -228,7 +215,7 @@ class OSVScanner:
         
         return []  # Should not reach here
     
-    async def _cache_results(self, dependencies: List[Dep], results: List[Dict]):
+    async def _cache_results(self, dependencies: list[Dep], results: list[dict]):
         """Cache OSV query results"""
         conn = sqlite3.connect(self.cache_db_path)
         
@@ -292,7 +279,7 @@ class OSVScanner:
         self._last_request_time = asyncio.get_event_loop().time()
         self._request_count += 1
     
-    def _convert_osv_to_vuln(self, osv_data: Dict, dep: Dep) -> Vuln:
+    def _convert_osv_to_vuln(self, osv_data: dict, dep: Dep) -> Vuln:
         """Convert OSV vulnerability data to our Vuln model"""
         
         # Extract severity
@@ -342,7 +329,7 @@ class OSVScanner:
             aliases=osv_data.get("aliases", [])
         )
     
-    def _extract_severity(self, severity_list: List[Dict]) -> Optional[SeverityLevel]:
+    def _extract_severity(self, severity_list: list[dict]) -> SeverityLevel | None:
         """Extract and normalize severity from OSV data"""
         if not severity_list:
             return SeverityLevel.UNKNOWN
@@ -373,7 +360,7 @@ class OSVScanner:
         
         return SeverityLevel.UNKNOWN
     
-    def _extract_fixed_range(self, affected_list: List[Dict], package_name: str) -> Optional[str]:
+    def _extract_fixed_range(self, affected_list: list[dict], package_name: str) -> str | None:
         """Extract fixed version range from OSV affected data"""
         for affected in affected_list:
             package_info = affected.get("package", {})
@@ -387,7 +374,7 @@ class OSVScanner:
         
         return None
     
-    async def cleanup_cache(self, max_age_days: int = 7):
+    async def cleanup_cache(self, max_age_days: int = 1):
         """Remove old cache entries"""
         cutoff_date = datetime.now() - timedelta(days=max_age_days)
         

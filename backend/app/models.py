@@ -1,4 +1,4 @@
-from typing import Optional, Literal, List, Dict, Any
+from typing import Literal, Any
 from datetime import datetime
 from pydantic import BaseModel, Field
 from enum import Enum
@@ -17,7 +17,7 @@ class Dep(BaseModel):
     name: str
     version: str
     ecosystem: Ecosystem
-    path: List[str] = Field(description="Provenance path showing how this dependency was reached")
+    path: list[str] = Field(description="Provenance path showing how this dependency was reached")
     is_direct: bool = Field(default=False, description="Whether this is a direct dependency")
     is_dev: bool = Field(default=False, description="Whether this is a development dependency")
 
@@ -27,29 +27,29 @@ class Vuln(BaseModel):
     version: str
     ecosystem: Ecosystem
     vulnerability_id: str = Field(description="OSV ID or CVE ID")
-    severity: Optional[SeverityLevel] = None
-    cve_ids: List[str] = Field(default_factory=list)
+    severity: SeverityLevel | None = None
+    cve_ids: list[str] = Field(default_factory=list)
     summary: str
-    details: Optional[str] = None
-    advisory_url: Optional[str] = None
-    fixed_range: Optional[str] = Field(description="Version range that fixes this vulnerability")
-    published: Optional[datetime] = None
-    modified: Optional[datetime] = None
-    aliases: List[str] = Field(default_factory=list, description="Other identifiers for this vulnerability")
+    details: str | None = None
+    advisory_url: str | None = None
+    fixed_range: str | None = Field(description="Version range that fixes this vulnerability")
+    published: datetime | None = None
+    modified: datetime | None = None
+    aliases: list[str] = Field(default_factory=list, description="Other identifiers for this vulnerability")
     
 class IgnoreRule(BaseModel):
     """Configuration for ignoring specific vulnerabilities or packages"""
     rule_type: Literal["vulnerability", "package"]
     identifier: str  # CVE ID or package@version pattern
     reason: str
-    expires: Optional[datetime] = None
+    expires: datetime | None = None
 
 class ScanOptions(BaseModel):
     """Configuration options for a scan"""
     include_dev_dependencies: bool = Field(default=True)
-    stale_months: Optional[int] = Field(default=None, description="Consider packages stale if no release in X months")
-    ignore_severities: List[SeverityLevel] = Field(default_factory=list)
-    ignore_rules: List[IgnoreRule] = Field(default_factory=list)
+    stale_months: int | None = Field(default=None, description="Consider packages stale if no release in X months")
+    ignore_severities: list[SeverityLevel] = Field(default_factory=list)
+    ignore_rules: list[IgnoreRule] = Field(default_factory=list)
 
 class JobStatus(str, Enum):
     PENDING = "pending"
@@ -63,12 +63,12 @@ class ScanProgress(BaseModel):
     status: JobStatus
     progress_percent: float = Field(ge=0, le=100)
     current_step: str
-    total_dependencies: Optional[int] = None
+    total_dependencies: int | None = None
     scanned_dependencies: int = 0
     vulnerabilities_found: int = 0
     started_at: datetime
-    completed_at: Optional[datetime] = None
-    error_message: Optional[str] = None
+    completed_at: datetime | None = None
+    error_message: str | None = None
 
 class Report(BaseModel):
     """Complete vulnerability scan report"""
@@ -76,19 +76,19 @@ class Report(BaseModel):
     status: JobStatus
     total_dependencies: int
     vulnerable_count: int
-    vulnerable_packages: List[Vuln]
-    dependencies: List[Dep]
+    vulnerable_packages: list[Vuln]
+    dependencies: list[Dep]
     suppressed_count: int = 0
-    stale_packages: List[str] = Field(default_factory=list, description="Packages with no recent releases")
-    meta: Dict[str, Any] = Field(
+    stale_packages: list[str] = Field(default_factory=list, description="Packages with no recent releases")
+    meta: dict[str, Any] = Field(
         default_factory=dict,
         description="Metadata: generated_at, scan_duration, rate_limit_info, warnings, etc."
     )
 
 class ScanRequest(BaseModel):
     """Request to start a vulnerability scan"""
-    repo_path: Optional[str] = None
-    manifest_files: Optional[Dict[str, str]] = Field(
+    repo_path: str | None = None
+    manifest_files: dict[str, str] | None = Field(
         default=None, 
         description="Manifest file contents keyed by filename"
     )
@@ -96,25 +96,25 @@ class ScanRequest(BaseModel):
 
 class OSVQuery(BaseModel):
     """Single query to OSV API"""
-    package: Dict[str, str]  # {"name": "package_name", "ecosystem": "PyPI"}
-    version: Optional[str] = None
+    package: dict[str, str]  # {"name": "package_name", "ecosystem": "PyPI"}
+    version: str | None = None
 
 class OSVBatchQuery(BaseModel):
     """Batch query to OSV API"""
-    queries: List[OSVQuery]
+    queries: list[OSVQuery]
 
 class OSVVulnerability(BaseModel):
     """Raw vulnerability response from OSV API"""
     id: str
-    summary: Optional[str] = None
-    details: Optional[str] = None
-    aliases: List[str] = Field(default_factory=list)
-    published: Optional[str] = None
-    modified: Optional[str] = None
-    severity: Optional[List[Dict[str, Any]]] = None
-    affected: List[Dict[str, Any]] = Field(default_factory=list)
-    references: List[Dict[str, str]] = Field(default_factory=list)
+    summary: str | None = None
+    details: str | None = None
+    aliases: list[str] = Field(default_factory=list)
+    published: str | None = None
+    modified: str | None = None
+    severity: list[dict[str, Any]] | None = None
+    affected: list[dict[str, Any]] = Field(default_factory=list)
+    references: list[dict[str, str]] = Field(default_factory=list)
 
 class OSVBatchResponse(BaseModel):
     """Batch response from OSV API"""
-    results: List[Dict[str, Any]]  # Each result can be a dict with 'vulns' key or empty
+    results: list[dict[str, Any]]  # Each result can be a dict with 'vulns' key or empty
