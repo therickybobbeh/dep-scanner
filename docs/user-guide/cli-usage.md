@@ -54,14 +54,9 @@ python cli.py scan <PATH> [OPTIONS]
 - Example: `--ignore-severity LOW --ignore-severity MEDIUM`
 
 **`--open, -o`**
-- Start web server and open browser after scan
-- Useful for interactive result exploration
+- Generate static HTML report and open in browser after scan
+- Useful for quick visual overview of results
 - Example: `--open`
-
-**`--port, -p <PORT>`**
-- Specify port for web server (when using `--open`)
-- Default: `8000`
-- Example: `--port 8080`
 
 #### Examples
 
@@ -81,8 +76,8 @@ python cli.py scan . --json detailed-report.json
 # Multiple options combined
 python cli.py scan ./backend --no-include-dev --ignore-severity LOW --json prod-security.json
 
-# Open web interface after scan
-python cli.py scan . --open --port 8080
+# Open HTML report after scan
+python cli.py scan . --open
 ```
 
 ### `version` Command

@@ -1,1 +1,2 @@
-from . import cli
+"""Backend package for dep-scan."""
+

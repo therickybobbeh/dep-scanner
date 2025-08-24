@@ -13,9 +13,14 @@ from rich.console import Console
 from rich.table import Table
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
-from app.models import ScanOptions, SeverityLevel, Report, JobStatus
-from app.resolver import PythonResolver, JavaScriptResolver
-from app.scanner import OSVScanner
+try:  # Allow running as module or script
+    from .app.models import ScanOptions, SeverityLevel, Report, JobStatus
+    from .app.resolver import PythonResolver, JavaScriptResolver
+    from .app.scanner import OSVScanner
+except ImportError:  # pragma: no cover - fallback for script execution
+    from app.models import ScanOptions, SeverityLevel, Report, JobStatus
+    from app.resolver import PythonResolver, JavaScriptResolver
+    from app.scanner import OSVScanner
 
 app = typer.Typer(help="DepScan - Dependency Vulnerability Scanner")
 console = Console()
@@ -128,8 +133,7 @@ def scan(
     json_output: Optional[str] = typer.Option(None, "--json", "-j", help="Output JSON report to file"),
     include_dev: bool = typer.Option(True, "--dev/--no-dev", help="Include development dependencies"),
     severity_filter: list[str] = typer.Option([], "--ignore-severity", help="Ignore vulnerabilities of specific severity levels"),
-    open_browser: bool = typer.Option(False, "--open", "-o", help="Start web server and open browser"),
-    port: int = typer.Option(8000, "--port", "-p", help="Port for web server"),
+    open_browser: bool = typer.Option(False, "--open", "-o", help="Generate HTML report and open in browser"),
 ):
     """Scan a repository for dependency vulnerabilities"""
     
@@ -173,6 +177,7 @@ def scan(
                 table = Table(title="Vulnerability Summary")
                 table.add_column("Package", style="cyan")
                 table.add_column("Version", style="cyan")
+                table.add_column("Type", style="magenta")
                 table.add_column("Vulnerability ID", style="yellow")
                 table.add_column("Severity", style="red")
                 table.add_column("Description", style="white")
@@ -187,9 +192,13 @@ def scan(
                         "UNKNOWN": "[blue]UNKNOWN[/blue]"
                     }.get(severity, severity)
 
+                    dep_match = next((d for d in report.dependencies if d.name == vuln.package and d.version == vuln.version), None)
+                    dep_type = "direct" if dep_match and dep_match.is_direct else "transitive"
+
                     table.add_row(
                         vuln.package,
                         vuln.version,
+                        dep_type,
                         vuln.vulnerability_id,
                         severity_color,
                         (vuln.summary[:60] + "...") if len(vuln.summary) > 60 else vuln.summary
@@ -208,12 +217,11 @@ def scan(
                     f.write(report.model_dump_json(indent=2))
                 console.print(f"\n[blue]Report saved to: {json_output}[/blue]")
 
-            # Start web server if requested
+            # Generate and open HTML report if requested
             if open_browser:
-                console.print(f"\n[blue]To view results in web interface:[/blue]")
-                console.print(f"1. Start the web server: cd backend && uvicorn app.main:app --host 127.0.0.1 --port {port}")
-                console.print(f"2. Open: http://127.0.0.1:{port}")
-                console.print(f"3. Upload your dependency files for interactive scanning")
+                html_path = generate_html_report(report)
+                console.print(f"\n[blue]Opening HTML report: {html_path}[/blue]")
+                webbrowser.open(f"file://{html_path}")
 
         except FileNotFoundError as e:
             console.print(f"[red]Error: {e}[/red]")
@@ -225,6 +233,40 @@ def scan(
             await scanner.close()
 
     asyncio.run(run_scan())
+
+def generate_html_report(report: Report) -> str:
+    """Generate a simple static HTML report and return its path."""
+    from html import escape
+
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    output_path = Path(f"dep-scan-report-{timestamp}.html").resolve()
+
+    rows = []
+    for vuln in report.vulnerable_packages:
+        severity = vuln.severity.value if vuln.severity else "UNKNOWN"
+        dep_match = next((d for d in report.dependencies if d.name == vuln.package and d.version == vuln.version), None)
+        dep_type = "direct" if dep_match and dep_match.is_direct else "transitive"
+        rows.append(
+            f"<tr><td>{escape(vuln.package)}</td><td>{escape(vuln.version)}</td>"
+            f"<td>{dep_type}</td><td>{escape(severity)}</td>"
+            f"<td>{escape(vuln.vulnerability_id)}</td><td>{escape(vuln.summary)}</td></tr>"
+        )
+
+    html = f"""<!DOCTYPE html>
+<html lang=\"en\">
+<head><meta charset=\"UTF-8\"><title>DepScan Report</title>
+<style>table{{border-collapse:collapse;}}td,th{{border:1px solid #ccc;padding:4px;}}</style>
+</head><body>
+<h1>DepScan Report</h1>
+<p>Scanned {report.total_dependencies} dependencies and found {len(report.vulnerable_packages)} vulnerabilities.</p>
+<table>
+<tr><th>Package</th><th>Version</th><th>Type</th><th>Severity</th><th>ID</th><th>Summary</th></tr>
+{''.join(rows)}
+</table>
+</body></html>"""
+
+    output_path.write_text(html, encoding="utf-8")
+    return str(output_path)
 
 def print_report_summary(report: Report):
     """Print a formatted summary of the scan results"""
@@ -305,23 +347,6 @@ def print_report_summary(report: Report):
     
     if len(report.vulnerable_packages) > 10:
         console.print(f"\n[dim]... and {len(report.vulnerable_packages) - 10} more vulnerabilities[/dim]")
-
-def start_web_server(port: int):
-    """Start the FastAPI web server"""
-    try:
-        # Try to import and start the server
-        import uvicorn
-        url = f"http://127.0.0.1:{port}"
-        
-        console.print(f"[blue]Opening browser to {url}[/blue]")
-        webbrowser.open(url)
-        
-        # This would start the FastAPI server - for now just show the URL
-        console.print(f"[yellow]Web server would start at {url}[/yellow]")
-        console.print("[yellow]Web UI not yet implemented - use CLI mode for now[/yellow]")
-        
-    except ImportError:
-        console.print("[red]FastAPI web server not available[/red]")
 
 @app.command()
 def version():

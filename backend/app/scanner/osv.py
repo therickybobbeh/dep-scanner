@@ -282,8 +282,11 @@ class OSVScanner:
     def _convert_osv_to_vuln(self, osv_data: dict, dep: Dep) -> Vuln:
         """Convert OSV vulnerability data to our Vuln model"""
         
-        # Extract severity
-        severity = self._extract_severity(osv_data.get("severity", []))
+        # Extract severity (including database_specific fallback)
+        severity = self._extract_severity(
+            osv_data.get("severity", []),
+            osv_data.get("database_specific")
+        )
         
         # Extract CVE IDs from aliases
         cve_ids = [alias for alias in osv_data.get("aliases", []) if alias.startswith("CVE-")]
@@ -329,35 +332,53 @@ class OSVScanner:
             aliases=osv_data.get("aliases", [])
         )
     
-    def _extract_severity(self, severity_list: list[dict]) -> SeverityLevel | None:
+    def _extract_severity(self, severity_list: list[dict], db_specific: dict | None = None) -> SeverityLevel:
         """Extract and normalize severity from OSV data"""
-        if not severity_list:
-            return SeverityLevel.UNKNOWN
-        
-        # OSV can have multiple severity ratings, prefer CVSS
-        cvss_severity = None
-        for sev in severity_list:
-            if sev.get("type") == "CVSS_V3":
-                score = sev.get("score", 0)
-                if score >= 9.0:
-                    cvss_severity = SeverityLevel.CRITICAL
-                elif score >= 7.0:
-                    cvss_severity = SeverityLevel.HIGH
-                elif score >= 4.0:
-                    cvss_severity = SeverityLevel.MEDIUM
-                else:
-                    cvss_severity = SeverityLevel.LOW
-                break
-        
-        if cvss_severity:
-            return cvss_severity
-        
-        # Fall back to other severity types
-        for sev in severity_list:
-            severity_str = sev.get("severity", "").upper()
-            if severity_str in ["CRITICAL", "HIGH", "MEDIUM", "LOW"]:
-                return SeverityLevel(severity_str)
-        
+
+        def _to_float(val) -> float:
+            """Safely convert severity scores to float"""
+            try:
+                return float(val)
+            except Exception:
+                return 0.0
+
+        if severity_list:
+            # OSV can have multiple severity ratings, prefer CVSS
+            cvss_severity = None
+            for sev in severity_list:
+                if sev.get("type") == "CVSS_V3":
+                    score = _to_float(sev.get("score", 0))
+                    if score >= 9.0:
+                        cvss_severity = SeverityLevel.CRITICAL
+                    elif score >= 7.0:
+                        cvss_severity = SeverityLevel.HIGH
+                    elif score >= 4.0:
+                        cvss_severity = SeverityLevel.MEDIUM
+                    else:
+                        cvss_severity = SeverityLevel.LOW
+                    break
+
+            if cvss_severity:
+                return cvss_severity
+
+            # Fall back to other severity descriptors
+            for sev in severity_list:
+                severity_str = sev.get("severity", "").upper()
+                if severity_str in ["CRITICAL", "HIGH", "MEDIUM", "LOW"]:
+                    return SeverityLevel(severity_str)
+                if severity_str == "MODERATE":
+                    return SeverityLevel.MEDIUM
+
+        # Check database_specific severity (e.g., GitHub advisories)
+        if db_specific and isinstance(db_specific, dict):
+            sev_str = db_specific.get("severity")
+            if isinstance(sev_str, str):
+                sev_str = sev_str.upper()
+                if sev_str in ["CRITICAL", "HIGH", "MEDIUM", "LOW"]:
+                    return SeverityLevel(sev_str)
+                if sev_str == "MODERATE":
+                    return SeverityLevel.MEDIUM
+
         return SeverityLevel.UNKNOWN
     
     def _extract_fixed_range(self, affected_list: list[dict], package_name: str) -> str | None:
