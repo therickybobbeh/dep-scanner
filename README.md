@@ -2,13 +2,13 @@
 
 <div align="center">
 
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/yourusername/depscan)
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/therickybobbeh/dep-scanner)
 [![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![TypeScript](https://img.shields.io/badge/typescript-5.0+-blue.svg)](https://www.typescriptlang.org/)
 [![FastAPI](https://img.shields.io/badge/fastapi-0.104+-green.svg)](https://fastapi.tiangolo.com/)
 [![React](https://img.shields.io/badge/react-18.2+-61dafb.svg)](https://reactjs.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Coverage](https://img.shields.io/badge/coverage-90%25+-brightgreen)](https://github.com/yourusername/depscan)
+[![Coverage](https://img.shields.io/badge/coverage-90%25+-brightgreen)](https://github.com/therickybobbeh/dep-scanner)
 
 **Professional-grade dependency vulnerability scanner with CLI and web interfaces**
 
@@ -71,8 +71,8 @@ DepScan is a comprehensive dependency vulnerability scanner that helps developer
 **Option 1: Docker (Recommended)**
 ```bash
 # Clone and run with Docker Compose
-git clone https://github.com/yourusername/depscan.git
-cd depscan
+git clone https://github.com/therickybobbeh/dep-scanner.git
+cd dep-scanner
 docker-compose up --build
 
 # Access web interface at http://localhost:8000

@@ -14,15 +14,15 @@ The fastest way to get DepScan running is with Docker Compose:
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/yourusername/depscan.git
-cd depscan
+git clone https://github.com/therickybobbeh/dep-scanner.git
+cd dep-scanner
 
 # 2. Start with Docker Compose
 docker-compose up --build
 
 # 3. Access interfaces
 # Web Interface: http://localhost:8000
-# CLI: docker exec -it depscan-backend python cli.py --help
+# CLI: docker exec -it dep-scanner-backend python cli.py --help
 ```
 
 ### Docker Compose Services
@@ -45,8 +45,8 @@ For development or when Docker isn't available:
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/yourusername/depscan.git
-cd depscan
+git clone https://github.com/therickybobbeh/dep-scanner.git
+cd dep-scanner
 
 # 2. Create Python virtual environment
 cd backend
@@ -273,7 +273,7 @@ If you encounter issues not covered here:
 
 1. **Check logs**: Backend logs show detailed error information
 2. **Run tests**: `./run_tests.py` can identify environment issues
-3. **GitHub Issues**: Report bugs at [repository issues](https://github.com/yourusername/depscan/issues)
+3. **GitHub Issues**: Report bugs at [repository issues](https://github.com/therickybobbeh/dep-scanner/issues)
 4. **Documentation**: Check [Architecture docs](../architecture/overview.md) for system details
 
 ---
