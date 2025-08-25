@@ -87,31 +87,62 @@ dep-scan --help
 dep-scan scan /path/to/your/project
 ```
 
-**Option 2: Local Development Installation**
+**Option 2: Development Environment (Automated Setup)**
 ```bash
 # Clone repository for development
 git clone https://github.com/therickybobbeh/dep-scanner.git
 cd dep-scanner
 
+# Run automated setup script (Mac/Linux)
+./setup-dev.sh
+
+# Or on Windows
+setup-dev.bat
+
+# This will set up everything you need:
+# - Check system requirements
+# - Create virtual environment
+# - Install dependencies
+# - Set up environment files
+# - Create data directories
+```
+
+**Option 3: Manual Development Setup**
+```bash
 # Backend setup
 cd backend
 python -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
-# Frontend setup (optional)
+# Frontend setup
 cd ../frontend
-npm install && npm run build
+npm install
+
+# Environment setup
+cp .env.example .env
+cp frontend/.env.example frontend/.env
 ```
 
-**Option 3: Docker (For Development/Deployment)**
+**Option 4: Docker Development Environment**
 ```bash
-# Clone and run with Docker Compose
+# Clone and start development environment
 git clone https://github.com/therickybobbeh/dep-scanner.git
 cd dep-scanner
-docker-compose up --build
 
-# Access web interface at http://localhost:8000
+# Start development environment with hot reload
+make start-docker-dev
+
+# Or manually with docker-compose
+docker-compose -f docker-compose.dev.yml up --build
+
+# For staging environment
+make start-staging
+
+# Access:
+# - Development Frontend: http://localhost:3000
+# - Development Backend: http://localhost:8000
+# - Staging: http://localhost:8000 (full-stack)
 ```
 
 ### ⚡ Quick Scan
@@ -138,13 +169,22 @@ dep-scan scan . --open
 
 **Web Interface:**
 ```bash
-# Start interactive web server (from source)
-cd backend && python -m uvicorn app.main:app --reload
+# Option 1: Docker development (recommended)
+make start-docker-dev
+# Frontend: http://localhost:3000
+# Backend API: http://localhost:8000
 
-# Or using Docker
-docker-compose up
+# Option 2: Manual development
+# Terminal 1 (Backend):
+cd backend && source .venv/bin/activate
+python -m uvicorn web.main:app --reload --host 0.0.0.0
 
-# Open browser to http://127.0.0.1:8000
+# Terminal 2 (Frontend):
+cd frontend && npm run dev
+
+# Option 3: Staging environment
+make start-staging
+# Access: http://localhost:8000
 ```
 
 **Security Configuration:**
@@ -246,6 +286,75 @@ DepScan uses intelligent prioritization:
 - **[OSV Integration](docs/architecture/osv-integration.md)**: Professional API client with caching
 - **[Web Interface](docs/user-guide/web-interface.md)**: Modern React dashboard with real-time updates
 - **[CLI Tool](docs/user-guide/cli-usage.md)**: Rich console interface with progress indicators
+
+---
+
+## 💻 Development
+
+### 🛠️ **Development Environment**
+
+DepScan provides a comprehensive development environment with multiple options:
+
+```bash
+# Quick start with automated setup
+./setup-dev.sh
+
+# Available make commands
+make help                    # Show all commands
+make start-docker-dev       # Start development with Docker (hot reload)
+make stop-docker-dev        # Stop Docker development
+make install-dev            # Install development dependencies
+make test                   # Run all tests
+make lint                   # Run linting
+make format                 # Format code
+```
+
+### 🏗️ **Project Structure**
+```
+📦 DepScan
+├── 🐍 backend/             # Python FastAPI backend
+│   ├── web/                # Web API modules
+│   ├── cli.py              # Command-line interface
+│   ├── requirements.txt    # Python dependencies
+│   └── tests/              # Backend tests
+├── ⚛️ frontend/            # React TypeScript frontend
+│   ├── src/                # Source code
+│   ├── public/             # Static assets
+│   └── package.json        # Node.js dependencies
+├── 🐳 Docker files         # Development & production containers
+├── 📄 Environment configs  # .env files for different environments
+└── 🛠️ Development tools    # VS Code, Make, scripts
+```
+
+### 🎯 **VS Code Integration**
+Open the workspace file for the best development experience:
+```bash
+code depscan.code-workspace
+```
+
+This provides:
+- ✅ Integrated terminal profiles (Backend/Frontend)
+- ✅ Python debugging with breakpoints
+- ✅ Pre-configured tasks and launch configurations
+- ✅ Recommended extensions
+- ✅ Code formatting and linting on save
+
+### 🔧 **Environment Configuration**
+DepScan supports multiple environments:
+- `.env.development` - Development settings (hot reload, debug mode)
+- `.env.staging` - Staging environment (production-like testing)
+
+### 🧪 **Testing**
+```bash
+# Run all tests
+make test
+
+# Backend tests with coverage
+cd backend && pytest tests/ -v --cov=web
+
+# Frontend tests
+cd frontend && npm test
+```
 
 ---
 

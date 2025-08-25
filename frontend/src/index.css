@@ -10,18 +10,193 @@
   -webkit-text-size-adjust: 100%;
 }
 
-/* Custom overrides for DepScan branding */
+/* DepScan Custom Theme */
 :root {
+  /* Primary brand colors */
   --bs-primary: #4f46e5;
   --bs-primary-rgb: 79, 70, 229;
+  --bs-primary-hover: #4338ca;
+  
+  /* Severity colors matching backend */
+  --severity-critical: #dc3545;
+  --severity-high: #fd7e14;
+  --severity-medium: #ffc107;
+  --severity-low: #28a745;
+  --severity-unknown: #6c757d;
+  
+  /* Custom spacing */
+  --section-padding: 3rem;
+  --card-border-radius: 0.75rem;
+  --card-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+  --card-shadow-hover: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+  
+  /* Typography improvements */
+  --font-family-mono: 'SF Mono', Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
 }
 
-/* Custom component styles */
-.vulnerability-badge {
-  font-size: 0.75rem;
-  font-weight: 600;
+/* Enhanced card components */
+.card {
+  border-radius: var(--card-border-radius);
+  box-shadow: var(--card-shadow);
+  transition: all 0.15s ease-in-out;
 }
 
+.card:hover {
+  box-shadow: var(--card-shadow-hover);
+  transform: translateY(-2px);
+}
+
+.card-hover {
+  cursor: pointer;
+}
+
+/* Button enhancements */
+.btn {
+  border-radius: 0.5rem;
+  font-weight: 500;
+  transition: all 0.15s ease-in-out;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+}
+
+/* Code and monospace elements */
+code, pre, .font-monospace {
+  font-family: var(--font-family-mono);
+  font-size: 0.875em;
+}
+
+/* Custom severity badges */
+.severity-critical {
+  background-color: var(--severity-critical) !important;
+  color: white !important;
+}
+
+.severity-high {
+  background-color: var(--severity-high) !important;
+  color: white !important;
+}
+
+.severity-medium {
+  background-color: var(--severity-medium) !important;
+  color: black !important;
+}
+
+.severity-low {
+  background-color: var(--severity-low) !important;
+  color: white !important;
+}
+
+.severity-unknown {
+  background-color: var(--severity-unknown) !important;
+  color: white !important;
+}
+
+/* Progress components */
 .scan-progress {
   min-height: 200px;
+}
+
+.progress {
+  border-radius: 0.5rem;
+  height: 1rem;
+}
+
+.progress-bar {
+  transition: width 0.3s ease;
+}
+
+/* Table improvements */
+.table {
+  --bs-table-border-color: var(--bs-border-color-translucent);
+}
+
+.table-hover tbody tr:hover {
+  background-color: var(--bs-tertiary-bg);
+}
+
+/* Utility classes */
+.border-start-primary {
+  border-left: 4px solid var(--bs-primary) !important;
+}
+
+.border-start-danger {
+  border-left: 4px solid var(--bs-danger) !important;
+}
+
+.border-start-warning {
+  border-left: 4px solid var(--bs-warning) !important;
+}
+
+.border-start-success {
+  border-left: 4px solid var(--bs-success) !important;
+}
+
+.bg-gradient-primary {
+  background: linear-gradient(135deg, var(--bs-primary), var(--bs-primary-hover)) !important;
+}
+
+.text-gradient {
+  background: linear-gradient(135deg, var(--bs-primary), var(--bs-info));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Animation utilities */
+.fade-in {
+  animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.pulse {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+/* Responsive text utilities */
+@media (max-width: 768px) {
+  .display-1, .display-2, .display-3 {
+    font-size: calc(1.375rem + 1.5vw);
+  }
+  
+  :root {
+    --section-padding: 1.5rem;
+  }
+}
+
+/* Focus improvements for accessibility */
+.btn:focus,
+.form-control:focus,
+.form-select:focus {
+  box-shadow: 0 0 0 0.25rem rgba(var(--bs-primary-rgb), 0.25);
+}
+
+/* Loading states */
+.skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, transparent 37%, #f0f0f0 63%);
+  background-size: 400% 100%;
+  animation: skeleton-loading 1.4s ease-in-out infinite;
+}
+
+@keyframes skeleton-loading {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+
+/* Print styles */
+@media print {
+  .no-print { display: none !important; }
+  .btn { display: none !important; }
+  .card { box-shadow: none !important; border: 1px solid #ddd !important; }
 }

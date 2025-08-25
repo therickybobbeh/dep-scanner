@@ -1,7 +1,9 @@
+import { SeverityLevel, JobStatus, EcosystemType } from './common';
+
 export interface Dependency {
   name: string;
   version: string;
-  ecosystem: 'npm' | 'PyPI';
+  ecosystem: EcosystemType;
   path: string[];
   is_direct: boolean;
   is_dev: boolean;
@@ -10,9 +12,9 @@ export interface Dependency {
 export interface Vulnerability {
   package: string;
   version: string;
-  ecosystem: 'npm' | 'PyPI';
+  ecosystem: EcosystemType;
   vulnerability_id: string;
-  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'UNKNOWN' | null;
+  severity: SeverityLevel | null;
   cve_ids: string[];
   summary: string;
   details?: string;
@@ -25,23 +27,23 @@ export interface Vulnerability {
 
 export interface ScanReport {
   job_id: string;
-  status: 'pending' | 'running' | 'completed' | 'failed';
+  status: JobStatus;
   total_dependencies: number;
   vulnerable_count: number;
   vulnerable_packages: Vulnerability[];
   dependencies: Dependency[];
   suppressed_count: number;
-  stale_packages: string[];
+  stale_packages?: string[];
   meta: {
     generated_at: string;
     ecosystems: string[];
-    scan_options: any;
+    scan_options: ScanOptions;
   };
 }
 
 export interface ScanProgress {
   job_id: string;
-  status: 'pending' | 'running' | 'completed' | 'failed';
+  status: JobStatus;
   progress_percent: number;
   current_step: string;
   total_dependencies?: number;
@@ -52,13 +54,15 @@ export interface ScanProgress {
   error_message?: string;
 }
 
+export interface ScanOptions {
+  include_dev_dependencies: boolean;
+  stale_months?: number;
+  ignore_severities: SeverityLevel[];
+  ignore_rules?: any[];
+}
+
 export interface ScanRequest {
   repo_path?: string;
   manifest_files?: Record<string, string>;
-  options: {
-    include_dev_dependencies: boolean;
-    stale_months?: number;
-    ignore_severities: string[];
-    ignore_rules: any[];
-  };
+  options: ScanOptions;
 }

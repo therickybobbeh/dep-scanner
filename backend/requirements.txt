@@ -1,6 +1,7 @@
 # Core web framework - Latest secure versions
 fastapi==0.115.6
 uvicorn[standard]==0.34.0
+gunicorn>=22.0.0
 
 # HTTP client for OSV API - Latest version
 httpx==0.28.1

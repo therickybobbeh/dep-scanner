@@ -1,0 +1,39 @@
+# Development Dockerfile for DepScan Frontend
+FROM node:18-bullseye-slim
+
+# Set development environment
+ENV NODE_ENV=development \
+    CHOKIDAR_USEPOLLING=true
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    curl \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create app directory
+WORKDIR /app
+
+# Create node user and set permissions
+RUN chown -R node:node /app
+USER node
+
+# Copy package files
+COPY --chown=node:node package*.json ./
+
+# Install dependencies including dev dependencies
+RUN npm ci
+
+# Copy source code (will be overridden by volumes in development)
+COPY --chown=node:node . .
+
+# Expose Vite dev server port and HMR port
+EXPOSE 3000 24678
+
+# Health check for development
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD curl -f http://localhost:3000 || exit 1
+
+# Development command with hot module replacement
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "3000"]

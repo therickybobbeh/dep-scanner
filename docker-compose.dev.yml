@@ -1,0 +1,111 @@
+services:
+  # Backend service with hot reload
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount source code for hot reload
+      - ./backend:/app/backend
+      - ./data:/app/data
+      # Mount test projects for scanning
+      - ./scan-projects:/app/scan-projects:ro
+    environment:
+      # API Configuration
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      
+      # Development settings
+      - ENV=development
+      - DEBUG=true
+      - LOG_LEVEL=DEBUG
+      - RELOAD=true
+      
+      # Cache Configuration  
+      - CACHE_TTL_HOURS=1  # Shorter TTL for dev
+      - CACHE_CLEANUP_INTERVAL_HOURS=1
+      - CACHE_DB_PATH=/app/data/osv_cache.db
+      
+      # OSV.dev API Configuration
+      - OSV_API_URL=https://api.osv.dev
+      - OSV_RATE_LIMIT_CALLS=100
+      - OSV_RATE_LIMIT_PERIOD=60
+      
+      # CORS for development
+      - CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+      
+    restart: unless-stopped
+    container_name: dep-scanner-backend-dev
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    
+    # Development-specific settings
+    stdin_open: true
+    tty: true
+    
+    # Resource limits for development
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+
+  # Frontend service with hot reload  
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+    volumes:
+      # Mount source for hot reload
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+      - ./frontend/package.json:/app/package.json
+      - ./frontend/vite.config.ts:/app/vite.config.ts
+      - ./frontend/tsconfig.json:/app/tsconfig.json
+      # Exclude node_modules to avoid conflicts
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - CHOKIDAR_USEPOLLING=true  # For file watching in containers
+      - VITE_API_URL=http://localhost:8000
+    restart: unless-stopped
+    container_name: dep-scanner-frontend-dev
+    depends_on:
+      - backend
+    
+    # Development settings
+    stdin_open: true
+    tty: true
+
+  # Development database browser (optional)
+  adminer:
+    image: adminer:latest
+    ports:
+      - "8080:8080"
+    profiles:
+      - tools
+    container_name: dep-scanner-adminer-dev
+
+# Development-specific volumes
+volumes:
+  # Named volume for node_modules to improve performance
+  frontend_node_modules:
+  
+  # Development data
+  dev_data:
+    driver: local
+
+# Development network
+networks:
+  default:
+    name: dep-scanner-dev

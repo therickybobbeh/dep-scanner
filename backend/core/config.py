@@ -40,9 +40,9 @@ class Settings(BaseSettings):
     OSV_RATE_LIMIT_CALLS: int = Field(default=100, env="OSV_RATE_LIMIT_CALLS")
     OSV_RATE_LIMIT_PERIOD: int = Field(default=60, env="OSV_RATE_LIMIT_PERIOD")
     
-    # Security settings
+    # Security settings  
     ALLOWED_HOSTS: list[str] = Field(default=["localhost", "127.0.0.1"], env="ALLOWED_HOSTS")
-    CORS_ORIGINS: list[str] = Field(default=["http://localhost:3000", "http://localhost:5173"], env="CORS_ORIGINS")
+    CORS_ORIGINS: str = Field(default="http://localhost:3000,http://localhost:5173", env="CORS_ORIGINS")
     MAX_REQUEST_SIZE: int = Field(default=16777216, env="MAX_REQUEST_SIZE")  # 16MB
     ENABLE_SECURITY_HEADERS: bool = Field(default=True, env="ENABLE_SECURITY_HEADERS")
     ENABLE_RATE_LIMITING: bool = Field(default=True, env="ENABLE_RATE_LIMITING")
@@ -50,6 +50,11 @@ class Settings(BaseSettings):
     # Paths
     DATA_DIR: Path = Field(default=Path("data"), env="DATA_DIR")
     LOGS_DIR: Path = Field(default=Path("logs"), env="LOGS_DIR")
+    
+    @property
+    def cors_origins_list(self) -> list[str]:
+        """Parse CORS_ORIGINS string into a list"""
+        return [origin.strip() for origin in self.CORS_ORIGINS.split(',')]
     
     class Config:
         env_file = ".env"

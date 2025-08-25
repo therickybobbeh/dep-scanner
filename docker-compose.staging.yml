@@ -1,0 +1,94 @@
+services:
+  dep-scanner:
+    build:
+      context: .
+      dockerfile: Dockerfile.staging
+    ports:
+      - "8000:8000"
+    volumes:
+      # Persistent cache and logs
+      - staging_data:/app/data
+      - staging_logs:/app/logs
+    environment:
+      # API Configuration
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      
+      # Staging environment settings
+      - ENV=staging
+      - DEBUG=false
+      - LOG_LEVEL=INFO
+      
+      # Cache Configuration
+      - CACHE_TTL_HOURS=12
+      - CACHE_CLEANUP_INTERVAL_HOURS=3
+      - CACHE_DB_PATH=/app/data/osv_cache.db
+      
+      # OSV.dev API Configuration  
+      - OSV_API_URL=https://api.osv.dev
+      - OSV_RATE_LIMIT_CALLS=100
+      - OSV_RATE_LIMIT_PERIOD=60
+      
+      # Staging optimizations
+      - MAX_WORKERS=2
+      - KEEPALIVE_TIMEOUT=30
+      
+      # CORS for staging
+      - CORS_ORIGINS=https://staging.depscan.example.com
+      
+    restart: unless-stopped
+    container_name: dep-scanner-staging
+    
+    # Resource limits for staging
+    deploy:
+      resources:
+        limits:
+          memory: 1.5G
+          cpus: '0.8'
+        reservations:
+          memory: 512M
+          cpus: '0.4'
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+      
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Nginx reverse proxy for staging
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/nginx/staging.conf:/etc/nginx/nginx.conf:ro
+      - ./deploy/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - dep-scanner
+    restart: unless-stopped
+    container_name: dep-scanner-nginx-staging
+    
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  staging_data:
+    driver: local
+  staging_logs:
+    driver: local
+
+networks:
+  default:
+    name: dep-scanner-staging

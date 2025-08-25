@@ -1,0 +1,434 @@
+{
+  "folders": [
+    {
+      "name": "🚀 DepScan (Root)",
+      "path": "."
+    },
+    {
+      "name": "🐍 Backend",
+      "path": "./backend"
+    },
+    {
+      "name": "⚛️ Frontend",
+      "path": "./frontend"
+    },
+    {
+      "name": "🐳 Deploy",
+      "path": "./deploy"
+    }
+  ],
+  "settings": {
+    // Python settings
+    "python.pythonPath": "./backend/.venv/bin/python",
+    "python.defaultInterpreterPath": "./backend/.venv/bin/python",
+    "python.terminal.activateEnvironment": true,
+    "python.linting.enabled": true,
+    "python.linting.flake8Enabled": true,
+    "python.linting.mypyEnabled": true,
+    "python.formatting.provider": "black",
+    "python.sortImports.path": "isort",
+    "python.testing.pytestEnabled": true,
+    "python.testing.pytestPath": "pytest",
+    "python.testing.pytestArgs": ["./backend/tests"],
+    
+    // TypeScript/JavaScript settings
+    "typescript.preferences.importModuleSpecifier": "relative",
+    "typescript.suggest.autoImports": true,
+    "javascript.suggest.autoImports": true,
+    
+    // Editor settings
+    "editor.formatOnSave": true,
+    "editor.formatOnPaste": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll.eslint": true,
+      "source.organizeImports": true
+    },
+    "editor.rulers": [88, 120],
+    "editor.tabSize": 2,
+    "editor.insertSpaces": true,
+    
+    // File associations
+    "files.associations": {
+      "*.env.*": "dotenv",
+      "Dockerfile.*": "dockerfile",
+      "docker-compose*.yml": "dockercompose"
+    },
+    
+    // Exclude patterns for better performance
+    "files.exclude": {
+      "**/__pycache__": true,
+      "**/.venv": false,
+      "**/node_modules": true,
+      "**/dist": true,
+      "**/build": true,
+      "**/.pytest_cache": true,
+      "**/.mypy_cache": true,
+      "**/coverage": true,
+      "**/*.egg-info": true
+    },
+    
+    // Search exclude patterns
+    "search.exclude": {
+      "**/__pycache__": true,
+      "**/node_modules": true,
+      "**/dist": true,
+      "**/build": true,
+      "**/.pytest_cache": true,
+      "**/.mypy_cache": true,
+      "**/coverage": true,
+      "**/*.egg-info": true,
+      "**/*.log": true
+    },
+    
+    // Integrated terminal settings
+    "terminal.integrated.cwd": "${workspaceFolder}",
+    "terminal.integrated.defaultProfile.osx": "zsh",
+    "terminal.integrated.defaultProfile.linux": "bash",
+    
+    // Git settings
+    "git.ignoreLimitWarning": true,
+    "git.autofetch": true,
+    
+    // Live Server settings (for serving built frontend)
+    "liveServer.settings.root": "/frontend/dist",
+    "liveServer.settings.port": 5500,
+    
+    // Docker settings
+    "docker.showStartPage": false,
+    
+    // JSON settings
+    "json.validate.enable": true,
+    "json.format.enable": true,
+    
+    // YAML settings
+    "yaml.validate": true,
+    "yaml.format.enable": true,
+    
+    // CSS/SCSS settings
+    "css.validate": true,
+    "scss.validate": true,
+    
+    // Extension settings
+    "eslint.workingDirectories": ["frontend"],
+    "eslint.format.enable": true,
+    "prettier.configPath": "./frontend/.prettierrc",
+    
+    // Error lens settings
+    "errorLens.enabledDiagnosticLevels": ["error", "warning"],
+    "errorLens.excludeBySource": ["cSpell"],
+    
+    // Color theme
+    "workbench.colorTheme": "GitHub Dark Default"
+  },
+  "tasks": {
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "🚀 Start Development (Docker)",
+        "type": "shell",
+        "command": "make start-docker-dev",
+        "group": "build",
+        "presentation": {
+          "echo": true,
+          "reveal": "always",
+          "panel": "new",
+          "showReuseMessage": false
+        },
+        "detail": "Start both frontend and backend with Docker",
+        "icon": {
+          "id": "rocket"
+        }
+      },
+      {
+        "label": "🛑 Stop Development (Docker)",
+        "type": "shell",
+        "command": "make stop-docker-dev",
+        "group": "build",
+        "presentation": {
+          "echo": true,
+          "reveal": "always",
+          "panel": "shared",
+          "showReuseMessage": false
+        },
+        "detail": "Stop Docker development environment",
+        "icon": {
+          "id": "stop-circle"
+        }
+      },
+      {
+        "label": "🐍 Start Backend (Manual)",
+        "type": "shell",
+        "command": "source .venv/bin/activate && python -m uvicorn web.main:app --reload --host 0.0.0.0 --port 8000",
+        "options": {
+          "cwd": "${workspaceFolder}/backend"
+        },
+        "group": "build",
+        "presentation": {
+          "echo": true,
+          "reveal": "always",
+          "panel": "new",
+          "showReuseMessage": false
+        },
+        "detail": "Start backend development server manually",
+        "icon": {
+          "id": "server"
+        }
+      },
+      {
+        "label": "⚛️ Start Frontend (Manual)",
+        "type": "shell",
+        "command": "npm run dev",
+        "options": {
+          "cwd": "${workspaceFolder}/frontend"
+        },
+        "group": "build",
+        "presentation": {
+          "echo": true,
+          "reveal": "always",
+          "panel": "new",
+          "showReuseMessage": false
+        },
+        "detail": "Start frontend development server manually",
+        "icon": {
+          "id": "browser"
+        }
+      },
+      {
+        "label": "🧪 Run Backend Tests",
+        "type": "shell",
+        "command": "source .venv/bin/activate && python -m pytest tests/ -v",
+        "options": {
+          "cwd": "${workspaceFolder}/backend"
+        },
+        "group": "test",
+        "presentation": {
+          "echo": true,
+          "reveal": "always",
+          "panel": "shared",
+          "showReuseMessage": false
+        },
+        "detail": "Run backend unit tests",
+        "icon": {
+          "id": "beaker"
+        }
+      },
+      {
+        "label": "🔍 Lint Backend",
+        "type": "shell",
+        "command": "source .venv/bin/activate && python -m flake8 web/ cli.py && python -m mypy web/ cli.py --ignore-missing-imports",
+        "options": {
+          "cwd": "${workspaceFolder}/backend"
+        },
+        "group": "build",
+        "presentation": {
+          "echo": true,
+          "reveal": "always",
+          "panel": "shared",
+          "showReuseMessage": false
+        },
+        "detail": "Run backend linting",
+        "icon": {
+          "id": "search"
+        }
+      },
+      {
+        "label": "🔍 Lint Frontend",
+        "type": "shell",
+        "command": "npm run lint",
+        "options": {
+          "cwd": "${workspaceFolder}/frontend"
+        },
+        "group": "build",
+        "presentation": {
+          "echo": true,
+          "reveal": "always",
+          "panel": "shared",
+          "showReuseMessage": false
+        },
+        "detail": "Run frontend linting",
+        "icon": {
+          "id": "search"
+        }
+      },
+      {
+        "label": "🎨 Format All Code",
+        "type": "shell",
+        "command": "make format",
+        "group": "build",
+        "presentation": {
+          "echo": true,
+          "reveal": "always",
+          "panel": "shared",
+          "showReuseMessage": false
+        },
+        "detail": "Format both backend and frontend code",
+        "icon": {
+          "id": "paintbrush"
+        }
+      },
+      {
+        "label": "🐳 Build Dev Docker Images",
+        "type": "shell",
+        "command": "make docker-dev",
+        "group": "build",
+        "presentation": {
+          "echo": true,
+          "reveal": "always",
+          "panel": "shared",
+          "showReuseMessage": false
+        },
+        "detail": "Build development Docker images",
+        "icon": {
+          "id": "package"
+        }
+      },
+      {
+        "label": "🏗️ Start Staging",
+        "type": "shell",
+        "command": "make start-staging",
+        "group": "build",
+        "presentation": {
+          "echo": true,
+          "reveal": "always",
+          "panel": "shared",
+          "showReuseMessage": false
+        },
+        "detail": "Start staging environment",
+        "icon": {
+          "id": "server"
+        }
+      },
+      {
+        "label": "📦 Install Dependencies",
+        "type": "shell",
+        "command": "make install-dev",
+        "group": "build",
+        "presentation": {
+          "echo": true,
+          "reveal": "always",
+          "panel": "shared",
+          "showReuseMessage": false
+        },
+        "detail": "Install all development dependencies",
+        "icon": {
+          "id": "package"
+        }
+      }
+    ]
+  },
+  "launch": {
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "🐍 Debug Backend",
+        "type": "python",
+        "request": "launch",
+        "program": "${workspaceFolder}/backend/.venv/bin/uvicorn",
+        "args": ["web.main:app", "--reload", "--host", "0.0.0.0", "--port", "8000"],
+        "cwd": "${workspaceFolder}/backend",
+        "console": "integratedTerminal",
+        "env": {
+          "PYTHONPATH": "${workspaceFolder}/backend"
+        },
+        "justMyCode": false,
+        "presentation": {
+          "hidden": false,
+          "group": "",
+          "order": 1
+        }
+      },
+      {
+        "name": "🧪 Debug Backend Tests",
+        "type": "python",
+        "request": "launch",
+        "module": "pytest",
+        "args": ["tests/", "-v"],
+        "cwd": "${workspaceFolder}/backend",
+        "console": "integratedTerminal",
+        "env": {
+          "PYTHONPATH": "${workspaceFolder}/backend"
+        },
+        "justMyCode": false,
+        "presentation": {
+          "hidden": false,
+          "group": "",
+          "order": 2
+        }
+      },
+      {
+        "name": "🔧 Debug CLI",
+        "type": "python",
+        "request": "launch",
+        "program": "${workspaceFolder}/backend/cli.py",
+        "args": ["--help"],
+        "cwd": "${workspaceFolder}/backend",
+        "console": "integratedTerminal",
+        "env": {
+          "PYTHONPATH": "${workspaceFolder}/backend"
+        },
+        "presentation": {
+          "hidden": false,
+          "group": "",
+          "order": 3
+        }
+      }
+    ],
+    "compounds": [
+      {
+        "name": "🚀 Debug Full Stack",
+        "configurations": ["🐍 Debug Backend"],
+        "presentation": {
+          "hidden": false,
+          "group": "",
+          "order": 1
+        }
+      }
+    ]
+  },
+  "extensions": {
+    "recommendations": [
+      // Python extensions
+      "ms-python.python",
+      "ms-python.flake8",
+      "ms-python.mypy-type-checker",
+      "ms-python.black-formatter",
+      "ms-python.isort",
+      
+      // TypeScript/JavaScript extensions
+      "esbenp.prettier-vscode",
+      "bradlc.vscode-tailwindcss",
+      "ms-vscode.vscode-typescript-next",
+      
+      // Web development
+      "ritwickdey.liveserver",
+      "formulahendry.auto-rename-tag",
+      "ms-vscode.live-server",
+      
+      // Docker
+      "ms-azuretools.vscode-docker",
+      
+      // Git
+      "eamodio.gitlens",
+      "github.vscode-github-actions",
+      
+      // General productivity
+      "usernamehw.errorlens",
+      "gruntfuggly.todo-tree",
+      "alefragnani.bookmarks",
+      "streetsidesoftware.code-spell-checker",
+      
+      // File handling
+      "ms-vscode.vscode-json",
+      "redhat.vscode-yaml",
+      "ms-vscode.makefile-tools",
+      
+      // Themes (optional)
+      "github.github-vscode-theme",
+      "pkief.material-icon-theme",
+      
+      // API development
+      "humao.rest-client",
+      "ms-vscode.vscode-api-tests"
+    ]
+  }
+}
