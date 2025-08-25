@@ -10,17 +10,17 @@ DepScan is a multi-layered application designed for scanning dependency vulnerab
 ├─────────────────────────────────────────────────┤
 │  CLI Tool          │    Web Dashboard (React)   │
 │  (Rich Console)    │    (Interactive UI)        │
-├────────────────────┼─────────────────────────────┤
+├────────────────────┼────────────────────────────┤
 │                FastAPI REST API                 │
 │        (WebSocket + HTTP Endpoints)             │
 ├─────────────────────────────────────────────────┤
 │               Core Business Logic               │
 ├─────────────────────────────────────────────────┤
 │  Dependency Resolvers  │  Vulnerability Scanner │
-│  • Python Resolver    │  • OSV.dev Client      │
-│  • JavaScript Resolver│  • Caching Layer       │
-├────────────────────────┼─────────────────────────┤
-│  External Dependencies │    Storage Layer        │
+│  • Python Resolver     │  • OSV.dev Client      │
+│  • JavaScript Resolver │  • Caching Layer       │
+├────────────────────────┼────────────────────────┤
+│  External Dependencies │    Storage Layer       │
 │  • OSV.dev API        │  • SQLite Cache        │
 │  • Package Registries │  • File System         │
 └────────────────────────┴─────────────────────────┘

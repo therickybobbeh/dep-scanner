@@ -1,0 +1,79 @@
+# AWS-optimized production Dockerfile for DepScan
+FROM node:18-alpine AS frontend-builder
+
+# Build frontend with optimizations
+WORKDIR /app/frontend
+COPY frontend/package*.json ./
+RUN npm ci --only=production --no-audit --no-fund
+
+COPY frontend/ ./
+RUN npm run build
+
+# Python backend production stage
+FROM python:3.11-slim AS production
+
+# Set production environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    NODE_ENV=production \
+    PYTHONPATH=/app/backend
+
+# Install system dependencies and clean up in single layer
+RUN apt-get update && apt-get install -y \
+    gcc \
+    libc6-dev \
+    curl \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user
+RUN groupadd -r depscan && useradd -r -g depscan depscan
+
+# Create application directories
+RUN mkdir -p /app/backend /app/frontend/dist /app/data /app/logs
+WORKDIR /app
+
+# Copy and install Python dependencies
+COPY backend/requirements.txt backend/
+RUN pip install --no-cache-dir -r backend/requirements.txt
+
+# Copy application code
+COPY backend/ backend/
+COPY --from=frontend-builder /app/frontend/dist/ frontend/dist/
+
+# Create cache and log directories with proper permissions
+RUN chown -R depscan:depscan /app && \
+    chmod -R 755 /app
+
+# Switch to non-root user
+USER depscan
+
+# Create directories for user
+RUN mkdir -p ~/.cache/pip
+
+# AWS-specific configurations
+ENV CACHE_DB_PATH=/app/data/osv_cache.db \
+    LOG_LEVEL=INFO \
+    MAX_WORKERS=4 \
+    KEEPALIVE_TIMEOUT=65
+
+# Expose port
+EXPOSE 8000
+
+# Health check optimized for AWS ALB
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD curl -f http://localhost:8000/health || exit 1
+
+# Use gunicorn for production with optimal settings for AWS
+CMD ["gunicorn", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", \
+     "--bind", "0.0.0.0:8000", \
+     "--access-logfile", "/app/logs/access.log", \
+     "--error-logfile", "/app/logs/error.log", \
+     "--log-level", "info", \
+     "--keepalive", "65", \
+     "--max-requests", "1000", \
+     "--max-requests-jitter", "100", \
+     "--preload", \
+     "backend.app.main:app"]

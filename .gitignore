@@ -160,3 +160,5 @@ temp/
 *.njsproj
 *.sln
 *.sw?
+/backend/dep-scan-report.html
+/backend/final-report.html

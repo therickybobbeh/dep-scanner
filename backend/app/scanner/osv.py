@@ -187,27 +187,42 @@ class OSVScanner:
                 )
                 
                 if response.status_code == 200:
-                    batch_response = OSVBatchResponse(**response.json())
+                    response_data = response.json()
+                    
+                    # Debug the response structure (limit output)
+                    # print(f"DEBUG: Raw OSV response keys: {list(response_data.keys()) if isinstance(response_data, dict) else 'list'}")
+                    
+                    batch_response = OSVBatchResponse(**response_data)
                     
                     # Flatten results and add package metadata
                     results = []
                     for i, query_result in enumerate(batch_response.results):
                         dep = batch[i]
                         
-                        # Handle different response formats
+                        # Handle different response formats from OSV API
                         vulns_list = []
                         if isinstance(query_result, dict):
                             if "vulns" in query_result:
                                 vulns_list = query_result["vulns"]
+                            else:
+                                # Sometimes the response is the vulnerability object itself
+                                vulns_list = [query_result]
                         elif isinstance(query_result, list):
                             vulns_list = query_result
                         
                         for vuln in vulns_list:
-                            if isinstance(vuln, dict):
+                            if isinstance(vuln, dict) and vuln:  # Skip empty dicts
                                 vuln_dict = vuln.copy()
                                 vuln_dict["package"] = dep.name
                                 vuln_dict["ecosystem"] = dep.ecosystem
                                 results.append(vuln_dict)
+                    
+                    # If results are minimal (only id, modified, package, ecosystem), 
+                    # we need to fetch individual vulnerability details
+                    if results and all(len(r.keys()) <= 4 for r in results):
+                        # print("DEBUG: Results are minimal, fetching detailed vulnerability data...")
+                        enriched_results = await self._enrich_vulnerability_data(results)
+                        return enriched_results
                     
                     return results
                 
@@ -294,24 +309,110 @@ class OSVScanner:
         self._last_request_time = asyncio.get_event_loop().time()
         self._request_count += 1
     
+    async def _enrich_vulnerability_data(self, minimal_results: list[dict]) -> list[dict]:
+        """Fetch detailed vulnerability data for minimal results"""
+        enriched_results = []
+        
+        # Process in batches to avoid overwhelming the API
+        batch_size = 10
+        for i in range(0, len(minimal_results), batch_size):
+            batch = minimal_results[i:i + batch_size]
+            
+            # Fetch details for each vulnerability in batch
+            batch_tasks = []
+            for vuln in batch:
+                if vuln.get('id'):
+                    batch_tasks.append(self._fetch_individual_vulnerability(vuln))
+                else:
+                    batch_tasks.append(asyncio.create_task(self._return_original(vuln)))
+            
+            # Wait for all tasks in batch
+            batch_results = await asyncio.gather(*batch_tasks, return_exceptions=True)
+            
+            for result in batch_results:
+                if isinstance(result, dict):
+                    enriched_results.append(result)
+                elif not isinstance(result, Exception):
+                    # Fallback to original if enrichment failed
+                    pass
+        
+        return enriched_results
+    
+    async def _return_original(self, vuln: dict) -> dict:
+        """Return original vulnerability data as fallback"""
+        return vuln
+    
+    async def _fetch_individual_vulnerability(self, minimal_vuln: dict) -> dict:
+        """Fetch complete vulnerability details using the individual vulnerability endpoint"""
+        vuln_id = minimal_vuln.get('id')
+        if not vuln_id:
+            return minimal_vuln
+        
+        await self._rate_limit()
+        
+        try:
+            response = await self.client.get(f"{self.base_url}/v1/vulns/{vuln_id}")
+            
+            if response.status_code == 200:
+                detailed_vuln = response.json()
+                # Preserve the package and ecosystem from minimal data
+                detailed_vuln["package"] = minimal_vuln.get("package")
+                detailed_vuln["ecosystem"] = minimal_vuln.get("ecosystem")
+                return detailed_vuln
+            else:
+                # Failed to fetch details, use minimal data
+                return minimal_vuln
+                
+        except Exception as e:
+            # Error fetching details, use minimal data
+            return minimal_vuln
+    
     def _convert_osv_to_vuln(self, osv_data: dict, dep: Dep) -> Vuln:
         """Convert OSV vulnerability data to our Vuln model"""
+        
+        # Debug: Print OSV data structure for first few vulnerabilities
+        if hasattr(self, '_debug_count'):
+            self._debug_count += 1
+        else:
+            self._debug_count = 1
+            
+        # Debugging disabled for cleaner output
+        # if self._debug_count <= 1:  # Debug first vulnerability only
+        #     print(f"DEBUG: OSV data keys: {list(osv_data.keys())}")
+        #     if "severity" in osv_data:
+        #         print(f"DEBUG: Severity field: {osv_data['severity']}")
+        #     if "database_specific" in osv_data:
+        #         print(f"DEBUG: Database specific: {osv_data['database_specific']}")
         
         # Extract severity (including database_specific fallback)
         severity = self._extract_severity(
             osv_data.get("severity", []),
-            osv_data.get("database_specific")
+            osv_data.get("database_specific"),
+            osv_data.get("ecosystem_specific")
         )
         
         # Extract CVE IDs from aliases
         cve_ids = [alias for alias in osv_data.get("aliases", []) if alias.startswith("CVE-")]
         
-        # Find advisory URL
+        # Find advisory URL - prioritize ADVISORY, fallback to any URL, then generate OSV.dev link
         advisory_url = None
+        
+        # First, look for ADVISORY type references
         for ref in osv_data.get("references", []):
             if ref.get("type") == "ADVISORY":
                 advisory_url = ref.get("url")
                 break
+        
+        # If no ADVISORY found, use first available URL
+        if not advisory_url:
+            for ref in osv_data.get("references", []):
+                if ref.get("url"):
+                    advisory_url = ref.get("url")
+                    break
+        
+        # If still no URL and we have an OSV ID, generate OSV.dev link
+        if not advisory_url and osv_data.get("id"):
+            advisory_url = f"https://osv.dev/vulnerability/{osv_data['id']}"
         
         # Extract fixed version range
         fixed_range = self._extract_fixed_range(osv_data.get("affected", []), dep.name)
@@ -347,7 +448,7 @@ class OSVScanner:
             aliases=osv_data.get("aliases", [])
         )
     
-    def _extract_severity(self, severity_list: list[dict], db_specific: dict | None = None) -> SeverityLevel:
+    def _extract_severity(self, severity_list: list[dict], db_specific: dict | None = None, ecosystem_specific: dict | None = None) -> SeverityLevel:
         """Extract and normalize severity from OSV data"""
 
         def _to_float(val) -> float:
@@ -356,13 +457,39 @@ class OSVScanner:
                 return float(val)
             except Exception:
                 return 0.0
+        
+        def _parse_cvss_score(cvss_string: str) -> float:
+            """Parse CVSS score from string like 'CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H'"""
+            try:
+                # CVSS v3/v4 scoring - we need to calculate from vector or use a lookup
+                # For simplicity, let's use a basic heuristic based on impact values
+                if 'A:H' in cvss_string or 'VA:H' in cvss_string:  # High availability impact
+                    if 'AC:L' in cvss_string and 'PR:N' in cvss_string:  # Low complexity, no privileges
+                        return 7.5  # HIGH
+                    else:
+                        return 5.3  # MEDIUM
+                elif 'A:L' in cvss_string or 'VA:L' in cvss_string:  # Low availability impact
+                    return 3.1  # LOW
+                elif 'C:H' in cvss_string or 'VC:H' in cvss_string:  # High confidentiality impact
+                    return 7.5  # HIGH
+                elif 'I:H' in cvss_string or 'VI:H' in cvss_string:  # High integrity impact
+                    return 7.5  # HIGH
+                else:
+                    return 0.0
+            except Exception:
+                return 0.0
 
         if severity_list:
             # OSV can have multiple severity ratings, prefer CVSS
             cvss_severity = None
             for sev in severity_list:
-                if sev.get("type") == "CVSS_V3":
-                    score = _to_float(sev.get("score", 0))
+                if sev.get("type") in ["CVSS_V3", "CVSS_V4"]:
+                    score_str = sev.get("score", "")
+                    if isinstance(score_str, str) and score_str.startswith("CVSS:"):
+                        score = _parse_cvss_score(score_str)
+                    else:
+                        score = _to_float(score_str)
+                    
                     if score >= 9.0:
                         cvss_severity = SeverityLevel.CRITICAL
                     elif score >= 7.0:
@@ -405,6 +532,58 @@ class OSVScanner:
                     return SeverityLevel.MEDIUM
                 return SeverityLevel.LOW
 
+        # Check ecosystem_specific data (npm, PyPI specific fields)
+        if ecosystem_specific and isinstance(ecosystem_specific, dict):
+            # Check for npm specific severity
+            npm_sev = ecosystem_specific.get("severity")
+            if isinstance(npm_sev, str):
+                npm_sev = npm_sev.upper()
+                if npm_sev in ["CRITICAL", "HIGH", "MEDIUM", "LOW"]:
+                    return SeverityLevel(npm_sev)
+                if npm_sev == "MODERATE":
+                    return SeverityLevel.MEDIUM
+            
+            # Check for advisory severity (common in GitHub advisories)
+            advisory_sev = ecosystem_specific.get("advisory_severity")
+            if isinstance(advisory_sev, str):
+                advisory_sev = advisory_sev.upper()
+                if advisory_sev in ["CRITICAL", "HIGH", "MEDIUM", "LOW"]:
+                    return SeverityLevel(advisory_sev)
+                if advisory_sev == "MODERATE":
+                    return SeverityLevel.MEDIUM
+
+        # Try to infer severity from vulnerability ID patterns as last resort
+        return self._infer_severity_from_patterns(severity_list, db_specific, ecosystem_specific)
+    
+    def _infer_severity_from_patterns(self, severity_list: list[dict], db_specific: dict | None, ecosystem_specific: dict | None) -> SeverityLevel:
+        """Attempt to infer severity from common patterns in OSV data"""
+        
+        # Look for any string fields that might contain severity information
+        all_data = {}
+        if db_specific:
+            all_data.update(db_specific)
+        if ecosystem_specific:
+            all_data.update(ecosystem_specific)
+            
+        # Check all string values for severity keywords
+        for key, value in all_data.items():
+            if isinstance(value, str):
+                value_upper = value.upper()
+                if any(word in value_upper for word in ["CRITICAL", "HIGH", "MEDIUM", "MODERATE", "LOW"]):
+                    if "CRITICAL" in value_upper:
+                        return SeverityLevel.CRITICAL
+                    elif "HIGH" in value_upper:
+                        return SeverityLevel.HIGH
+                    elif any(word in value_upper for word in ["MEDIUM", "MODERATE"]):
+                        return SeverityLevel.MEDIUM
+                    elif "LOW" in value_upper:
+                        return SeverityLevel.LOW
+        
+        # If we have any severity data at all, even if we can't parse it, 
+        # default to MEDIUM rather than UNKNOWN for better UX
+        if severity_list or db_specific or ecosystem_specific:
+            return SeverityLevel.MEDIUM
+            
         return SeverityLevel.UNKNOWN
     
     def _extract_fixed_range(self, affected_list: list[dict], package_name: str) -> str | None:

@@ -2,39 +2,31 @@
 
 This guide covers multiple installation methods for DepScan, from quick Docker setup to local development installation.
 
-## 🚀 Quick Start (Docker - Recommended)
+## 📦 pip install (Recommended)
 
-The fastest way to get DepScan running is with Docker Compose:
+The easiest way to get DepScan running is through pip:
 
 ### Prerequisites
-- Docker 20.0+ and Docker Compose 2.0+
-- Git (to clone repository)
+- Python 3.10+ (3.11+ recommended)
 
 ### Installation Steps
 
 ```bash
-# 1. Clone repository
-git clone https://github.com/therickybobbeh/dep-scanner.git
-cd dep-scanner
+# 1. Install from PyPI
+pip install dep-scan
 
-# 2. Start with Docker Compose
-docker-compose up --build
+# 2. Verify installation
+dep-scan --help
 
-# 3. Access interfaces
-# Web Interface: http://localhost:8000
-# CLI: docker exec -it dep-scanner-backend python cli.py --help
+# 3. Run your first scan
+dep-scan scan /path/to/your/project
 ```
-
-### Docker Compose Services
-- **Backend**: FastAPI server + CLI tool (Port 8000)  
-- **Frontend**: React dashboard (served by backend)
-- **Database**: SQLite cache (persistent volume)
 
 ---
 
-## 🖥️ Local Installation
+## 🖥️ Local Development Installation
 
-For development or when Docker isn't available:
+For development or when you need the latest features:
 
 ### Prerequisites
 - **Python 3.10+** (3.11+ recommended)
@@ -71,7 +63,7 @@ The web interface is optional but provides a better user experience:
 
 ```bash
 # 1. Navigate to frontend directory
-cd frontend
+cd ../frontend
 
 # 2. Install Node.js dependencies  
 npm install
@@ -82,6 +74,36 @@ npm run build
 # 4. Development server (optional)
 npm run dev  # Runs on http://localhost:5173
 ```
+
+---
+
+## 🐳 Docker Installation
+
+For containerized deployment or development:
+
+### Prerequisites
+- Docker 20.0+ and Docker Compose 2.0+
+- Git (to clone repository)
+
+### Installation Steps
+
+```bash
+# 1. Clone repository
+git clone https://github.com/therickybobbeh/dep-scanner.git
+cd dep-scanner
+
+# 2. Start with Docker Compose
+docker-compose up --build
+
+# 3. Access interfaces
+# Web Interface: http://localhost:8000
+# CLI: docker exec -it dep-scanner-backend dep-scan --help
+```
+
+### Docker Compose Services
+- **Backend**: FastAPI server + CLI tool (Port 8000)  
+- **Frontend**: React dashboard (served by backend)
+- **Database**: SQLite cache (persistent volume)
 
 ### Environment Configuration
 
@@ -275,6 +297,86 @@ If you encounter issues not covered here:
 2. **Run tests**: `./run_tests.py` can identify environment issues
 3. **GitHub Issues**: Report bugs at [repository issues](https://github.com/therickybobbeh/dep-scanner/issues)
 4. **Documentation**: Check [Architecture docs](../architecture/overview.md) for system details
+
+---
+
+## ☁️ AWS Deployment
+
+For production deployment on AWS using ECS and CloudFormation:
+
+### Prerequisites
+- AWS CLI configured with appropriate permissions
+- Docker installed
+- Access to create AWS resources (VPC, ECS, ECR, ALB)
+
+### CloudFormation Deployment
+
+```bash
+# 1. Clone repository
+git clone https://github.com/therickybobbeh/dep-scanner.git
+cd dep-scanner
+
+# 2. Deploy infrastructure
+aws cloudformation create-stack \
+  --stack-name depscan-prod \
+  --template-body file://deploy/aws/cloudformation.yml \
+  --parameters ParameterKey=EnvironmentName,ParameterValue=prod \
+               ParameterKey=DesiredCapacity,ParameterValue=2 \
+  --capabilities CAPABILITY_NAMED_IAM
+
+# 3. Wait for stack creation
+aws cloudformation wait stack-create-complete --stack-name depscan-prod
+
+# 4. Get ECR repository URI
+ECR_URI=$(aws cloudformation describe-stacks \
+  --stack-name depscan-prod \
+  --query 'Stacks[0].Outputs[?OutputKey==`ECRRepository`].OutputValue' \
+  --output text)
+
+# 5. Build and push image
+docker build -f Dockerfile.aws -t dep-scanner:latest .
+aws ecr get-login-password | docker login --username AWS --password-stdin $ECR_URI
+docker tag dep-scanner:latest $ECR_URI:latest
+docker push $ECR_URI:latest
+
+# 6. Update ECS service
+aws ecs update-service \
+  --cluster prod-depscan-cluster \
+  --service prod-depscan-service \
+  --force-new-deployment
+```
+
+### Automated Deployment Script
+
+Use the provided deployment script for easier deployment:
+
+```bash
+# Set environment variables
+export ECR_REPOSITORY=123456789.dkr.ecr.us-east-1.amazonaws.com/prod-depscan
+export ECS_CLUSTER=prod-depscan-cluster
+export ECS_SERVICE=prod-depscan-service
+export AWS_REGION=us-east-1
+export ENVIRONMENT=prod
+
+# Run deployment
+./deploy/aws/deploy.sh
+```
+
+### Stack Outputs
+
+After successful deployment, you'll get:
+- **ALB Endpoint**: Public URL to access the application
+- **ECR Repository**: Container registry for your images
+- **ECS Cluster/Service**: Container orchestration resources
+- **S3 Bucket**: Storage for reports and cache
+
+### Cost Optimization
+
+For cost optimization:
+- Use FARGATE_SPOT capacity provider
+- Set appropriate resource limits in task definition
+- Configure lifecycle policies for ECR and S3
+- Use smaller instance types for development
 
 ---
 

@@ -68,19 +68,24 @@ DepScan is a comprehensive dependency vulnerability scanner that helps developer
 
 ### 📦 Installation
 
-**Option 1: Docker (Recommended)**
+**Option 1: pip install (Recommended)**
 ```bash
-# Clone and run with Docker Compose
-git clone https://github.com/therickybobbeh/dep-scanner.git
-cd dep-scanner
-docker-compose up --build
+# Install from PyPI
+pip install dep-scan
 
-# Access web interface at http://localhost:8000
-# CLI available in container
+# Verify installation
+dep-scan --help
+
+# Run your first scan
+dep-scan scan /path/to/your/project
 ```
 
-**Option 2: Local Installation**
+**Option 2: Local Development Installation**
 ```bash
+# Clone repository for development
+git clone https://github.com/therickybobbeh/dep-scanner.git
+cd dep-scanner
+
 # Backend setup
 cd backend
 python -m venv .venv
@@ -88,38 +93,51 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
 # Frontend setup (optional)
-cd frontend
+cd ../frontend
 npm install && npm run build
+```
+
+**Option 3: Docker (For Development/Deployment)**
+```bash
+# Clone and run with Docker Compose
+git clone https://github.com/therickybobbeh/dep-scanner.git
+cd dep-scanner
+docker-compose up --build
+
+# Access web interface at http://localhost:8000
 ```
 
 ### ⚡ Quick Scan
 
 **CLI Usage:**
 ```bash
-# Scan current directory
-python backend/cli.py scan .
+# Using pip install (recommended)
+dep-scan scan .
+dep-scan scan /path/to/project --json report.json
 
-# Scan with JSON output
+# Using local development setup
+python backend/cli.py scan .
 python backend/cli.py scan /path/to/project --json report.json
 
 # Advanced options
-python backend/cli.py scan . --include-dev --ignore-severity LOW
+dep-scan scan . --include-dev --ignore-severity LOW
 ```
 
-**HTML Report:**
+**Modern HTML Report:**
 ```bash
-# Generate static HTML report (dep-scan-report.html) and open it in your browser
-# The report file is replaced on each run
-python backend/cli.py scan . --open
+# Generate responsive HTML report and open in browser
+dep-scan scan . --open
 ```
 
 **Web Interface:**
 ```bash
-# Start web server for interactive scanning
+# Start interactive web server (from source)
 cd backend && python -m uvicorn app.main:app --reload
 
+# Or using Docker
+docker-compose up
+
 # Open browser to http://127.0.0.1:8000
-# Upload files or scan directories interactively
 ```
 
 ---
