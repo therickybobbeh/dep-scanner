@@ -1,0 +1,44 @@
+# Include the README and license
+include README.md
+include LICENSE
+include pyproject.toml
+
+# Include the frontend built files
+recursive-include frontend/dist *
+
+# Include configuration files
+include *.yml
+include *.yaml
+include *.toml
+include Makefile
+include Dockerfile*
+include docker-compose*.yml
+
+# Include documentation
+recursive-include docs *
+include docs/README.md
+
+# Include backend source code (handled by setuptools automatically, but explicit)
+recursive-include backend *.py
+recursive-include backend *.txt
+recursive-include backend *.md
+
+# Include test files for development installs
+recursive-include tests *.py
+recursive-include tests/fixtures *
+
+# Exclude unnecessary files
+global-exclude __pycache__
+global-exclude *.py[co]
+global-exclude *.so
+global-exclude .DS_Store
+global-exclude .coverage
+global-exclude .pytest_cache
+
+# Exclude node modules and build artifacts
+prune frontend/node_modules
+prune frontend/dist
+prune backend/.venv
+prune backend/build
+prune backend/dist
+prune **/*.egg-info

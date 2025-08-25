@@ -1,34 +1,36 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { Navbar, Nav, Container, Button } from 'react-bootstrap';
 import { Shield } from 'lucide-react';
 
 const Header: React.FC = () => {
   return (
-    <header className="bg-white shadow-sm border-b">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center py-6">
-          <Link to="/" className="flex items-center">
-            <Shield className="h-8 w-8 text-indigo-600" />
-            <span className="ml-2 text-2xl font-bold text-gray-900">DepScan</span>
-          </Link>
-          
-          <nav className="flex space-x-8">
-            <Link
-              to="/"
-              className="text-gray-500 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-            >
+    <Navbar bg="white" expand="lg" className="shadow-sm border-bottom">
+      <Container>
+        <Navbar.Brand as={Link as any} to="/" className="d-flex align-items-center">
+          <Shield className="me-2" size={32} color="#4f46e5" />
+          <span className="fw-bold fs-3 text-primary">DepScan</span>
+        </Navbar.Brand>
+
+        <Navbar.Toggle aria-controls="basic-navbar-nav" />
+        
+        <Navbar.Collapse id="basic-navbar-nav" className="justify-content-end">
+          <Nav className="align-items-center">
+            <Nav.Link as={Link as any} to="/" className="me-3">
               Home
-            </Link>
-            <Link
-              to="/scan"
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+            </Nav.Link>
+            <Button 
+              as={Link as any} 
+              to="/scan" 
+              variant="primary" 
+              size="sm"
             >
               New Scan
-            </Link>
-          </nav>
-        </div>
-      </div>
-    </header>
+            </Button>
+          </Nav>
+        </Navbar.Collapse>
+      </Container>
+    </Navbar>
   );
 };
 

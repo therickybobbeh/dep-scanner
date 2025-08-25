@@ -6,9 +6,11 @@ from rich.table import Table
 from rich.text import Text
 
 try:
-    from ..app.models import Report, SeverityLevel
+    from .models import Report, SeverityLevel
+    from .resolver.utils.path_utils import PathTracker
 except ImportError:
     from app.models import Report, SeverityLevel
+    from app.resolver.utils.path_utils import PathTracker
 
 
 class CLIFormatter:
@@ -34,19 +36,17 @@ class CLIFormatter:
             dep_match = next((d for d in report.dependencies if d.name == vuln.package and d.version == vuln.version), None)
             dep_type = "direct" if dep_match and dep_match.is_direct else "transitive"
             
-            # Improve source tracking for transitive dependencies
-            source = "-"
+            # Determine source: direct dependency or root cause for transitive
+            source = "unknown"
             if dep_match:
                 if dep_match.is_direct:
                     source = "direct"
-                elif dep_match.path and len(dep_match.path) >= 2:
-                    # Path format: [root, parent1, parent2, ..., current]
-                    # We want the direct parent (second-to-last in path)
-                    source = dep_match.path[-2]
-                elif dep_match.path and len(dep_match.path) == 1:
-                    # Single item path means it's the package name itself
-                    source = "transitive"
+                elif dep_match.path and len(dep_match.path) > 1:
+                    # For transitive dependencies, show the direct dependency that introduced it
+                    # The first item in the path is typically the direct dependency
+                    source = dep_match.path[0]
                 else:
+                    # Fallback if we can't determine the path
                     source = "transitive"
             
             # Format severity with color

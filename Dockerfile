@@ -1,26 +1,33 @@
 # Multi-stage Docker build for DepScan
-FROM node:18-alpine AS frontend-builder
+# Use bullseye (Debian) instead of Alpine for better ARM64 compatibility
+FROM node:18-bullseye-slim AS frontend-builder
 
-# Build frontend
+# Build frontend with better ARM64 compatibility
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
-RUN npm ci --only=production
+
+# Install dependencies with explicit architecture support and clean cache
+RUN npm ci --production=false --no-audit --no-fund && \
+    npm cache clean --force
 
 COPY frontend/ ./
 RUN npm run build
 
-# Python backend stage
-FROM python:3.11-slim AS backend
+# Python backend stage - Use latest Python for security
+FROM python:3.12-slim AS backend
 
-# Set environment variables
+# Set environment variables for production
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PYTHONPATH=/app/backend
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
+# Install system dependencies and clean up in one layer for smaller image
+RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
+    curl \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # Create app user
@@ -50,9 +57,9 @@ USER app
 # Expose port
 EXPOSE 8000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-  CMD python -c "import requests; requests.get('http://localhost:8000/health', timeout=10)"
+# Health check using curl (more reliable and lighter)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD curl -f http://localhost:8000/health || exit 1
 
 # Default command runs the web server
 CMD ["python", "-m", "uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8000"]

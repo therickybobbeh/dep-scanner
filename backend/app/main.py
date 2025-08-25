@@ -1,14 +1,21 @@
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Depends
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Depends, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.security import HTTPBearer
 from contextlib import asynccontextmanager
 from pathlib import Path
+import logging
+import time
 
 from .models import ScanRequest, ScanProgress, Report
 from .services.app_state import AppState, get_app_state
 from .services.scan_service import ScanService
 from .services.export_service import ExportService
+from .services.rate_limiter import check_rate_limit
+from .services.validation import validate_scan_request, validate_path_parameters
+from .config import settings
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -31,12 +38,39 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Enable CORS for development
+# Security middleware
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=settings.ALLOWED_HOSTS
+)
+
+# Input validation middleware
+app.middleware("http")(validate_scan_request)
+app.middleware("http")(validate_path_parameters)
+
+# Security headers middleware
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'"
+    
+    # Add rate limit headers if available
+    if hasattr(request.state, 'rate_limit_remaining'):
+        response.headers["X-RateLimit-Remaining"] = str(request.state.rate_limit_remaining)
+        response.headers["X-RateLimit-Reset"] = str(request.state.rate_limit_reset)
+    
+    return response
+
+# CORS configuration using settings
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:5173"],
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
 
@@ -48,7 +82,8 @@ def get_scan_service(state: AppState = Depends(get_app_state)) -> ScanService:
 @app.post("/scan", response_model=dict[str, str])
 async def start_scan(
     scan_request: ScanRequest, 
-    scan_service: ScanService = Depends(get_scan_service)
+    scan_service: ScanService = Depends(get_scan_service),
+    _: None = Depends(check_rate_limit)
 ):
     """Start a new vulnerability scan"""
     try:
@@ -60,7 +95,8 @@ async def start_scan(
 @app.get("/status/{job_id}", response_model=ScanProgress)
 async def get_scan_status(
     job_id: str, 
-    scan_service: ScanService = Depends(get_scan_service)
+    scan_service: ScanService = Depends(get_scan_service),
+    _: None = Depends(check_rate_limit)
 ):
     """Get current status and progress of a scan"""
     progress = scan_service.get_progress(job_id)

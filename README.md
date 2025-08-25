@@ -5,8 +5,9 @@
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/therickybobbeh/dep-scanner)
 [![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![TypeScript](https://img.shields.io/badge/typescript-5.0+-blue.svg)](https://www.typescriptlang.org/)
-[![FastAPI](https://img.shields.io/badge/fastapi-0.104+-green.svg)](https://fastapi.tiangolo.com/)
-[![React](https://img.shields.io/badge/react-18.2+-61dafb.svg)](https://reactjs.org/)
+[![FastAPI](https://img.shields.io/badge/fastapi-0.115+-green.svg)](https://fastapi.tiangolo.com/)
+[![React](https://img.shields.io/badge/react-18.3+-61dafb.svg)](https://reactjs.org/)
+[![Security](https://img.shields.io/badge/security-hardened-brightgreen.svg)](https://github.com/therickybobbeh/dep-scanner)
 [![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Coverage](https://img.shields.io/badge/coverage-90%25+-brightgreen)](https://github.com/therickybobbeh/dep-scanner)
 
@@ -57,10 +58,13 @@ DepScan is a comprehensive dependency vulnerability scanner that helps developer
 - **Multiple Formats**: Console tables, JSON export, web visualization
 
 ### 🚀 **Production Ready**
-- **Rate Limiting**: Respects API limits with exponential backoff
+- **Security Hardened**: OWASP-compliant security headers, input validation, rate limiting
+- **Latest Dependencies**: All packages updated to latest secure versions (CVE-2024-3772 patched)
+- **Multi-Platform**: ARM64 & AMD64 Docker support with optimized builds
 - **Intelligent Caching**: SQLite-based cache with TTL management
 - **Error Handling**: Graceful degradation and detailed error messages
-- **Performance Optimized**: Batch processing and deduplication
+- **Structured Logging**: Configurable logging with file rotation and debug modes
+- **Configuration Management**: Environment-based settings with security defaults
 
 ---
 
@@ -70,8 +74,11 @@ DepScan is a comprehensive dependency vulnerability scanner that helps developer
 
 **Option 1: pip install (Recommended)**
 ```bash
-# Install from PyPI
+# Install from PyPI (Coming Soon - Package publishing setup completed)
 pip install dep-scan
+
+# For now, install from source with pip
+pip install git+https://github.com/therickybobbeh/dep-scanner.git
 
 # Verify installation
 dep-scan --help
@@ -138,6 +145,18 @@ cd backend && python -m uvicorn app.main:app --reload
 docker-compose up
 
 # Open browser to http://127.0.0.1:8000
+```
+
+**Security Configuration:**
+```bash
+# Copy environment template and configure security settings
+cp .env.example .env
+
+# Edit .env file to customize:
+# - ALLOWED_HOSTS (for production domains)
+# - CORS_ORIGINS (for frontend URLs)  
+# - DEBUG=false (for production)
+# - LOG_LEVEL=WARNING (for production)
 ```
 
 ---

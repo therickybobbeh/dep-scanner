@@ -7,9 +7,11 @@ from datetime import datetime
 from typing import Optional
 
 try:
-    from ..app.models import Report
+    from .models import Report
+    from .resolver.utils.path_utils import PathTracker
 except ImportError:
     from app.models import Report
+    from app.resolver.utils.path_utils import PathTracker
 
 
 def generate_modern_html_report(report: Report, output_path: Optional[str] = None) -> str:
@@ -37,19 +39,21 @@ def generate_modern_html_report(report: Report, output_path: Optional[str] = Non
         dep_type = "direct" if dep_match and dep_match.is_direct else "transitive"
         
         # Improve source tracking for transitive dependencies
-        source = "-"
+        # Determine source: direct dependency or root cause for transitive
+        source = "unknown"
         if dep_match:
             if dep_match.is_direct:
                 source = "direct"
-            elif dep_match.path and len(dep_match.path) >= 2:
-                # Path format: [root, parent1, parent2, ..., current]
-                # We want the direct parent (second-to-last in path)
-                source = dep_match.path[-2]
-            elif dep_match.path and len(dep_match.path) == 1:
-                # Single item path means it's the package name itself
-                source = "transitive"
-            else:
-                source = "transitive"
+            elif not dep_match.is_direct:
+                # For transitive dependencies
+                if dep_match.path and len(dep_match.path) > 1:
+                    # Multi-level path: show root cause (first item)
+                    source = dep_match.path[0]
+                else:
+                    # Single item path but marked as transitive
+                    # This indicates the resolver didn't build full paths
+                    # Show as "transitive" to indicate issue
+                    source = "transitive"
         
         # Generate links from OSV data
         link_html = ""

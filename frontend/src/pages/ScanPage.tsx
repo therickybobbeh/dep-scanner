@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload, FileText, AlertCircle } from 'lucide-react';
+import { Container, Row, Col, Card, Form, Button, Alert, ListGroup, Badge, Spinner } from 'react-bootstrap';
+import { Upload, FileText, X } from 'lucide-react';
 import axios from 'axios';
 import type { ScanRequest } from '../types/api';
 
@@ -83,162 +84,148 @@ const ScanPage: React.FC = () => {
   ];
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Start New Scan</h1>
-        <p className="mt-2 text-gray-600">
-          Upload your dependency files to scan for vulnerabilities
-        </p>
-      </div>
+    <Container className="py-4" style={{ maxWidth: '800px' }}>
+      <Row className="mb-4">
+        <Col>
+          <h1 className="display-5 fw-bold mb-2">Start New Scan</h1>
+          <p className="lead text-muted">
+            Upload your dependency files to scan for vulnerabilities
+          </p>
+        </Col>
+      </Row>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <Form onSubmit={handleSubmit}>
         {/* File Upload */}
-        <div className="bg-white shadow rounded-lg p-6">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Upload Dependency Files</h2>
-          
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-            <Upload className="mx-auto h-12 w-12 text-gray-400" />
-            <div className="mt-4">
-              <label htmlFor="file-upload" className="cursor-pointer">
-                <span className="mt-2 block text-sm font-medium text-gray-900">
+        <Card className="mb-4">
+          <Card.Header>
+            <Card.Title className="mb-0">Upload Dependency Files</Card.Title>
+          </Card.Header>
+          <Card.Body>
+            <div className="border border-2 border-dashed rounded p-4 text-center bg-light">
+              <Upload size={48} className="mx-auto mb-3 text-muted" />
+              <Form.Group>
+                <Form.Label htmlFor="file-upload" className="btn btn-outline-primary mb-2">
                   Drop files here or click to upload
-                </span>
-                <input
+                </Form.Label>
+                <Form.Control
                   id="file-upload"
                   name="file-upload"
                   type="file"
                   multiple
-                  className="sr-only"
+                  hidden
                   accept=".json,.txt,.lock,.toml"
                   onChange={handleFileUpload}
                 />
-              </label>
-            </div>
-            <div className="mt-2">
-              <p className="text-xs text-gray-500">
+              </Form.Group>
+              <small className="text-muted d-block">
                 Supported files: {supportedFiles.join(', ')}
-              </p>
+              </small>
             </div>
-          </div>
 
-          {/* Uploaded Files */}
-          {Object.keys(files).length > 0 && (
-            <div className="mt-4">
-              <h3 className="text-sm font-medium text-gray-900 mb-2">Uploaded Files</h3>
-              <div className="space-y-2">
-                {Object.entries(files).map(([filename, file]) => (
-                  <div
-                    key={filename}
-                    className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded"
-                  >
-                    <div className="flex items-center">
-                      <FileText className="h-4 w-4 text-gray-400 mr-2" />
-                      <span className="text-sm text-gray-900">{filename}</span>
-                      <span className="text-xs text-gray-500 ml-2">
-                        ({Math.round(file.size / 1024)}KB)
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => removeFile(filename)}
-                      className="text-red-600 hover:text-red-800 text-sm"
+            {/* Uploaded Files */}
+            {Object.keys(files).length > 0 && (
+              <div className="mt-4">
+                <h6 className="fw-semibold mb-2">Uploaded Files</h6>
+                <ListGroup>
+                  {Object.entries(files).map(([filename, file]) => (
+                    <ListGroup.Item
+                      key={filename}
+                      className="d-flex justify-content-between align-items-center"
                     >
-                      Remove
-                    </button>
-                  </div>
-                ))}
+                      <div className="d-flex align-items-center">
+                        <FileText size={16} className="me-2 text-muted" />
+                        <span className="fw-medium">{filename}</span>
+                        <Badge bg="light" text="muted" className="ms-2">
+                          {Math.round(file.size / 1024)}KB
+                        </Badge>
+                      </div>
+                      <Button
+                        variant="outline-danger"
+                        size="sm"
+                        onClick={() => removeFile(filename)}
+                      >
+                        <X size={14} />
+                      </Button>
+                    </ListGroup.Item>
+                  ))}
+                </ListGroup>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </Card.Body>
+        </Card>
 
         {/* Scan Options */}
-        <div className="bg-white shadow rounded-lg p-6">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Scan Options</h2>
-          
-          <div className="space-y-4">
-            <div className="flex items-center">
-              <input
-                id="include-dev"
-                name="include-dev"
+        <Card className="mb-4">
+          <Card.Header>
+            <Card.Title className="mb-0">Scan Options</Card.Title>
+          </Card.Header>
+          <Card.Body>
+            <Form.Group className="mb-3">
+              <Form.Check
                 type="checkbox"
+                id="include-dev"
+                label="Include development dependencies"
                 checked={options.include_dev_dependencies}
                 onChange={(e) => setOptions(prev => ({
                   ...prev,
                   include_dev_dependencies: e.target.checked
                 }))}
-                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
               />
-              <label htmlFor="include-dev" className="ml-2 block text-sm text-gray-900">
-                Include development dependencies
-              </label>
-            </div>
+            </Form.Group>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Ignore Severity Levels
-              </label>
-              <div className="mt-2 space-y-2">
+            <Form.Group>
+              <Form.Label className="fw-semibold">Ignore Severity Levels</Form.Label>
+              <div className="mt-2">
                 {['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].map((severity) => (
-                  <div key={severity} className="flex items-center">
-                    <input
-                      id={`ignore-${severity.toLowerCase()}`}
-                      type="checkbox"
-                      checked={options.ignore_severities.includes(severity)}
-                      onChange={(e) => {
-                        setOptions(prev => ({
-                          ...prev,
-                          ignore_severities: e.target.checked
-                            ? [...prev.ignore_severities, severity]
-                            : prev.ignore_severities.filter(s => s !== severity)
-                        }));
-                      }}
-                      className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                    />
-                    <label 
-                      htmlFor={`ignore-${severity.toLowerCase()}`} 
-                      className="ml-2 block text-sm text-gray-900"
-                    >
-                      {severity}
-                    </label>
-                  </div>
+                  <Form.Check
+                    key={severity}
+                    type="checkbox"
+                    id={`ignore-${severity.toLowerCase()}`}
+                    label={severity}
+                    checked={options.ignore_severities.includes(severity)}
+                    onChange={(e) => {
+                      setOptions(prev => ({
+                        ...prev,
+                        ignore_severities: e.target.checked
+                          ? [...prev.ignore_severities, severity]
+                          : prev.ignore_severities.filter(s => s !== severity)
+                      }));
+                    }}
+                  />
                 ))}
               </div>
-            </div>
-          </div>
-        </div>
+            </Form.Group>
+          </Card.Body>
+        </Card>
 
         {/* Error Display */}
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-md p-4">
-            <div className="flex">
-              <AlertCircle className="h-5 w-5 text-red-400" />
-              <div className="ml-3">
-                <p className="text-sm text-red-800">{error}</p>
-              </div>
-            </div>
-          </div>
+          <Alert variant="danger" className="mb-4">
+            <Alert.Heading>Error</Alert.Heading>
+            <p className="mb-0">{error}</p>
+          </Alert>
         )}
 
         {/* Submit Button */}
-        <div className="flex justify-end">
-          <button
+        <div className="d-flex justify-content-end">
+          <Button
             type="submit"
+            variant="primary"
+            size="lg"
             disabled={isUploading || Object.keys(files).length === 0}
-            className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isUploading ? (
               <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                <Spinner as="span" animation="border" size="sm" className="me-2" />
                 Starting Scan...
               </>
             ) : (
               'Start Vulnerability Scan'
             )}
-          </button>
+          </Button>
         </div>
-      </form>
-    </div>
+      </Form>
+    </Container>
   );
 };
 

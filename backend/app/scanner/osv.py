@@ -2,10 +2,11 @@ import asyncio
 import json
 import sqlite3
 import hashlib
+import logging
+import random
 from datetime import datetime, timedelta
 # Modern type annotations - no imports needed for basic types
 import httpx
-import random
 
 from ..models import Dep, OSVQuery, OSVBatchQuery, OSVBatchResponse, Vuln, SeverityLevel
 
@@ -18,6 +19,7 @@ class OSVScanner:
         self.batch_size = batch_size
         self.rate_limit_delay = rate_limit_delay
         self.max_retries = max_retries
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         
         # Initialize cache
         self.cache_db_path = cache_db_path or "osv_cache.db"
@@ -189,8 +191,7 @@ class OSVScanner:
                 if response.status_code == 200:
                     response_data = response.json()
                     
-                    # Debug the response structure (limit output)
-                    # print(f"DEBUG: Raw OSV response keys: {list(response_data.keys()) if isinstance(response_data, dict) else 'list'}")
+                    self.logger.debug(f"OSV response received with {len(response_data.get('results', []))} result(s)")
                     
                     batch_response = OSVBatchResponse(**response_data)
                     
@@ -220,7 +221,7 @@ class OSVScanner:
                     # If results are minimal (only id, modified, package, ecosystem), 
                     # we need to fetch individual vulnerability details
                     if results and all(len(r.keys()) <= 4 for r in results):
-                        # print("DEBUG: Results are minimal, fetching detailed vulnerability data...")
+                        self.logger.info(f"Fetching detailed vulnerability data for {len(results)} vulnerabilities")
                         enriched_results = await self._enrich_vulnerability_data(results)
                         return enriched_results
                     
@@ -370,19 +371,16 @@ class OSVScanner:
     def _convert_osv_to_vuln(self, osv_data: dict, dep: Dep) -> Vuln:
         """Convert OSV vulnerability data to our Vuln model"""
         
-        # Debug: Print OSV data structure for first few vulnerabilities
-        if hasattr(self, '_debug_count'):
-            self._debug_count += 1
-        else:
-            self._debug_count = 1
-            
-        # Debugging disabled for cleaner output
-        # if self._debug_count <= 1:  # Debug first vulnerability only
-        #     print(f"DEBUG: OSV data keys: {list(osv_data.keys())}")
-        #     if "severity" in osv_data:
-        #         print(f"DEBUG: Severity field: {osv_data['severity']}")
-        #     if "database_specific" in osv_data:
-        #         print(f"DEBUG: Database specific: {osv_data['database_specific']}")
+        # Log vulnerability processing for debugging
+        self.logger.debug(f"Processing vulnerability {osv_data.get('id', 'unknown')} for {dep.name}@{dep.version}")
+        
+        if self.logger.isEnabledFor(logging.DEBUG):
+            # Only log detailed info if debug logging is enabled
+            self.logger.debug(f"OSV data keys: {list(osv_data.keys())}")
+            if "severity" in osv_data:
+                self.logger.debug(f"Severity field: {osv_data['severity']}")
+            if "database_specific" in osv_data:
+                self.logger.debug(f"Database specific: {osv_data['database_specific']}")
         
         # Extract severity (including database_specific fallback)
         severity = self._extract_severity(

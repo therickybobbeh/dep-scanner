@@ -5,6 +5,7 @@ Refactored for better modularity and maintainability
 """
 import asyncio
 import json
+import logging
 import webbrowser
 from pathlib import Path
 from typing import Optional
@@ -12,16 +13,23 @@ from typing import Optional
 import typer
 from rich.console import Console
 
-# Import modular CLI components
+# Import CLI components
 try:  # Allow running as module or script
     from .app.models import ScanOptions, SeverityLevel
-    from .cli import DepScanner, CLIFormatter, generate_modern_html_report
+    from .app.config import settings
+    from .app.cli_scanner import DepScanner
+    from .app.formatter import CLIFormatter
+    from .app.reports import generate_modern_html_report
 except ImportError:  # pragma: no cover - fallback for script execution
     from app.models import ScanOptions, SeverityLevel
-    from cli import DepScanner, CLIFormatter, generate_modern_html_report
+    from app.config import settings
+    from app.cli_scanner import DepScanner
+    from app.formatter import CLIFormatter
+    from app.reports import generate_modern_html_report
 
 app = typer.Typer(help="DepScan - Dependency Vulnerability Scanner")
 console = Console()
+logger = logging.getLogger(__name__)
 
 
 @app.command()
@@ -90,6 +98,9 @@ def scan(
         else:
             raise typer.Exit(0)
             
+    except typer.Exit:
+        # Allow typer.Exit to propagate normally (for clean exit codes)
+        raise
     except FileNotFoundError as e:
         console.print(f"[red]Error:[/red] {e}")
         raise typer.Exit(1)
@@ -106,19 +117,26 @@ def scan(
 @app.command()
 def version():
     """Show version information."""
-    console.print("DepScan v1.0.0")
+    console.print(f"{settings.APP_NAME} v{settings.APP_VERSION}")
     console.print("Dependency Vulnerability Scanner")
     console.print("Data source: OSV.dev")
+    console.print(f"Cache: {settings.CACHE_DB_PATH}")
+    if settings.DEBUG:
+        console.print(f"Debug mode: {settings.DEBUG}")
+        console.print(f"Log level: {settings.LOG_LEVEL}")
 
 
 def export_json_report(report, output_path: str) -> None:
     """Export scan results to JSON format."""
+    # Derive ecosystems from dependencies
+    ecosystems = list(set(dep.ecosystem for dep in report.dependencies))
+    
     # Convert report to JSON-serializable format
     json_data = {
         "scan_info": {
             "total_dependencies": len(report.dependencies),
             "vulnerable_packages": len(report.vulnerable_packages),
-            "ecosystems": report.ecosystems
+            "ecosystems": ecosystems
         },
         "vulnerabilities": []
     }

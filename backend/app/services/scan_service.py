@@ -1,19 +1,20 @@
-"""Scan service for managing vulnerability scans"""
+"""Simplified scan service using core scanner"""
 import asyncio
 import uuid
-import tempfile
 from datetime import datetime
 from fastapi import WebSocket
 
+from ...core_scanner import CoreScanner
 from ..models import ScanRequest, ScanProgress, Report, JobStatus
 from .app_state import AppState
 
 
 class ScanService:
-    """Service for managing vulnerability scanning jobs"""
+    """Simplified service for managing vulnerability scanning jobs"""
     
     def __init__(self, state: AppState):
         self.state = state
+        self.core_scanner = CoreScanner()
     
     async def start_scan(self, scan_request: ScanRequest) -> str:
         """Start a new vulnerability scan"""
@@ -35,138 +36,41 @@ class ScanService:
         return job_id
     
     async def _run_scan(self, job_id: str, scan_request: ScanRequest):
-        """Run the actual vulnerability scan"""
+        """Run the actual vulnerability scan using core scanner"""
         try:
             progress = self.state.scan_jobs[job_id]
             progress.status = JobStatus.RUNNING
             await self._broadcast_progress(job_id, progress)
             
-            # Resolve dependencies
-            progress.current_step = "Resolving dependencies..."
-            progress.progress_percent = 10.0
-            await self._broadcast_progress(job_id, progress)
-            
-            all_dependencies = []
-            ecosystems_found = []
-            
+            # Use core scanner to do the heavy lifting
             if scan_request.repo_path:
-                # Scan from repository
-                repo_path = scan_request.repo_path
-                
-                # Try Python dependencies
-                try:
-                    py_deps = await self.state.python_resolver.resolve_dependencies(repo_path)
-                    all_dependencies.extend(py_deps)
-                    ecosystems_found.append("Python")
-                except Exception:
-                    pass
-                
-                # Try JavaScript dependencies
-                try:
-                    js_deps = await self.state.js_resolver.resolve_dependencies(repo_path)
-                    all_dependencies.extend(js_deps)
-                    ecosystems_found.append("JavaScript")
-                except Exception:
-                    pass
-            
+                report = await self.core_scanner.scan_repository(
+                    repo_path=scan_request.repo_path,
+                    options=scan_request.options,
+                    progress_callback=lambda msg: asyncio.create_task(self._update_web_progress(job_id, msg))
+                )
             elif scan_request.manifest_files:
-                # Scan from uploaded files
-                with tempfile.TemporaryDirectory() as temp_dir:
-                    # Try Python files
-                    py_files = {k: v for k, v in scan_request.manifest_files.items() 
-                              if k in ["requirements.txt", "poetry.lock", "Pipfile.lock", "pyproject.toml"]}
-                    if py_files:
-                        try:
-                            py_deps = await self.state.python_resolver.resolve_dependencies(None, py_files)
-                            all_dependencies.extend(py_deps)
-                            ecosystems_found.append("Python")
-                        except Exception:
-                            pass
-                    
-                    # Try JavaScript files
-                    js_files = {k: v for k, v in scan_request.manifest_files.items()
-                              if k in ["package.json", "package-lock.json", "yarn.lock"]}
-                    if js_files:
-                        try:
-                            js_deps = await self.state.js_resolver.resolve_dependencies(None, js_files)
-                            all_dependencies.extend(js_deps)
-                            ecosystems_found.append("JavaScript")
-                        except Exception:
-                            pass
+                report = await self.core_scanner.scan_manifest_files(
+                    manifest_files=scan_request.manifest_files,
+                    options=scan_request.options,
+                    progress_callback=lambda msg: asyncio.create_task(self._update_web_progress(job_id, msg))
+                )
+            else:
+                raise ValueError("Either repo_path or manifest_files must be provided")
             
-            if not all_dependencies:
-                raise ValueError("No dependencies found to scan")
-            
-            # Filter dev dependencies if requested
-            if not scan_request.options.include_dev_dependencies:
-                all_dependencies = [dep for dep in all_dependencies if not dep.is_dev]
-            
-            progress.total_dependencies = len(all_dependencies)
-            progress.current_step = f"Scanning {len(all_dependencies)} dependencies for vulnerabilities..."
-            progress.progress_percent = 30.0
-            await self._broadcast_progress(job_id, progress)
-            
-            # Scan for vulnerabilities
-            vulnerabilities = await self.state.osv_scanner.scan_dependencies(all_dependencies)
-            
-            progress.vulnerabilities_found = len(vulnerabilities)
-            progress.current_step = "Processing results..."
-            progress.progress_percent = 80.0
-            await self._broadcast_progress(job_id, progress)
-            
-            # Apply filters and ignore rules
-            filtered_vulns = vulnerabilities
-            suppressed_count = 0
-            
-            if scan_request.options.ignore_severities:
-                filtered_vulns = [v for v in filtered_vulns 
-                                if v.severity not in scan_request.options.ignore_severities]
-            
-            if scan_request.options.ignore_rules:
-                final_vulns = []
-                for vuln in filtered_vulns:
-                    should_ignore = False
-                    for rule in scan_request.options.ignore_rules:
-                        if (rule.rule_type == "vulnerability" and 
-                            rule.identifier in [vuln.vulnerability_id] + vuln.cve_ids):
-                            should_ignore = True
-                            break
-                        elif (rule.rule_type == "package" and 
-                              f"{vuln.package}@{vuln.version}" == rule.identifier):
-                            should_ignore = True
-                            break
-                    
-                    if should_ignore:
-                        suppressed_count += 1
-                    else:
-                        final_vulns.append(vuln)
-                
-                filtered_vulns = final_vulns
-            
-            # Create final report
-            report = Report(
-                job_id=job_id,
-                status=JobStatus.COMPLETED,
-                total_dependencies=len(all_dependencies),
-                vulnerable_count=len(set((v.package, v.version) for v in filtered_vulns)),
-                vulnerable_packages=filtered_vulns,
-                dependencies=all_dependencies,
-                suppressed_count=suppressed_count,
-                meta={
-                    "generated_at": datetime.now().isoformat(),
-                    "ecosystems": ecosystems_found,
-                    "scan_options": scan_request.options.model_dump()
-                }
-            )
-            
-            # Store results
-            self.state.scan_results[job_id] = report
+            # Update report with job_id from web service
+            report.job_id = job_id
             
             # Update final progress
             progress.status = JobStatus.COMPLETED
             progress.current_step = "Scan completed"
             progress.progress_percent = 100.0
+            progress.total_dependencies = report.total_dependencies
+            progress.vulnerabilities_found = report.vulnerable_count
             progress.completed_at = datetime.now()
+            
+            # Store report and broadcast final progress
+            self.state.scan_reports[job_id] = report
             await self._broadcast_progress(job_id, progress)
             
         except Exception as e:
@@ -178,26 +82,41 @@ class ScanService:
                 progress.completed_at = datetime.now()
                 await self._broadcast_progress(job_id, progress)
     
+    async def _update_web_progress(self, job_id: str, message: str):
+        """Update web progress based on core scanner messages"""
+        progress = self.state.scan_jobs.get(job_id)
+        if not progress:
+            return
+            
+        if "Resolving dependencies" in message:
+            progress.progress_percent = 20.0
+        elif "Scanning" in message and "dependencies" in message:
+            progress.progress_percent = 60.0
+        elif "completed" in message.lower():
+            progress.progress_percent = 90.0
+        
+        progress.current_step = message
+        await self._broadcast_progress(job_id, progress)
+    
     async def _broadcast_progress(self, job_id: str, progress: ScanProgress):
-        """Broadcast progress to all connected WebSocket clients"""
+        """Broadcast progress to connected WebSocket clients"""
         if job_id in self.state.active_connections:
-            message = progress.model_dump()
-            disconnected = []
-            
-            for websocket in self.state.active_connections[job_id]:
+            # Create a copy to avoid modification during iteration
+            connections = list(self.state.active_connections[job_id])
+            for websocket in connections:
                 try:
-                    await websocket.send_json(message)
+                    await websocket.send_json(progress.model_dump())
                 except Exception:
-                    disconnected.append(websocket)
-            
-            # Remove disconnected clients
-            for ws in disconnected:
-                self.state.active_connections[job_id].remove(ws)
+                    # Remove failed connections
+                    self.state.active_connections[job_id].remove(websocket)
+                    if not self.state.active_connections[job_id]:
+                        del self.state.active_connections[job_id]
+                        break
     
     def get_progress(self, job_id: str) -> ScanProgress | None:
         """Get current progress for a job"""
         return self.state.scan_jobs.get(job_id)
     
     def get_report(self, job_id: str) -> Report | None:
-        """Get final report for a completed job"""
-        return self.state.scan_results.get(job_id)
+        """Get completed report for a job"""
+        return self.state.scan_reports.get(job_id)
