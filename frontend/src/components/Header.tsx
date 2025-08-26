@@ -5,11 +5,11 @@ import { Shield } from 'lucide-react';
 
 const Header: React.FC = () => {
   return (
-    <Navbar bg="white" expand="lg" className="shadow-sm border-bottom">
+    <Navbar bg="dark" data-bs-theme="dark" expand="lg" className="shadow-sm border-bottom">
       <Container>
         <Navbar.Brand as={Link as any} to="/" className="d-flex align-items-center">
-          <Shield className="me-2" size={32} color="#4f46e5" />
-          <span className="fw-bold fs-3 text-primary">DepScan</span>
+          <Shield className="me-2" size={32} color="#5eeeeb" />
+          <span className="fw-bold fs-3" style={{ color: 'var(--bs-heading-color)' }}>DepScan</span>
         </Navbar.Brand>
 
         <Navbar.Toggle aria-controls="basic-navbar-nav" />

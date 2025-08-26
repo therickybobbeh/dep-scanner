@@ -7,24 +7,28 @@ const HomePage: React.FC = () => {
   return (
     <Container className="py-5">
       {/* Hero Section */}
-      <Row className="text-center mb-5">
-        <Col>
-          <h1 className="display-3 fw-bold text-dark mb-4">
-            Dependency Vulnerability Scanner
-          </h1>
-          <p className="lead text-muted mb-4 mx-auto" style={{ maxWidth: '600px' }}>
-            Scan your Python and JavaScript projects for known security vulnerabilities.
-            Get detailed reports with fix recommendations.
-          </p>
-          <Button 
-            as={Link as any} 
-            to="/scan" 
-            variant="primary" 
-            size="lg" 
-            className="px-5 py-3"
-          >
-            Start Scanning
-          </Button>
+      <Row className="mb-5">
+        <Col md={{ span: 10, offset: 1 }} lg={{ span: 8, offset: 2 }}>
+          <Card className="border-0 shadow-sm text-center">
+            <Card.Body className="p-5">
+              <h1 className="display-3 fw-bold mb-3">
+                Dependency Vulnerability Scanner
+              </h1>
+              <p className="lead text-muted mb-4 mx-auto" style={{ maxWidth: '600px' }}>
+                Scan your Python and JavaScript projects for known security vulnerabilities.
+                Get detailed reports with fix recommendations.
+              </p>
+              <Button 
+                as={Link as any} 
+                to="/scan" 
+                variant="primary" 
+                size="lg" 
+                className="px-5 py-3"
+              >
+                Start Scanning
+              </Button>
+            </Card.Body>
+          </Card>
         </Col>
       </Row>
 
@@ -118,15 +122,16 @@ const HomePage: React.FC = () => {
       </Row>
 
       {/* Getting Started */}
-      <div className="bg-light rounded p-5">
-        <Row className="text-center mb-4">
-          <Col>
-            <h2 className="display-6 fw-bold mb-3">Getting Started</h2>
-            <p className="lead text-muted mb-4">
-              Ready to scan your project? Upload your dependency files or provide a repository path.
-            </p>
-          </Col>
-        </Row>
+      <Card className="border-0 shadow-sm">
+        <Card.Body className="p-5">
+          <Row className="text-center mb-4">
+            <Col>
+              <h2 className="display-6 fw-bold mb-3">Getting Started</h2>
+              <p className="lead text-muted mb-4">
+                Ready to scan your project? Upload your dependency files or provide a repository path.
+              </p>
+            </Col>
+          </Row>
         
         <Row className="g-4">
           <Col md={4}>
@@ -171,7 +176,8 @@ const HomePage: React.FC = () => {
             </Card>
           </Col>
         </Row>
-      </div>
+        </Card.Body>
+      </Card>
     </Container>
   );
 };

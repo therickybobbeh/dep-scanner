@@ -28,12 +28,21 @@ class Settings(BaseSettings):
     # API settings
     API_HOST: str = Field(default="127.0.0.1", env="API_HOST")
     API_PORT: int = Field(default=8000, env="API_PORT")
-    API_RELOAD: bool = Field(default=False, env="API_RELOAD")
+    API_RELOAD: bool = Field(default=False, env=["API_RELOAD", "RELOAD"])  # Support both env vars
     
     # Cache settings
     CACHE_TTL_HOURS: int = Field(default=24, env="CACHE_TTL_HOURS")
     CACHE_CLEANUP_INTERVAL_HOURS: int = Field(default=6, env="CACHE_CLEANUP_INTERVAL_HOURS")
     CACHE_DB_PATH: str = Field(default="osv_cache.db", env="CACHE_DB_PATH")
+    
+    # Version resolution cache settings
+    NPM_VERSION_CACHE_TTL: int = Field(default=3600, env="NPM_VERSION_CACHE_TTL")  # 1 hour default
+    PYPI_VERSION_CACHE_TTL: int = Field(default=3600, env="PYPI_VERSION_CACHE_TTL")  # 1 hour default
+    
+    # Transitive resolution settings
+    ENABLE_TRANSITIVE_RESOLUTION: bool = Field(default=False, env="ENABLE_TRANSITIVE_RESOLUTION")
+    MAX_TRANSITIVE_DEPTH: int = Field(default=10, env="MAX_TRANSITIVE_DEPTH")
+    MAX_CONCURRENT_REQUESTS: int = Field(default=10, env="MAX_CONCURRENT_REQUESTS")
     
     # OSV.dev API settings
     OSV_API_URL: str = Field(default="https://api.osv.dev", env="OSV_API_URL")
@@ -41,7 +50,7 @@ class Settings(BaseSettings):
     OSV_RATE_LIMIT_PERIOD: int = Field(default=60, env="OSV_RATE_LIMIT_PERIOD")
     
     # Security settings  
-    ALLOWED_HOSTS: list[str] = Field(default=["localhost", "127.0.0.1"], env="ALLOWED_HOSTS")
+    ALLOWED_HOSTS: str = Field(default="localhost,127.0.0.1,0.0.0.0,*", env="ALLOWED_HOSTS")
     CORS_ORIGINS: str = Field(default="http://localhost:3000,http://localhost:5173", env="CORS_ORIGINS")
     MAX_REQUEST_SIZE: int = Field(default=16777216, env="MAX_REQUEST_SIZE")  # 16MB
     ENABLE_SECURITY_HEADERS: bool = Field(default=True, env="ENABLE_SECURITY_HEADERS")
@@ -55,6 +64,11 @@ class Settings(BaseSettings):
     def cors_origins_list(self) -> list[str]:
         """Parse CORS_ORIGINS string into a list"""
         return [origin.strip() for origin in self.CORS_ORIGINS.split(',')]
+    
+    @property
+    def allowed_hosts_list(self) -> list[str]:
+        """Parse ALLOWED_HOSTS string into a list"""
+        return [host.strip() for host in self.ALLOWED_HOSTS.split(',')]
     
     class Config:
         env_file = ".env"

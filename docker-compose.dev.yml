@@ -28,13 +28,23 @@ services:
       - CACHE_CLEANUP_INTERVAL_HOURS=1
       - CACHE_DB_PATH=/app/data/osv_cache.db
       
+      # Version resolution cache settings (shorter for dev)
+      - NPM_VERSION_CACHE_TTL=1800  # 30 minutes
+      - PYPI_VERSION_CACHE_TTL=1800  # 30 minutes
+      
+      # Transitive resolution settings for development
+      - ENABLE_TRANSITIVE_RESOLUTION=true
+      - MAX_TRANSITIVE_DEPTH=8  # Smaller depth for dev
+      - MAX_CONCURRENT_REQUESTS=5  # Lower concurrency for dev
+      
       # OSV.dev API Configuration
       - OSV_API_URL=https://api.osv.dev
       - OSV_RATE_LIMIT_CALLS=100
       - OSV_RATE_LIMIT_PERIOD=60
       
-      # CORS for development
-      - CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+      # Security settings for development
+      - ALLOWED_HOSTS=localhost,127.0.0.1,backend,dep-scanner-backend-dev,*.localhost
+      - CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://frontend:3000
       
     restart: unless-stopped
     container_name: dep-scanner-backend-dev
@@ -70,22 +80,35 @@ services:
       - ./frontend/src:/app/src
       - ./frontend/public:/app/public
       - ./frontend/package.json:/app/package.json
+      - ./frontend/package-lock.json:/app/package-lock.json
       - ./frontend/vite.config.ts:/app/vite.config.ts
       - ./frontend/tsconfig.json:/app/tsconfig.json
-      # Exclude node_modules to avoid conflicts
-      - /app/node_modules
+      - ./frontend/index.html:/app/index.html
+      # Use named volume for node_modules to improve performance and avoid conflicts
+      - frontend_node_modules:/app/node_modules
     environment:
       - NODE_ENV=development
       - CHOKIDAR_USEPOLLING=true  # For file watching in containers
-      - VITE_API_URL=http://localhost:8000
+      - VITE_API_URL=http://backend:8000
+      - VITE_HOST=0.0.0.0
+      - VITE_PORT=3000
     restart: unless-stopped
     container_name: dep-scanner-frontend-dev
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     
     # Development settings
     stdin_open: true
     tty: true
+    
+    # Health check to ensure service stays running
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
   # Development database browser (optional)
   adminer:

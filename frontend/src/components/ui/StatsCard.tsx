@@ -32,7 +32,7 @@ const StatsCard: React.FC<StatsCardProps> = ({
         <div className="d-flex justify-content-between align-items-start">
           <div className="flex-grow-1">
             <div className="text-muted small text-uppercase fw-bold">{title}</div>
-            <div className="h4 mb-1 fw-bold text-dark">{value}</div>
+            <div className="h4 mb-1 fw-bold">{value}</div>
             {subtitle && <div className="text-muted small">{subtitle}</div>}
             {trend && (
               <div className={`small mt-1 ${trend.isPositive ? 'text-success' : 'text-danger'}`}>

@@ -4,6 +4,7 @@ from ..parsers.python import (
     PoetryLockParser,
     PipfileLockParser,
     RequirementsParser,
+    EnhancedRequirementsParser,
     PyprojectParser,
     PipfileParser
 )
@@ -17,12 +18,35 @@ class PythonParserFactory:
     and content analysis.
     """
     
-    def __init__(self):
+    def __init__(
+        self, 
+        use_enhanced_requirements: bool = False,
+        enable_transitive: bool = False,
+        max_depth: int = 10
+    ):
         self.detector = FileFormatDetector()
+        self.use_enhanced_requirements = use_enhanced_requirements
+        self.enable_transitive = enable_transitive
+        self.max_depth = max_depth
+        
+        # Choose requirements parser based on configuration
+        requirements_parser = (
+            EnhancedRequirementsParser(
+                enable_transitive=enable_transitive,
+                max_depth=max_depth
+            )
+            if use_enhanced_requirements
+            else RequirementsParser()
+        )
+        
         self._parsers = {
             "poetry-lock": PoetryLockParser(),
             "pipfile-lock": PipfileLockParser(),
-            "requirements": RequirementsParser(),
+            "requirements": requirements_parser,
+            "requirements-enhanced": EnhancedRequirementsParser(
+                enable_transitive=enable_transitive,
+                max_depth=max_depth
+            ),
             "pyproject": PyprojectParser(),
             "pipfile": PipfileParser()
         }

@@ -1,0 +1,12 @@
+&lt;component name="ProjectRunConfigurationManager"&gt;
+  &lt;configuration default="false" name="Frontend Dev Server" type="js.build_tools.npm" nameIsGenerated="true"&gt;
+    &lt;package-json value="$PROJECT_DIR$/frontend/package.json" /&gt;
+    &lt;command value="run" /&gt;
+    &lt;scripts&gt;
+      &lt;script value="dev" /&gt;
+    &lt;/scripts&gt;
+    &lt;node-interpreter value="project" /&gt;
+    &lt;envs /&gt;
+    &lt;method v="2" /&gt;
+  &lt;/configuration&gt;
+&lt;/component&gt;

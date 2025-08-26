@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Union
 
 from .base import ParseError
-from .factories import PythonParserFactory
+from .factories.python_factory import PythonParserFactory
 from ..models import Dep, Ecosystem
 
 
@@ -31,9 +31,21 @@ class PythonResolver:
         deps = await resolver.resolve_dependencies(None, files)
     """
     
-    def __init__(self):
+    def __init__(
+        self, 
+        enhanced_requirements: bool = False,
+        enable_transitive: bool = False,
+        cache_control: dict = None
+    ):
         self.ecosystem: Ecosystem = "PyPI"
-        self.parser_factory = PythonParserFactory()
+        self.enhanced_requirements = enhanced_requirements
+        self.enable_transitive = enable_transitive
+        self.cache_control = cache_control or {}
+        
+        self.parser_factory = PythonParserFactory(
+            use_enhanced_requirements=enhanced_requirements,
+            enable_transitive=enable_transitive
+        )
     
     async def resolve_dependencies(
         self, 
@@ -141,7 +153,16 @@ class PythonResolver:
             
             # Get appropriate parser and parse
             parser = self.parser_factory.get_parser(filename, content)
-            deps = await parser.parse(content)
+            
+            # Prepare parse options based on cache control
+            parse_kwargs = {}
+            if self.cache_control:
+                parse_kwargs.update({
+                    "bypass_cache": self.cache_control.get("bypass_cache", False),
+                    "enable_transitive": self.cache_control.get("use_enhanced_resolution", False) or self.enable_transitive
+                })
+            
+            deps = await parser.parse(content, **parse_kwargs)
             
             # If using requirements.txt, try to merge multiple requirements files
             if format_name == "requirements":

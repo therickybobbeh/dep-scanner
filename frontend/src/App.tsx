@@ -7,8 +7,13 @@ import Header from './components/Header';
 
 function App() {
   return (
-    <Router>
-      <div className="min-vh-100 bg-light">
+    <Router
+      future={{
+        v7_startTransition: true,
+        v7_relativeSplatPath: true,
+      }}
+    >
+      <div className="min-vh-100">
         <Header />
         <main>
           <Container fluid>

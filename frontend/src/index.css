@@ -10,12 +10,51 @@
   -webkit-text-size-adjust: 100%;
 }
 
+/* Ensure body adopts dark variables */
+html, body, #root { height: 100%; }
+body {
+  background-color: var(--bs-body-bg);
+  color: var(--bs-body-color);
+}
+
 /* DepScan Custom Theme */
 :root {
-  /* Primary brand colors */
-  --bs-primary: #4f46e5;
-  --bs-primary-rgb: 79, 70, 229;
-  --bs-primary-hover: #4338ca;
+  /* Dark theme base */
+  --bs-body-bg: #0b1020; /* deep navy/indigo */
+  --bs-body-color: #e5e7eb; /* light gray text */
+  --bs-heading-color: #f3f4f6;
+  --bs-border-color: #1f2937;
+  --bs-tertiary-bg: #0d1326;
+  --bs-secondary-bg: #0f152a;
+  /* Accessible light-on-dark card surfaces */
+  --bs-card-bg: #f8f9fa;           /* light gray cards */
+  --bs-card-border-color: #dee2e6; /* subtle border */
+  --bs-card-color: #212529;        /* dark text */
+  --bs-card-cap-bg: #e9ecef;      /* slightly darker header */
+  --bs-card-cap-color: #495057;   /* dark header text */
+
+  /* Muted/secondary text tuned for dark background */
+  --bs-secondary-color: #cbd5e1; /* text-muted */
+  --bs-secondary-color-rgb: 203, 213, 225;
+  --bs-tertiary-color: #94a3b8; /* extra subtle */
+
+  /* List group on light cards */
+  --bs-list-group-bg: #f8f9fa;
+  --bs-list-group-color: #212529;
+  --bs-list-group-border-color: #dee2e6;
+  --bs-code-color: #fcd34d;
+
+  /* Brand (from palette) */
+  --bs-primary: #4d1da8; /* primary purple */
+  --bs-primary-rgb: 77, 29, 168;
+  --bs-primary-hover: #6a1b7c; /* deeper purple */
+  --bs-info: #5eeeeb; /* teal accent */
+  --bs-secondary: #8f12bc; /* purple */
+  --bs-pink: #84047c; /* magenta */
+
+  /* Links */
+  --bs-link-color: var(--bs-info);
+  --bs-link-hover-color: #9ff7f3;
   
   /* Severity colors matching backend */
   --severity-critical: #dc3545;
@@ -137,11 +176,96 @@ code, pre, .font-monospace {
   background: linear-gradient(135deg, var(--bs-primary), var(--bs-primary-hover)) !important;
 }
 
+/* Purple → Pink brand gradient */
+.bg-gradient-brand {
+  background: linear-gradient(135deg, var(--bs-primary), var(--bs-info)) !important;
+}
+
 .text-gradient {
   background: linear-gradient(135deg, var(--bs-primary), var(--bs-info));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+/* Dark components adjustments */
+.card { 
+  background-color: var(--bs-card-bg); 
+  border-color: var(--bs-card-border-color); 
+  color: var(--bs-card-color); 
+}
+.card .card-header { 
+  background-color: var(--bs-card-cap-bg); 
+  color: var(--bs-card-cap-color); 
+  border-bottom-color: var(--bs-card-border-color);
+}
+.card .form-check-label, .card .form-label, .card p, .card .lead { 
+  color: var(--bs-card-color); 
+}
+.card .text-muted { color: #495057 !important; }
+
+.table-hover tbody tr:hover {
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+
+.form-control, .form-select {
+  background-color: #ffffff;
+  color: #212529;
+  border-color: #ced4da;
+}
+
+.form-control::placeholder { color: #6c757d; }
+
+.form-check-input { background-color: #ffffff; border-color: #ced4da; }
+
+.form-check-input:checked {
+  background-color: var(--bs-primary);
+  border-color: var(--bs-primary);
+}
+
+.form-control:focus, .form-select:focus, .form-check-input:focus {
+  box-shadow: 0 0 0 0.25rem rgba(var(--bs-primary-rgb), 0.25);
+  border-color: var(--bs-primary);
+}
+
+/* Additional dark theme overrides */
+
+.text-muted {
+  color: var(--bs-secondary-color) !important;
+}
+
+.border {
+  border-color: var(--bs-border-color) !important;
+}
+
+/* Keep Bootstrap default light buttons and badges for readable light surfaces */
+
+/* Spinner and loading components */
+.spinner-border {
+  color: var(--bs-primary);
+}
+
+/* Link styling for dark theme */
+.link-primary {
+  color: var(--bs-info) !important;
+}
+
+.link-primary:hover {
+  color: #9ff7f3 !important;
+}
+
+/* Alert component overrides */
+.alert-danger {
+  background-color: rgba(220, 53, 69, 0.1);
+  border-color: rgba(220, 53, 69, 0.2);
+  color: #f8d7da;
+}
+
+.alert-warning {
+  background-color: rgba(255, 193, 7, 0.1);
+  border-color: rgba(255, 193, 7, 0.2);
+  color: #fff3cd;
 }
 
 /* Animation utilities */

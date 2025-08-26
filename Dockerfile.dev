@@ -39,7 +39,9 @@ RUN pip install \
     debugpy \
     ipdb \
     pytest-xvfb \
-    pytest-cov
+    pytest-cov \
+    aiofiles \
+    asyncio-throttle
 
 # Copy backend code (this will be overridden by volume in docker-compose.dev.yml)
 COPY backend/ backend/

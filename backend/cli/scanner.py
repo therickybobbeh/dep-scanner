@@ -18,11 +18,12 @@ except ImportError:
 class DepScanner:
     """CLI scanner with Rich progress display"""
     
-    def __init__(self):
+    def __init__(self, verbose: bool = False):
         self.core_scanner = CoreScanner()
         self.console = Console()
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.current_progress = None
+        self.verbose = verbose
     
     async def scan_repository(self, repo_path: str, options: ScanOptions) -> Report:
         """Scan a repository for vulnerabilities with CLI progress display"""
@@ -54,9 +55,17 @@ class DepScanner:
     def _update_progress(self, message: str):
         """Update progress display"""
         if self.current_progress and hasattr(self, 'current_task'):
+            # Always show file processing messages in verbose mode
+            if self.verbose and ("processing" in message.lower() or "scanning" in message.lower() or "found" in message.lower()):
+                self.console.print(f"[dim]{message}[/dim]")
+            
             if message.startswith("Found") and ("Python" in message or "JavaScript" in message):
                 self.console.print(message)
             elif message.startswith("Warning"):
                 self.console.print(f"[yellow]{message}[/yellow]")
+            elif message.startswith("Processing file:") or message.startswith("Scanning file:"):
+                # Always show individual file processing in verbose mode
+                if self.verbose:
+                    self.console.print(f"[cyan]{message}[/cyan]")
             else:
                 self.current_progress.update(self.current_task, description=message)

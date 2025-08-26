@@ -38,8 +38,8 @@ export function getSeverityVariant(severity: SeverityLevel | null): string {
 
 export function sortBySeverity(vulnerabilities: any[]): any[] {
   return [...vulnerabilities].sort((a, b) => {
-    const priorityA = a.severity ? severityPriority[a.severity] : 0;
-    const priorityB = b.severity ? severityPriority[b.severity] : 0;
+    const priorityA = a.severity ? severityPriority[a.severity as SeverityLevel] : 0;
+    const priorityB = b.severity ? severityPriority[b.severity as SeverityLevel] : 0;
     return priorityB - priorityA; // Descending order (highest severity first)
   });
 }
@@ -54,7 +54,7 @@ export function groupBySeverity(vulnerabilities: any[]): Record<SeverityLevel, a
   };
 
   vulnerabilities.forEach(vuln => {
-    const severity = vuln.severity || SeverityLevel.UNKNOWN;
+    const severity = (vuln.severity as SeverityLevel) || SeverityLevel.UNKNOWN;
     groups[severity].push(vuln);
   });
 

@@ -29,7 +29,9 @@ class CLIFormatter:
         table.add_column("Source", style="blue")
         table.add_column("Vulnerability ID", style="red")
         table.add_column("Severity", style="bold")
-        table.add_column("Link", style="dim")
+        
+        # Always show URLs instead of emojis
+        table.add_column("Advisory URL", style="dim blue", width=50)
         
         for vuln in report.vulnerable_packages:
             # Find the dependency to get type and source info
@@ -53,11 +55,12 @@ class CLIFormatter:
             severity_text = self._format_severity(vuln.severity)
             
             # Generate link - prioritize advisory_url, fallback to OSV.dev
-            link = ""
             if vuln.advisory_url:
-                link = "🔗"
+                link = vuln.advisory_url
             elif vuln.vulnerability_id:
-                link = "🔗"
+                link = f"https://osv.dev/vulnerability/{vuln.vulnerability_id}"
+            else:
+                link = "No URL available"
             
             table.add_row(
                 vuln.package,
@@ -93,7 +96,7 @@ class CLIFormatter:
         unique_packages = len(set(vp.package for vp in report.vulnerable_packages))
         
         if vulnerable_count == 0:
-            self.console.print("[green]🎉 No vulnerabilities found![/green]")
+            self.console.print("[green]✓ No vulnerabilities found![/green]")
             return
         
         # Count by severity

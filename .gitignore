@@ -32,10 +32,35 @@ venv.bak/
 
 # IDE
 .vscode/
-.idea/
 *.swp
 *.swo
 *~
+
+# IntelliJ IDEA - exclude workspace but keep run configurations
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/dictionaries/
+.idea/shelf/
+.idea/dataSources/
+.idea/dataSources.ids
+.idea/dataSources.xml
+.idea/dataSources.local.xml
+.idea/sqlDataSources.xml
+.idea/dynamic.xml
+.idea/uiDesigner.xml
+.idea/gradle.xml
+.idea/libraries/
+.idea/misc.xml
+.idea/.gitignore
+.idea/inspectionProfiles/
+.idea/caches/
+.idea/jarRepositories.xml
+
+# Keep IntelliJ run configurations
+!.idea/
+!.idea/runConfigurations/
+!.idea/modules.xml
+!.idea/*.iml
 
 # OS
 .DS_Store
@@ -154,7 +179,6 @@ temp/
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
-.idea
 *.suo
 *.ntvs*
 *.njsproj

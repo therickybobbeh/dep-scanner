@@ -54,11 +54,17 @@ export interface ScanProgress {
   error_message?: string;
 }
 
+export interface CacheControl {
+  bypass_cache: boolean;
+  use_enhanced_resolution: boolean;
+}
+
 export interface ScanOptions {
   include_dev_dependencies: boolean;
   stale_months?: number;
   ignore_severities: SeverityLevel[];
   ignore_rules?: any[];
+  cache_control?: CacheControl;
 }
 
 export interface ScanRequest {

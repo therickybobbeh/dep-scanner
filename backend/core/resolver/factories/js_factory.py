@@ -5,6 +5,7 @@ from ..parsers.javascript import (
     PackageLockV2Parser, 
     YarnLockParser,
     PackageJsonParser,
+    EnhancedPackageJsonParser,
     NpmLsParser
 )
 
@@ -17,15 +18,42 @@ class JavaScriptParserFactory:
     and content analysis.
     """
     
-    def __init__(self):
+    def __init__(
+        self, 
+        use_enhanced_package_json: bool = False, 
+        resolve_versions: bool = False,
+        enable_transitive: bool = False,
+        max_depth: int = 10
+    ):
         self.detector = FileFormatDetector()
+        self.use_enhanced_package_json = use_enhanced_package_json
+        self.resolve_versions = resolve_versions
+        self.enable_transitive = enable_transitive
+        self.max_depth = max_depth
+        
+        # Choose package.json parser based on configuration
+        package_json_parser = (
+            EnhancedPackageJsonParser(
+                resolve_versions=resolve_versions,
+                enable_transitive=enable_transitive,
+                max_depth=max_depth
+            ) 
+            if use_enhanced_package_json 
+            else PackageJsonParser()
+        )
+        
         self._parsers = {
             "package-lock": {
                 "v1": PackageLockV1Parser(),
                 "v2": PackageLockV2Parser()
             },
             "yarn-lock": YarnLockParser(),
-            "package-json": PackageJsonParser(),
+            "package-json": package_json_parser,
+            "package-json-enhanced": EnhancedPackageJsonParser(
+                resolve_versions=resolve_versions,
+                enable_transitive=enable_transitive,
+                max_depth=max_depth
+            ),
             "npm-ls": NpmLsParser()
         }
     
@@ -84,6 +112,8 @@ class JavaScriptParserFactory:
             return self._parsers["yarn-lock"]
         elif format_name == "package-json":
             return self._parsers["package-json"]
+        elif format_name == "package-json-enhanced":
+            return self._parsers["package-json-enhanced"]
         else:
             raise ValueError(f"Unknown format: {format_name}")
     

@@ -1,7 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { Download, Shield, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
 import axios from 'axios';
+import { Container, Row, Col, Card, Button, ButtonGroup, Form, Alert, Badge } from 'react-bootstrap';
+import ProgressBar from '../components/ui/ProgressBar';
+import StatsCard from '../components/ui/StatsCard';
+import SeverityBadge from '../components/ui/SeverityBadge';
+import { SeverityLevel } from '../types/common';
+import { groupBySeverity, sortBySeverity } from '../utils/severity';
 import type { ScanProgress, ScanReport } from '../types/api';
 
 const ReportPage: React.FC = () => {
@@ -11,10 +17,13 @@ const ReportPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'severity' | 'package'>('severity');
-  const [filterSeverity, setFilterSeverity] = useState<string>('all');
+  const [filterSeverity, setFilterSeverity] = useState<SeverityLevel | 'all'>('all');
 
   useEffect(() => {
     if (!jobId) return;
+
+    let pollCount = 0;
+    const maxPollCount = 180; // 15 minutes max (180 * 5 seconds)
 
     const fetchStatus = async () => {
       try {
@@ -29,14 +38,29 @@ const ReportPage: React.FC = () => {
         } else if (progressData.status === 'failed') {
           setError(progressData.error_message || 'Scan failed');
           setLoading(false);
+        } else if (pollCount < maxPollCount) {
+          // Continue polling with 5 second intervals to avoid rate limiting
+          pollCount++;
+          setTimeout(fetchStatus, 5000);
         } else {
-          // Continue polling
-          setTimeout(fetchStatus, 2000);
+          setError('Scan timed out after 15 minutes');
+          setLoading(false);
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('Failed to fetch status:', err);
-        setError('Failed to fetch scan status');
-        setLoading(false);
+        if (err?.response?.status === 429) {
+          // Rate limited - wait longer and retry
+          if (pollCount < maxPollCount) {
+            pollCount++;
+            setTimeout(fetchStatus, 10000); // Wait 10 seconds on rate limit
+          } else {
+            setError('Scan timed out due to rate limiting');
+            setLoading(false);
+          }
+        } else {
+          setError('Failed to fetch scan status');
+          setLoading(false);
+        }
       }
     };
 
@@ -63,26 +87,31 @@ const ReportPage: React.FC = () => {
     }
   };
 
-  const getSeverityColor = (severity: string | null) => {
-    switch (severity) {
-      case 'CRITICAL': return 'text-red-700 bg-red-100';
-      case 'HIGH': return 'text-orange-700 bg-orange-100';
-      case 'MEDIUM': return 'text-yellow-700 bg-yellow-100';
-      case 'LOW': return 'text-blue-700 bg-blue-100';
-      default: return 'text-gray-700 bg-gray-100';
-    }
-  };
+  const SeverityFilter: React.FC<{ counts: Record<SeverityLevel, number> }>=({ counts }) => (
+    <ButtonGroup size="sm" role="group" aria-label="Filter vulnerabilities by severity">
+      <Button 
+        variant="light"
+        className="text-primary"
+        active={filterSeverity === 'all'}
+        onClick={() => setFilterSeverity('all')}
+      >
+        All <Badge bg="light" text="dark" className="ms-2">{report?.vulnerable_count ?? 0}</Badge>
+      </Button>
+      {Object.values(SeverityLevel).map(sev => (
+        <Button
+          key={sev}
+          variant="light"
+          className="text-primary text-uppercase"
+          active={filterSeverity === sev}
+          onClick={() => setFilterSeverity(sev as SeverityLevel)}
+        >
+          {sev} <Badge bg="light" text="dark" className="ms-2">{counts[sev as SeverityLevel] ?? 0}</Badge>
+        </Button>
+      ))}
+    </ButtonGroup>
+  );
 
-  const getSeverityBadge = (severity: string | null) => {
-    const colorClass = getSeverityColor(severity);
-    return (
-      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${colorClass}`}>
-        {severity || 'UNKNOWN'}
-      </span>
-    );
-  };
-
-  const sortedVulnerabilities = React.useMemo(() => {
+  const sortedVulnerabilities = useMemo(() => {
     if (!report) return [];
     
     let filtered = report.vulnerable_packages;
@@ -91,273 +120,162 @@ const ReportPage: React.FC = () => {
       filtered = filtered.filter(v => v.severity === filterSeverity);
     }
 
-    return filtered.sort((a, b) => {
-      if (sortBy === 'severity') {
-        const severityOrder = { 'CRITICAL': 4, 'HIGH': 3, 'MEDIUM': 2, 'LOW': 1, 'UNKNOWN': 0 };
-        const aSeverity = severityOrder[a.severity as keyof typeof severityOrder] || 0;
-        const bSeverity = severityOrder[b.severity as keyof typeof severityOrder] || 0;
-        return bSeverity - aSeverity;
-      } else {
-        return a.package.localeCompare(b.package);
-      }
-    });
+    if (sortBy === 'severity') {
+      return sortBySeverity(filtered);
+    }
+    return [...filtered].sort((a, b) => a.package.localeCompare(b.package));
   }, [report, sortBy, filterSeverity]);
 
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white shadow rounded-lg p-8">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-            <h2 className="mt-4 text-lg font-medium text-gray-900">
-              {progress?.current_step || 'Scanning dependencies...'}
-            </h2>
+      <Container className="py-4">
+        <Card className="scan-progress">
+          <Card.Body className="text-center">
+            <div className="mb-3">
+              <div className="spinner-border text-primary" role="status" aria-hidden="true" />
+            </div>
+            <Card.Title className="mb-2">{progress?.current_step || 'Scanning dependencies...'}</Card.Title>
             {progress && (
-              <div className="mt-4">
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div 
-                    className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${progress.progress_percent}%` }}
-                  ></div>
-                </div>
-                <p className="mt-2 text-sm text-gray-500">
-                  {Math.round(progress.progress_percent)}% complete
-                </p>
+              <div aria-live="polite" aria-label="Scan progress">
+                <ProgressBar value={progress.progress_percent} />
+                <div className="text-muted small mt-2">{Math.round(progress.progress_percent)}% complete</div>
               </div>
             )}
-          </div>
-        </div>
-      </div>
+          </Card.Body>
+        </Card>
+      </Container>
     );
   }
 
   if (error) {
     return (
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-red-50 border border-red-200 rounded-md p-4">
-          <div className="flex">
-            <AlertTriangle className="h-5 w-5 text-red-400" />
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-red-800">Scan Failed</h3>
-              <div className="mt-2 text-sm text-red-700">{error}</div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <Container className="py-4">
+        <Alert variant="danger">
+          <AlertTriangle size={18} className="me-2" />
+          <strong className="me-2">Scan Failed</strong>
+          {error}
+        </Alert>
+      </Container>
     );
   }
 
   if (!report) {
     return (
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
-          <p className="text-yellow-800">No scan results available.</p>
-        </div>
-      </div>
+      <Container className="py-4">
+        <Alert variant="warning">No scan results available.</Alert>
+      </Container>
     );
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <Container className="py-4">
       {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Scan Results</h1>
-            <p className="mt-2 text-gray-600">
-              Scan completed on {new Date(report.meta.generated_at).toLocaleDateString()}
-            </p>
+      <Card className="border-0 shadow-sm mb-4">
+        <Card.Body className="d-flex flex-wrap justify-content-between align-items-end">
+          <div className="mb-3 mb-md-0">
+            <h1 className="h2 fw-bold mb-1">Scan Results</h1>
+            <div className="text-muted">Completed on {new Date(report.meta.generated_at).toLocaleString()}</div>
           </div>
-          <div className="flex space-x-3">
-            <button
-              onClick={() => handleExport('json')}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Export JSON
-            </button>
-            <button
-              onClick={() => handleExport('csv')}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Export CSV
-            </button>
+          <div className="d-flex gap-2">
+            <Button variant="light" size="sm" className="text-primary" onClick={() => handleExport('json')} aria-label="Export JSON">
+              <Download size={16} className="me-2" /> JSON
+            </Button>
+            <Button variant="light" size="sm" className="text-primary" onClick={() => handleExport('csv')} aria-label="Export CSV">
+              <Download size={16} className="me-2" /> CSV
+            </Button>
           </div>
-        </div>
-      </div>
+        </Card.Body>
+      </Card>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <Shield className="h-6 w-6 text-gray-400" />
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">Total Dependencies</dt>
-                  <dd className="text-lg font-medium text-gray-900">{report.total_dependencies}</dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <AlertTriangle className="h-6 w-6 text-red-400" />
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">Vulnerable Packages</dt>
-                  <dd className="text-lg font-medium text-gray-900">{report.vulnerable_count}</dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <CheckCircle className="h-6 w-6 text-green-400" />
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">Clean Packages</dt>
-                  <dd className="text-lg font-medium text-gray-900">
-                    {report.total_dependencies - report.vulnerable_count}
-                  </dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <Clock className="h-6 w-6 text-blue-400" />
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">Ecosystems</dt>
-                  <dd className="text-lg font-medium text-gray-900">
-                    {report.meta.ecosystems.join(', ')}
-                  </dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <Row className="g-3 mb-4">
+        <Col md={3} xs={12}>
+          <StatsCard title="Total Dependencies" value={report.total_dependencies} icon={<Shield size={24} />} variant="primary" />
+        </Col>
+        <Col md={3} xs={12}>
+          <StatsCard title="Vulnerable Packages" value={report.vulnerable_count} icon={<AlertTriangle size={24} />} variant="danger" />
+        </Col>
+        <Col md={3} xs={12}>
+          <StatsCard title="Clean Packages" value={report.total_dependencies - report.vulnerable_count} icon={<CheckCircle size={24} />} variant="success" />
+        </Col>
+        <Col md={3} xs={12}>
+          <StatsCard title="Ecosystems" value={report.meta.ecosystems.join(', ')} icon={<Clock size={24} />} variant="info" />
+        </Col>
+      </Row>
 
       {/* Vulnerabilities */}
       {report.vulnerable_count > 0 ? (
-        <div className="bg-white shadow overflow-hidden sm:rounded-md">
-          <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg leading-6 font-medium text-gray-900">
-                Vulnerabilities Found
-              </h3>
-              <div className="flex space-x-4">
-                <select
-                  value={filterSeverity}
-                  onChange={(e) => setFilterSeverity(e.target.value)}
-                  className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-                >
-                  <option value="all">All Severities</option>
-                  <option value="CRITICAL">Critical</option>
-                  <option value="HIGH">High</option>
-                  <option value="MEDIUM">Medium</option>
-                  <option value="LOW">Low</option>
-                </select>
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as 'severity' | 'package')}
-                  className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-                >
-                  <option value="severity">Sort by Severity</option>
-                  <option value="package">Sort by Package</option>
-                </select>
-              </div>
+        <Card>
+          <Card.Header className="d-flex flex-wrap justify-content-between align-items-center">
+            <div className="h5 mb-0">Vulnerabilities Found</div>
+            <div className="d-flex gap-2">
+              {(() => {
+                const counts = groupBySeverity(report.vulnerable_packages);
+                return <SeverityFilter counts={{
+                  [SeverityLevel.CRITICAL]: counts[SeverityLevel.CRITICAL].length,
+                  [SeverityLevel.HIGH]: counts[SeverityLevel.HIGH].length,
+                  [SeverityLevel.MEDIUM]: counts[SeverityLevel.MEDIUM].length,
+                  [SeverityLevel.LOW]: counts[SeverityLevel.LOW].length,
+                  [SeverityLevel.UNKNOWN]: counts[SeverityLevel.UNKNOWN].length,
+                }} />
+              })()}
+              <Form.Select
+                size="sm"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as 'severity' | 'package')}
+                aria-label="Sort vulnerabilities"
+              >
+                <option value="severity">Sort by Severity</option>
+                <option value="package">Sort by Package</option>
+              </Form.Select>
             </div>
-          </div>
-          <ul className="divide-y divide-gray-200">
+          </Card.Header>
+          <Card.Body className="p-0">
             {sortedVulnerabilities.map((vuln, index) => (
-              <li key={`${vuln.package}-${vuln.vulnerability_id}-${index}`} className="px-4 py-6">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center mb-2">
-                      <h4 className="text-lg font-medium text-gray-900 mr-3">
-                        {vuln.package}@{vuln.version}
-                      </h4>
-                      {getSeverityBadge(vuln.severity)}
+              <div key={`${vuln.package}-${vuln.vulnerability_id}-${index}`} className="p-3 border-bottom">
+                <div className="d-flex flex-wrap justify-content-between align-items-start">
+                  <div className="me-3">
+                    <div className="d-flex align-items-center mb-2">
+                      <div className="h5 mb-0 me-3">{vuln.package}@{vuln.version}</div>
+                      <SeverityBadge severity={vuln.severity as SeverityLevel} />
                     </div>
-                    
-                    <div className="mb-3">
-                      <p className="text-sm text-gray-600">{vuln.summary}</p>
-                    </div>
-
-                    <div className="flex flex-wrap gap-4 text-sm">
+                    <div className="text-muted small mb-2">{vuln.summary}</div>
+                    <div className="d-flex flex-wrap gap-3 small">
                       {vuln.vulnerability_id && (
-                        <div>
-                          <span className="font-medium text-gray-500">ID: </span>
-                          <span className="text-gray-900">{vuln.vulnerability_id}</span>
-                        </div>
+                        <div><span className="text-muted">ID:</span> <span className="fw-semibold">{vuln.vulnerability_id}</span></div>
                       )}
-                      
                       {vuln.cve_ids.length > 0 && (
-                        <div>
-                          <span className="font-medium text-gray-500">CVE: </span>
-                          <span className="text-gray-900">{vuln.cve_ids.join(', ')}</span>
-                        </div>
+                        <div><span className="text-muted">CVE:</span> <span className="fw-semibold">{vuln.cve_ids.join(', ')}</span></div>
                       )}
-                      
                       {vuln.fixed_range && (
-                        <div>
-                          <span className="font-medium text-gray-500">Fix: </span>
-                          <span className="text-green-600 font-medium">{vuln.fixed_range}</span>
-                        </div>
+                        <div><span className="text-muted">Fix:</span> <span className="text-success fw-medium">{vuln.fixed_range}</span></div>
                       )}
                     </div>
-
                     {vuln.advisory_url && (
                       <div className="mt-2">
-                        <a
-                          href={vuln.advisory_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-indigo-600 hover:text-indigo-500 text-sm"
-                        >
+                        <a href={vuln.advisory_url} target="_blank" rel="noopener noreferrer" className="link-primary small">
                           View Advisory →
                         </a>
                       </div>
                     )}
                   </div>
                 </div>
-              </li>
+              </div>
             ))}
-          </ul>
-        </div>
+          </Card.Body>
+        </Card>
       ) : (
-        <div className="bg-green-50 border border-green-200 rounded-md p-8 text-center">
-          <CheckCircle className="mx-auto h-12 w-12 text-green-400 mb-4" />
-          <h3 className="text-lg font-medium text-green-800 mb-2">
-            No Vulnerabilities Found!
-          </h3>
-          <p className="text-green-700">
-            All {report.total_dependencies} dependencies are free of known security vulnerabilities.
-          </p>
-        </div>
+        <Card className="text-center">
+          <Card.Body>
+            <CheckCircle className="text-success mb-2" />
+            <Card.Title>No Vulnerabilities Found</Card.Title>
+            <Card.Text className="text-muted">
+              All {report.total_dependencies} dependencies are free of known security vulnerabilities.
+            </Card.Text>
+          </Card.Body>
+        </Card>
       )}
-    </div>
+    </Container>
   );
 };
 

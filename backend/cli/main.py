@@ -39,7 +39,8 @@ def scan(
     include_dev: bool = typer.Option(False, "--include-dev", help="Include development dependencies"),
     ignore_severity: Optional[str] = typer.Option(None, "--ignore-severity", help="Ignore vulnerabilities of specified severity"),
     open_report: bool = typer.Option(False, "--open", help="Generate and open HTML report in browser"),
-    output_file: Optional[str] = typer.Option(None, "--output", "-o", help="HTML report output file")
+    output_file: Optional[str] = typer.Option(None, "--output", "-o", help="HTML report output file"),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Show detailed scanning progress including files being processed")
 ):
     """Scan a repository for dependency vulnerabilities."""
     
@@ -61,7 +62,7 @@ def scan(
     
     try:
         # Initialize scanner and formatter
-        scanner = DepScanner()
+        scanner = DepScanner(verbose=verbose)
         formatter = CLIFormatter()
         
         # Run the scan
@@ -78,12 +79,12 @@ def scan(
         # Export JSON if requested
         if json_output:
             export_json_report(report, json_output)
-            console.print(f"\n[green]✅ JSON report saved to: {json_output}[/green]")
+            console.print(f"\n[green]✓ JSON report saved to: {json_output}[/green]")
         
         # Generate and optionally open HTML report
         if open_report or output_file:
             html_path = generate_modern_html_report(report, output_file)
-            console.print(f"\n[green]📄 HTML report generated: {html_path}[/green]")
+            console.print(f"\n[green]✓ HTML report generated: {html_path}[/green]")
             
             if open_report:
                 try:

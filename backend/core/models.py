@@ -44,12 +44,25 @@ class IgnoreRule(BaseModel):
     reason: str
     expires: datetime | None = None
 
+class CacheControl(BaseModel):
+    """Cache control options for dependency resolution"""
+    bypass_cache: bool = Field(default=False, description="Force fresh version lookups from registry")
+    use_enhanced_resolution: bool = Field(default=False, description="Use enhanced version resolution for package.json")
+
 class ScanOptions(BaseModel):
     """Configuration options for a scan"""
     include_dev_dependencies: bool = Field(default=True)
     stale_months: int | None = Field(default=None, description="Consider packages stale if no release in X months")
     ignore_severities: list[SeverityLevel] = Field(default_factory=list)
     ignore_rules: list[IgnoreRule] = Field(default_factory=list)
+    
+    # Consistency checking options
+    enhanced_consistency: bool = Field(default=False, description="Enable enhanced consistency checking between manifest and lockfiles")
+    resolve_versions: bool = Field(default=False, description="Resolve version ranges to actual versions for better consistency")
+    consistency_report: bool = Field(default=False, description="Include consistency analysis in scan results")
+    
+    # Cache control options
+    cache_control: CacheControl | None = Field(default=None, description="Cache control settings for dependency resolution")
 
 class JobStatus(str, Enum):
     PENDING = "pending"

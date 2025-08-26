@@ -1,6 +1,6 @@
 # Makefile for DepScan
 
-.PHONY: help install install-dev test test-unit test-integration clean build frontend backend start-dev start-docker-dev stop-docker-dev start-staging stop-staging lint format docker-dev docker-staging
+.PHONY: help install install-dev test test-unit clean build frontend backend start-dev start-docker-dev stop-docker-dev restart-docker-dev start-staging stop-staging restart-staging lint format docker-dev docker-staging logs-dev logs-dev-frontend logs-dev-backend logs-staging logs-staging-frontend logs-staging-backend logs-staging-nginx status-dev status-staging health-check-dev health-check-staging setup-dev setup-staging cache-stats cache-clear cache-cleanup cache-demo
 
 help:
 	@echo "🔧 DepScan Development Commands"
@@ -19,9 +19,28 @@ help:
 	@echo "  backend       Install backend dependencies"
 	@echo ""
 	@echo "🚀 Development:"
-	@echo "  start-dev     Start development servers (manual)"
-	@echo "  start-docker-dev Start development with Docker"
-	@echo "  stop-docker-dev  Stop Docker development environment"
+	@echo "  start-dev             Start development servers (manual)"
+	@echo "  start-docker-dev      Start development with Docker"
+	@echo "  stop-docker-dev       Stop Docker development environment"
+	@echo "  restart-docker-dev    Restart Docker development environment"
+	@echo ""
+	@echo "🏭 Staging:"
+	@echo "  start-staging         Start staging environment"
+	@echo "  stop-staging          Stop staging environment"
+	@echo "  restart-staging       Restart staging environment"
+	@echo ""
+	@echo "📊 Monitoring & Status:"
+	@echo "  status-dev            Show development environment status"
+	@echo "  status-staging        Show staging environment status"
+	@echo "  health-check-dev      Health check development services"
+	@echo "  health-check-staging  Health check staging services"
+	@echo "  logs-dev              View all development logs"
+	@echo "  logs-dev-frontend     View development frontend logs"
+	@echo "  logs-dev-backend      View development backend logs"
+	@echo "  logs-staging          View all staging logs"
+	@echo "  logs-staging-frontend View staging frontend logs"
+	@echo "  logs-staging-backend  View staging backend logs"
+	@echo "  logs-staging-nginx    View staging nginx logs"
 	@echo ""
 	@echo "🔍 Code Quality:"
 	@echo "  lint          Run linting"
@@ -30,8 +49,16 @@ help:
 	@echo "🐳 Docker:"
 	@echo "  docker-dev      Build development Docker images"
 	@echo "  docker-staging  Build staging Docker images"
-	@echo "  start-staging   Start staging environment"
-	@echo "  stop-staging    Stop staging environment"
+	@echo ""
+	@echo "⚙️  Environment Setup:"
+	@echo "  setup-dev       Set up development environment files"
+	@echo "  setup-staging   Set up staging environment files"
+	@echo ""
+	@echo "🗄️  Cache Management:"
+	@echo "  cache-stats     Show npm version cache statistics"
+	@echo "  cache-clear     Clear all cached npm version data"
+	@echo "  cache-cleanup   Remove expired cache entries only"
+	@echo "  cache-demo      Run cache management demonstration"
 	@echo ""
 	@echo "🧹 Cleanup:"
 	@echo "  clean         Clean build artifacts"
@@ -94,14 +121,31 @@ start-docker-dev:
 	@echo "✅ Development environment started!"
 	@echo "Backend: http://localhost:8000"
 	@echo "Frontend: http://localhost:3000"
+	@echo "Adminer (database): http://localhost:8080"
 	@echo ""
-	@echo "View logs: docker-compose -f docker-compose.dev.yml logs -f"
+	@echo "View logs: make logs-dev"
+	@echo "View frontend logs: make logs-dev-frontend"
+	@echo "View backend logs: make logs-dev-backend"
 	@echo "Stop: make stop-docker-dev"
 
 stop-docker-dev:
 	@echo "🛑 Stopping Docker development environment..."
 	docker-compose -f docker-compose.dev.yml down
 	@echo "✅ Development environment stopped!"
+
+restart-docker-dev:
+	@echo "🔄 Restarting Docker development environment..."
+	docker-compose -f docker-compose.dev.yml restart
+	@echo "✅ Development environment restarted!"
+
+logs-dev:
+	docker-compose -f docker-compose.dev.yml logs -f
+
+logs-dev-frontend:
+	docker-compose -f docker-compose.dev.yml logs -f frontend
+
+logs-dev-backend:
+	docker-compose -f docker-compose.dev.yml logs -f backend
 
 lint:
 	@echo "🔍 Running linters..."
@@ -123,6 +167,23 @@ cli-scan:
 	@echo "Usage: make cli-scan ARGS='path/to/project'"
 	cd backend && python cli.py scan $(ARGS)
 
+# Cache management
+cache-stats:
+	@echo "📊 Getting cache statistics..."
+	curl -s http://localhost:8000/admin/cache/stats | python -m json.tool
+
+cache-clear:
+	@echo "🧹 Clearing npm version cache..."
+	curl -s -X POST http://localhost:8000/admin/cache/clear | python -m json.tool
+
+cache-cleanup:
+	@echo "🧽 Cleaning up expired cache entries..."
+	curl -s -X POST http://localhost:8000/admin/cache/cleanup | python -m json.tool
+
+cache-demo:
+	@echo "🎬 Running cache management demo..."
+	cd backend && python examples/cache_management_demo.py
+
 # Docker commands
 docker-dev:
 	@echo "🐳 Building development Docker images..."
@@ -138,12 +199,56 @@ start-staging:
 	@echo "🚀 Starting staging environment..."
 	docker-compose -f docker-compose.staging.yml up -d
 	@echo "✅ Staging environment started!"
-	@echo "Access: http://localhost:8000"
+	@echo "Backend: http://localhost:8000"
+	@echo "Frontend: http://localhost:3000"
+	@echo "Nginx proxy: http://localhost:80"
+	@echo ""
+	@echo "View logs: make logs-staging"
+	@echo "View frontend logs: make logs-staging-frontend"
+	@echo "View backend logs: make logs-staging-backend"
+	@echo "Stop: make stop-staging"
 
 stop-staging:
 	@echo "🛑 Stopping staging environment..."
 	docker-compose -f docker-compose.staging.yml down
 	@echo "✅ Staging environment stopped!"
+
+restart-staging:
+	@echo "🔄 Restarting staging environment..."
+	docker-compose -f docker-compose.staging.yml restart
+	@echo "✅ Staging environment restarted!"
+
+logs-staging:
+	docker-compose -f docker-compose.staging.yml logs -f
+
+logs-staging-frontend:
+	docker-compose -f docker-compose.staging.yml logs -f frontend
+
+logs-staging-backend:
+	docker-compose -f docker-compose.staging.yml logs -f dep-scanner
+
+logs-staging-nginx:
+	docker-compose -f docker-compose.staging.yml logs -f nginx
+
+# Status and health commands
+status-dev:
+	@echo "🔍 Development environment status:"
+	@docker-compose -f docker-compose.dev.yml ps
+
+status-staging:
+	@echo "🔍 Staging environment status:"
+	@docker-compose -f docker-compose.staging.yml ps
+
+health-check-dev:
+	@echo "🏥 Checking development environment health..."
+	@curl -s http://localhost:8000/health || echo "❌ Backend health check failed"
+	@curl -s http://localhost:3000 > /dev/null && echo "✅ Frontend is running" || echo "❌ Frontend health check failed"
+
+health-check-staging:
+	@echo "🏥 Checking staging environment health..."
+	@curl -s http://localhost:8000/health || echo "❌ Backend health check failed"
+	@curl -s http://localhost:3000 > /dev/null && echo "✅ Frontend is running" || echo "❌ Frontend health check failed"
+	@curl -s http://localhost:80/health || echo "❌ Nginx proxy health check failed"
 
 # Environment setup
 setup-dev:
@@ -156,3 +261,14 @@ setup-dev:
 	@echo "1. Review .env.development and frontend/.env.development"
 	@echo "2. Run 'make install-dev' to install dependencies"
 	@echo "3. Run 'make start-docker-dev' to start development environment"
+
+setup-staging:
+	@echo "🛠️  Setting up staging environment..."
+	cp .env.example .env.staging
+	cp frontend/.env.example frontend/.env.staging
+	@echo "✅ Environment files created! Please review and customize them."
+	@echo ""
+	@echo "Next steps:"
+	@echo "1. Review .env.staging and frontend/.env.staging"
+	@echo "2. Run 'make docker-staging' to build staging images"
+	@echo "3. Run 'make start-staging' to start staging environment"
