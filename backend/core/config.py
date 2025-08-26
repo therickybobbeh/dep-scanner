@@ -30,15 +30,6 @@ class Settings(BaseSettings):
     API_PORT: int = Field(default=8000, env="API_PORT")
     API_RELOAD: bool = Field(default=False, env=["API_RELOAD", "RELOAD"])  # Support both env vars
     
-    # Cache settings
-    CACHE_TTL_HOURS: int = Field(default=24, env="CACHE_TTL_HOURS")
-    CACHE_CLEANUP_INTERVAL_HOURS: int = Field(default=6, env="CACHE_CLEANUP_INTERVAL_HOURS")
-    CACHE_DB_PATH: str = Field(default="osv_cache.db", env="CACHE_DB_PATH")
-    
-    # Version resolution cache settings
-    NPM_VERSION_CACHE_TTL: int = Field(default=3600, env="NPM_VERSION_CACHE_TTL")  # 1 hour default
-    PYPI_VERSION_CACHE_TTL: int = Field(default=3600, env="PYPI_VERSION_CACHE_TTL")  # 1 hour default
-    
     # Transitive resolution settings
     ENABLE_TRANSITIVE_RESOLUTION: bool = Field(default=False, env="ENABLE_TRANSITIVE_RESOLUTION")
     MAX_TRANSITIVE_DEPTH: int = Field(default=10, env="MAX_TRANSITIVE_DEPTH")
@@ -74,6 +65,7 @@ class Settings(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = True
+        extra = "ignore"  # Ignore extra environment variables
 
 
 def setup_logging(settings: Settings) -> None:

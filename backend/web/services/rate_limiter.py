@@ -10,10 +10,10 @@ from ...core.config import settings
 class RateLimiter:
     """Simple in-memory rate limiter for API endpoints"""
     
-    def __init__(self):
+    def __init__(self, max_requests: int = 60, window_seconds: int = 60):
         self._requests: Dict[str, list] = {}
-        self._max_requests = 60  # requests per window
-        self._window_seconds = 60  # 1 minute window
+        self._max_requests = max_requests  # requests per window
+        self._window_seconds = window_seconds  # window size in seconds
     
     def _get_client_id(self, request: Request) -> str:
         """Extract client identifier from request"""
@@ -65,8 +65,9 @@ class RateLimiter:
         return remaining, reset_time
 
 
-# Global rate limiter instance
-rate_limiter = RateLimiter()
+# Global rate limiter instances
+rate_limiter = RateLimiter(max_requests=60, window_seconds=60)
+status_rate_limiter = RateLimiter(max_requests=300, window_seconds=60)
 
 
 async def check_rate_limit(request: Request):
@@ -80,5 +81,19 @@ async def check_rate_limit(request: Request):
     
     # Add rate limit headers
     remaining, reset_time = rate_limiter.get_remaining_requests(request)
+    request.state.rate_limit_remaining = remaining
+    request.state.rate_limit_reset = reset_time
+
+
+async def check_status_rate_limit(request: Request):
+    """More permissive rate limiting for frequent status polling"""
+    if not status_rate_limiter.is_allowed(request):
+        raise HTTPException(
+            status_code=429,
+            detail="Rate limit exceeded. Please reduce polling frequency.",
+            headers={"Retry-After": "60"}
+        )
+    
+    remaining, reset_time = status_rate_limiter.get_remaining_requests(request)
     request.state.rate_limit_remaining = remaining
     request.state.rate_limit_reset = reset_time

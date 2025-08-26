@@ -52,8 +52,8 @@ const HomePage: React.FC = () => {
               <div>
                 <Card.Title className="h5 mb-2">Multi-Ecosystem Support</Card.Title>
                 <Card.Text className="text-muted">
-                  Scans Python (pip, poetry, pipenv) and JavaScript (npm, yarn) projects
-                  with full transitive dependency resolution.
+                  Scans Python (pip, poetry, pipenv) and JavaScript (npm, yarn) projects,
+                  using lockfiles for accurate transitive dependency analysis.
                 </Card.Text>
               </div>
             </Card.Body>

@@ -58,7 +58,8 @@ class DependencyTreeBuilder:
                     )
                     deps.extend(child_deps)
         
-        return deps
+        # Apply deduplication to remove duplicate dependencies
+        return self.deduplicate_dependencies(deps)
     
     def build_tree_flat(
         self, 
@@ -66,7 +67,7 @@ class DependencyTreeBuilder:
         root_dependencies: dict | None = None
     ) -> list[Dep]:
         """
-        Build dependency tree from flat package structure
+        Build dependency tree from flat package structure with proper parent tracking
         
         Used for package-lock.json v2/v3 format and similar flat structures
         
@@ -75,12 +76,12 @@ class DependencyTreeBuilder:
             root_dependencies: Root package dependencies for detecting direct deps
             
         Returns:
-            List of Dep objects representing the tree
+            List of Dep objects representing the tree with proper parent relationships
         """
         deps = []
         
-        # Build dependency relationships map
-        dependency_map = self._build_dependency_map(packages_dict, root_dependencies or {})
+        # Build dependency relationships map to track parent-child relationships
+        dependency_relationships = self._build_dependency_relationships(packages_dict, root_dependencies or {})
         
         for package_path, info in packages_dict.items():
             if package_path == "":  # Skip root package
@@ -97,8 +98,8 @@ class DependencyTreeBuilder:
             # Determine if direct dependency
             is_direct = name in root_dependencies if root_dependencies else True
             
-            # Create basic path (could be enhanced with actual dependency relationships)
-            path = [name]
+            # Build proper path based on dependency relationships
+            path = self._build_dependency_path(name, dependency_relationships, root_dependencies or {})
             
             dep = Dep(
                 name=name,
@@ -110,7 +111,8 @@ class DependencyTreeBuilder:
             )
             deps.append(dep)
         
-        return deps
+        # Apply deduplication to remove duplicate dependencies
+        return self.deduplicate_dependencies(deps)
     
     def build_tree_from_list(
         self, 
@@ -158,7 +160,8 @@ class DependencyTreeBuilder:
             )
             deps.append(dep)
         
-        return deps
+        # Apply deduplication to remove duplicate dependencies
+        return self.deduplicate_dependencies(deps)
     
     def _build_dependency_map(self, packages_dict: dict, root_deps: dict) -> dict:
         """Build map of dependency relationships"""
@@ -214,3 +217,111 @@ class DependencyTreeBuilder:
                     seen[key] = dep
         
         return unique_deps
+    
+    def _build_dependency_relationships(self, packages_dict: dict, root_deps: dict) -> dict:
+        """
+        Build a comprehensive map of parent-child dependency relationships
+        
+        Args:
+            packages_dict: Flat packages structure from package-lock.json
+            root_deps: Root package dependencies
+            
+        Returns:
+            Dict mapping each package to its direct parents
+        """
+        relationships = {}  # package_name -> list of parent packages
+        
+        # First, map all packages and their dependencies
+        for package_path, info in packages_dict.items():
+            if package_path == "":  # Root package
+                # Root dependencies are direct children of the project
+                for dep_name in root_deps:
+                    if dep_name not in relationships:
+                        relationships[dep_name] = []
+                    relationships[dep_name].append("__root__")  # Special marker for direct deps
+                continue
+            
+            package_name = self._extract_package_name(package_path)
+            if not package_name:
+                continue
+            
+            # Initialize entry for this package if not exists
+            if package_name not in relationships:
+                relationships[package_name] = []
+            
+            # Map this package's dependencies as its children
+            dependencies = info.get("dependencies", {})
+            for dep_name in dependencies:
+                if dep_name not in relationships:
+                    relationships[dep_name] = []
+                relationships[dep_name].append(package_name)
+        
+        return relationships
+    
+    def _build_dependency_path(
+        self, 
+        package_name: str, 
+        relationships: dict, 
+        root_deps: dict,
+        visited: set[str] | None = None,
+        max_depth: int = 10
+    ) -> list[str]:
+        """
+        Build the dependency path showing how a package was included
+        
+        Args:
+            package_name: Name of the package to trace
+            relationships: Parent-child relationship map
+            root_deps: Root dependencies
+            visited: Set of already visited packages (for cycle detection)
+            max_depth: Maximum recursion depth to prevent infinite loops
+            
+        Returns:
+            Path list showing the dependency chain
+        """
+        # Initialize visited set for cycle detection
+        if visited is None:
+            visited = set()
+        
+        # Prevent infinite recursion
+        if package_name in visited or max_depth <= 0:
+            return [package_name]
+        
+        # If it's a direct dependency, path is just the package name
+        if package_name in root_deps:
+            return [package_name]
+        
+        # Find the shortest path to a root dependency
+        parents = relationships.get(package_name, [])
+        
+        if not parents:
+            # No known parents, treat as direct (fallback)
+            return [package_name]
+        
+        # Add current package to visited set
+        visited_copy = visited.copy()
+        visited_copy.add(package_name)
+        
+        # Try to find the most direct path through parents
+        shortest_path = None
+        
+        for parent in parents:
+            if parent == "__root__":
+                # Direct dependency
+                return [package_name]
+            elif parent in root_deps:
+                # Parent is a direct dependency
+                path = [parent, package_name]
+                if shortest_path is None or len(path) < len(shortest_path):
+                    shortest_path = path
+            elif parent not in visited_copy:  # Only recurse if not already visited
+                # Recursively build path through parent
+                parent_path = self._build_dependency_path(
+                    parent, relationships, root_deps, visited_copy, max_depth - 1
+                )
+                if parent_path:
+                    full_path = parent_path + [package_name]
+                    if shortest_path is None or len(full_path) < len(shortest_path):
+                        shortest_path = full_path
+        
+        return shortest_path if shortest_path else [package_name]

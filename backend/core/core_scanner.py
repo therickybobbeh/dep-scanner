@@ -10,6 +10,7 @@ from .models import ScanOptions, Report, Dep, JobStatus
 from .resolver import PythonResolver
 from .resolver.js_resolver import JavaScriptResolver
 from .scanner import OSVScanner
+from .lock_generators import NpmLockGenerator, PythonLockGenerator
 
 
 class CoreScanner:
@@ -27,6 +28,8 @@ class CoreScanner:
         self.python_resolver = PythonResolver()
         self.js_resolver = JavaScriptResolver() 
         self.osv_scanner = OSVScanner()
+        self.npm_lock_generator = NpmLockGenerator()
+        self.python_lock_generator = PythonLockGenerator()
     
     async def scan_repository(
         self, 
@@ -80,12 +83,57 @@ class CoreScanner:
         Raises:
             ValueError: If no supported dependencies found
         """
+        # Generate lock files for consistency if needed
+        enhanced_manifest_files = await self._ensure_lock_files(
+            manifest_files, progress_callback
+        )
+        
         return await self._scan_dependencies(
             repo_path=None,
-            manifest_files=manifest_files,
+            manifest_files=enhanced_manifest_files,
             options=options,
             progress_callback=progress_callback
         )
+    
+    async def _ensure_lock_files(
+        self, 
+        manifest_files: dict[str, str], 
+        progress_callback: Optional[callable] = None
+    ) -> dict[str, str]:
+        """
+        Ensure lock files exist for manifest files to improve consistency
+        
+        Args:
+            manifest_files: Dict of {filename: content}
+            progress_callback: Optional callback for progress updates
+            
+        Returns:
+            Enhanced dict with generated lock files when possible
+        """
+        if progress_callback:
+            progress_callback("Checking for lock file generation opportunities...")
+        
+        result = manifest_files.copy()
+        
+        # Generate NPM lock files
+        try:
+            if progress_callback:
+                progress_callback("Generating NPM lock files if needed...")
+            result = await self.npm_lock_generator.ensure_lock_file(result)
+        except Exception as e:
+            if progress_callback:
+                progress_callback(f"Warning: NPM lock generation failed: {e}")
+        
+        # Generate Python lock files
+        try:
+            if progress_callback:
+                progress_callback("Generating Python lock files if needed...")
+            result = await self.python_lock_generator.ensure_lock_files(result)
+        except Exception as e:
+            if progress_callback:
+                progress_callback(f"Warning: Python lock generation failed: {e}")
+        
+        return result
     
     async def _scan_dependencies(
         self,
@@ -132,8 +180,7 @@ class CoreScanner:
             if progress_callback:
                 progress_callback(f"Warning: Could not resolve Python dependencies: {e}")
         
-        # Try JavaScript dependencies with optional consistency checking
-        js_consistency_report = None
+        # Try JavaScript dependencies
         try:
             if repo_path:
                 if progress_callback:
@@ -147,35 +194,7 @@ class CoreScanner:
                     if progress_callback:
                         for filename in js_files.keys():
                             progress_callback(f"Processing file: {filename}")
-                    # Use enhanced resolution if consistency options or cache control are enabled
-                    use_enhanced = (options.enhanced_consistency or 
-                                  options.resolve_versions or 
-                                  (options.cache_control and options.cache_control.use_enhanced_resolution))
-                    
-                    if use_enhanced:
-                        cache_control_dict = options.cache_control.model_dump() if options.cache_control else {}
-                        enhanced_resolver = JavaScriptResolver(
-                            enhanced_package_json=True,
-                            resolve_versions=options.resolve_versions or (options.cache_control and options.cache_control.use_enhanced_resolution),
-                            enable_transitive=options.cache_control.use_enhanced_resolution if options.cache_control else False,
-                            cache_control=cache_control_dict
-                        )
-                        
-                        if options.consistency_report and len(js_files) > 1:
-                            js_deps, js_consistency_report = await enhanced_resolver.resolve_with_consistency_check(
-                                js_files, 
-                                check_consistency=True
-                            )
-                        else:
-                            js_deps = await enhanced_resolver.resolve_dependencies(None, js_files)
-                    else:
-                        # Use default resolver but still pass cache control settings
-                        if options.cache_control:
-                            cache_control_dict = options.cache_control.model_dump()
-                            fallback_resolver = JavaScriptResolver(cache_control=cache_control_dict)
-                            js_deps = await fallback_resolver.resolve_dependencies(None, js_files)
-                        else:
-                            js_deps = await self.js_resolver.resolve_dependencies(None, js_files)
+                    js_deps = await self.js_resolver.resolve_dependencies(None, js_files)
                 else:
                     js_deps = []
             else:
@@ -224,10 +243,6 @@ class CoreScanner:
             "ecosystems": ecosystems_found,
             "scan_options": options.model_dump()
         }
-        
-        # Add consistency report if available
-        if js_consistency_report and options.consistency_report:
-            report_meta["consistency_analysis"] = js_consistency_report
         
         return Report(
             job_id=str(uuid4()),

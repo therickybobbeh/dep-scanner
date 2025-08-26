@@ -17,12 +17,14 @@ from rich.console import Console
 try:  # Allow running as module or script
     from ..core.models import ScanOptions, SeverityLevel
     from ..core.config import settings
+    from ..core.export import export_json_report
     from .scanner import DepScanner
     from .formatter import CLIFormatter
     from ..core.reports import generate_modern_html_report
 except ImportError:  # pragma: no cover - fallback for script execution
     from backend.core.models import ScanOptions, SeverityLevel
     from backend.core.config import settings
+    from backend.core.export import export_json_report
     from backend.cli.scanner import DepScanner
     from backend.cli.formatter import CLIFormatter
     from backend.core.reports import generate_modern_html_report
@@ -36,7 +38,7 @@ logger = logging.getLogger(__name__)
 def scan(
     path: str = typer.Argument(".", help="Path to scan for dependencies"),
     json_output: Optional[str] = typer.Option(None, "--json", help="Export results as JSON"),
-    include_dev: bool = typer.Option(False, "--include-dev", help="Include development dependencies"),
+    include_dev: bool = typer.Option(True, "--include-dev/--no-include-dev", help="Include development dependencies (default: True)"),
     ignore_severity: Optional[str] = typer.Option(None, "--ignore-severity", help="Ignore vulnerabilities of specified severity"),
     open_report: bool = typer.Option(False, "--open", help="Generate and open HTML report in browser"),
     output_file: Optional[str] = typer.Option(None, "--output", "-o", help="HTML report output file"),
@@ -121,48 +123,9 @@ def version():
     console.print(f"{settings.APP_NAME} v{settings.APP_VERSION}")
     console.print("Dependency Vulnerability Scanner")
     console.print("Data source: OSV.dev")
-    console.print(f"Cache: {settings.CACHE_DB_PATH}")
     if settings.DEBUG:
         console.print(f"Debug mode: {settings.DEBUG}")
         console.print(f"Log level: {settings.LOG_LEVEL}")
-
-
-def export_json_report(report, output_path: str) -> None:
-    """Export scan results to JSON format."""
-    # Derive ecosystems from dependencies
-    ecosystems = list(set(dep.ecosystem for dep in report.dependencies))
-    
-    # Convert report to JSON-serializable format
-    json_data = {
-        "scan_info": {
-            "total_dependencies": len(report.dependencies),
-            "vulnerable_packages": len(report.vulnerable_packages),
-            "ecosystems": ecosystems
-        },
-        "vulnerabilities": []
-    }
-    
-    for vuln in report.vulnerable_packages:
-        # Find matching dependency for additional context
-        dep_match = next((d for d in report.dependencies if d.name == vuln.package and d.version == vuln.version), None)
-        
-        vuln_data = {
-            "package": vuln.package,
-            "version": vuln.version,
-            "vulnerability_id": vuln.vulnerability_id,
-            "severity": vuln.severity.value if vuln.severity else "UNKNOWN",
-            "summary": vuln.summary,
-            "cve_ids": vuln.cve_ids,
-            "advisory_url": vuln.advisory_url,
-            "type": "direct" if dep_match and dep_match.is_direct else "transitive",
-            "dependency_path": dep_match.path if dep_match else []
-        }
-        
-        json_data["vulnerabilities"].append(vuln_data)
-    
-    # Write JSON file
-    output_path_obj = Path(output_path)
-    output_path_obj.write_text(json.dumps(json_data, indent=2), encoding="utf-8")
 
 
 if __name__ == "__main__":

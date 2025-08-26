@@ -38,8 +38,15 @@ class DepScanner:
             self.current_task = task
             
             try:
-                report = await self.core_scanner.scan_repository(
-                    repo_path=repo_path,
+                # Convert repository scan to manifest file scan for consistency
+                manifest_files = await self._read_repository_manifest_files(repo_path)
+                
+                if not manifest_files:
+                    raise ValueError("No supported dependency files found in repository")
+                
+                # Use the enhanced manifest file processing (includes lock file generation)
+                report = await self.core_scanner.scan_manifest_files(
+                    manifest_files=manifest_files,
                     options=options,
                     progress_callback=self._update_progress
                 )
@@ -51,6 +58,49 @@ class DepScanner:
             except Exception as e:
                 progress.remove_task(task)
                 raise e
+    
+    async def _read_repository_manifest_files(self, repo_path: str) -> dict[str, str]:
+        """
+        Read manifest files from repository directory
+        
+        Args:
+            repo_path: Path to repository directory
+            
+        Returns:
+            Dict of {filename: content} for supported manifest files
+        """
+        from pathlib import Path
+        
+        repo_path_obj = Path(repo_path)
+        manifest_files = {}
+        
+        # List of supported dependency files to look for
+        supported_files = [
+            # JavaScript/NPM
+            "package.json",
+            # Note: We intentionally skip package-lock.json to force regeneration for consistency
+            "yarn.lock",
+            
+            # Python
+            "requirements.txt", 
+            "pyproject.toml",
+            "poetry.lock",
+            "Pipfile.lock"
+        ]
+        
+        for filename in supported_files:
+            file_path = repo_path_obj / filename
+            if file_path.exists():
+                try:
+                    content = file_path.read_text(encoding='utf-8')
+                    manifest_files[filename] = content
+                    if self.verbose:
+                        self.console.print(f"[dim]Found manifest file: {filename}[/dim]")
+                except Exception as e:
+                    if self.verbose:
+                        self.console.print(f"[yellow]Warning: Could not read {filename}: {e}[/yellow]")
+        
+        return manifest_files
     
     def _update_progress(self, message: str):
         """Update progress display"""

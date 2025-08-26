@@ -1,0 +1,138 @@
+[
+  {
+    "test_case": "basic_vulnerable_lodash",
+    "analysis": {
+      "metrics": {
+        "package_json": {
+          "vulnerabilities": 3,
+          "dependencies": 1,
+          "vulnerable_packages": 1
+        },
+        "package_lock": {
+          "vulnerabilities": 3,
+          "dependencies": 1,
+          "vulnerable_packages": 1
+        }
+      },
+      "consistency": {
+        "vulnerability_count_match": true,
+        "vulnerable_packages_match": true,
+        "dependency_count_difference": 0
+      },
+      "differences": {
+        "missing_in_package_lock": [],
+        "missing_in_package_json": [],
+        "vulnerability_count_differences": {}
+      },
+      "assessment": {
+        "is_consistent": true,
+        "expected_differences": {
+          "dependency_count": false,
+          "explanation": "package-lock.json includes transitive dependencies"
+        }
+      }
+    }
+  },
+  {
+    "test_case": "range_vs_exact_version",
+    "analysis": {
+      "metrics": {
+        "package_json": {
+          "vulnerabilities": 3,
+          "dependencies": 1,
+          "vulnerable_packages": 1
+        },
+        "package_lock": {
+          "vulnerabilities": 3,
+          "dependencies": 1,
+          "vulnerable_packages": 1
+        }
+      },
+      "consistency": {
+        "vulnerability_count_match": true,
+        "vulnerable_packages_match": true,
+        "dependency_count_difference": 0
+      },
+      "differences": {
+        "missing_in_package_lock": [],
+        "missing_in_package_json": [],
+        "vulnerability_count_differences": {}
+      },
+      "assessment": {
+        "is_consistent": true,
+        "expected_differences": {
+          "dependency_count": false,
+          "explanation": "package-lock.json includes transitive dependencies"
+        }
+      }
+    }
+  },
+  {
+    "test_case": "multiple_dependencies",
+    "analysis": {
+      "metrics": {
+        "package_json": {
+          "vulnerabilities": 6,
+          "dependencies": 2,
+          "vulnerable_packages": 2
+        },
+        "package_lock": {
+          "vulnerabilities": 6,
+          "dependencies": 2,
+          "vulnerable_packages": 2
+        }
+      },
+      "consistency": {
+        "vulnerability_count_match": true,
+        "vulnerable_packages_match": true,
+        "dependency_count_difference": 0
+      },
+      "differences": {
+        "missing_in_package_lock": [],
+        "missing_in_package_json": [],
+        "vulnerability_count_differences": {}
+      },
+      "assessment": {
+        "is_consistent": true,
+        "expected_differences": {
+          "dependency_count": false,
+          "explanation": "package-lock.json includes transitive dependencies"
+        }
+      }
+    }
+  },
+  {
+    "test_case": "clean_dependencies",
+    "analysis": {
+      "metrics": {
+        "package_json": {
+          "vulnerabilities": 2,
+          "dependencies": 1,
+          "vulnerable_packages": 1
+        },
+        "package_lock": {
+          "vulnerabilities": 2,
+          "dependencies": 1,
+          "vulnerable_packages": 1
+        }
+      },
+      "consistency": {
+        "vulnerability_count_match": true,
+        "vulnerable_packages_match": true,
+        "dependency_count_difference": 0
+      },
+      "differences": {
+        "missing_in_package_lock": [],
+        "missing_in_package_json": [],
+        "vulnerability_count_differences": {}
+      },
+      "assessment": {
+        "is_consistent": true,
+        "expected_differences": {
+          "dependency_count": false,
+          "explanation": "package-lock.json includes transitive dependencies"
+        }
+      }
+    }
+  }
+]

@@ -79,14 +79,24 @@ class OSVScanner:
         all_vulnerabilities = cached_results + fresh_results
         
         # Convert to Vuln objects and enrich with dependency metadata
+        # Use unique_deps to avoid duplicate vulnerabilities
         vulnerabilities = []
-        for dep in dependencies:
+        seen_vulnerabilities = set()  # Track unique vulnerabilities by (id, package, ecosystem)
+        
+        for dep in unique_deps:
             dep_vulns = [v for v in all_vulnerabilities 
                         if v.get("package") == dep.name and v.get("ecosystem") == dep.ecosystem]
             
             for vuln_data in dep_vulns:
-                vuln = self._convert_osv_to_vuln(vuln_data, dep)
-                vulnerabilities.append(vuln)
+                # Create unique key for this vulnerability
+                vuln_id = vuln_data.get("id", "")
+                vuln_key = (vuln_id, dep.name, dep.ecosystem)
+                
+                # Only add if we haven't seen this vulnerability for this package before
+                if vuln_key not in seen_vulnerabilities:
+                    vuln = self._convert_osv_to_vuln(vuln_data, dep)
+                    vulnerabilities.append(vuln)
+                    seen_vulnerabilities.add(vuln_key)
         
         return vulnerabilities
     

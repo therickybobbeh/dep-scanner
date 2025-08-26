@@ -35,24 +35,9 @@ class JavaScriptResolver:
         deps = await resolver.resolve_dependencies(None, files)
     """
     
-    def __init__(
-        self, 
-        enhanced_package_json: bool = False, 
-        resolve_versions: bool = False,
-        enable_transitive: bool = False,
-        cache_control: dict = None
-    ):
+    def __init__(self):
         self.ecosystem: Ecosystem = "npm"
-        self.enhanced_package_json = enhanced_package_json
-        self.resolve_versions = resolve_versions
-        self.enable_transitive = enable_transitive
-        self.cache_control = cache_control or {}
-        
-        self.parser_factory = JavaScriptParserFactory(
-            use_enhanced_package_json=enhanced_package_json,
-            resolve_versions=resolve_versions,
-            enable_transitive=enable_transitive
-        )
+        self.parser_factory = JavaScriptParserFactory()
     
     async def resolve_dependencies(
         self, 
@@ -146,29 +131,22 @@ class JavaScriptResolver:
         """
         Resolve dependencies from uploaded manifest files
         
-        Uses the best available file format based on priority
+        Uses the best available file format based on priority:
+        1. package-lock.json (most accurate, full transitive dependencies)
+        2. yarn.lock (accurate, full transitive dependencies) 
+        3. package.json (direct dependencies only)
         """
         if not manifest_files:
             raise ValueError("No manifest files provided")
         
         try:
-            # Detect the best format to use
+            # Detect the best format to use with clear priority
             filename, format_name = self.parser_factory.detect_best_format(manifest_files)
             content = manifest_files[filename]
             
             # Get appropriate parser and parse
             parser = self.parser_factory.get_parser(filename, content)
-            
-            # Prepare parse options based on cache control
-            parse_kwargs = {}
-            if self.cache_control:
-                parse_kwargs.update({
-                    "bypass_cache": self.cache_control.get("bypass_cache", False),
-                    "enable_transitive": self.cache_control.get("use_enhanced_resolution", False) or self.enable_transitive,
-                    "resolve_versions": self.resolve_versions or self.cache_control.get("use_enhanced_resolution", False)
-                })
-            
-            deps = await parser.parse(content, **parse_kwargs)
+            deps = await parser.parse(content)
             
             return deps
             
@@ -261,114 +239,3 @@ class JavaScriptResolver:
                 "description": "Unsupported format"
             }
     
-    async def resolve_with_consistency_check(
-        self, 
-        manifest_files: dict[str, str],
-        check_consistency: bool = True
-    ) -> tuple[list[Dep], dict]:
-        """
-        Resolve dependencies with optional consistency checking between formats
-        
-        Args:
-            manifest_files: Dict of {filename: content} for uploaded files
-            check_consistency: Whether to perform consistency analysis
-            
-        Returns:
-            Tuple of (best_dependencies, consistency_report)
-        """
-        if not manifest_files:
-            raise ValueError("No manifest files provided")
-        
-        results = {}
-        consistency_report = {"enabled": check_consistency}
-        
-        # Try to parse with both approaches if both files are available
-        if "package.json" in manifest_files and check_consistency:
-            # Parse with standard package.json parser
-            try:
-                standard_parser = self.parser_factory.get_parser_by_format("package-json")
-                standard_deps = await standard_parser.parse(manifest_files["package.json"])
-                results["standard_package_json"] = standard_deps
-            except Exception as e:
-                results["standard_package_json_error"] = str(e)
-            
-            # Parse with enhanced package.json parser if available
-            if self.enhanced_package_json:
-                try:
-                    enhanced_parser = self.parser_factory.get_parser_by_format("package-json-enhanced")
-                    enhanced_deps = await enhanced_parser.parse(
-                        manifest_files["package.json"], 
-                        resolve_versions=True
-                    )
-                    results["enhanced_package_json"] = enhanced_deps
-                except Exception as e:
-                    results["enhanced_package_json_error"] = str(e)
-        
-        # Parse lockfile if available
-        for lockfile in ["package-lock.json", "yarn.lock"]:
-            if lockfile in manifest_files:
-                try:
-                    parser = self.parser_factory.get_parser(lockfile, manifest_files[lockfile])
-                    lockfile_deps = await parser.parse(manifest_files[lockfile])
-                    results[lockfile.replace(".", "_").replace("-", "_")] = lockfile_deps
-                except Exception as e:
-                    results[f"{lockfile}_error"] = str(e)
-        
-        # Determine best result using priority order
-        best_deps = None
-        best_source = None
-        
-        priority_order = [
-            ("package_lock_json", "package-lock.json"),
-            ("yarn_lock", "yarn.lock"),
-            ("enhanced_package_json", "enhanced package.json"),
-            ("standard_package_json", "package.json")
-        ]
-        
-        for key, source_name in priority_order:
-            if key in results and isinstance(results[key], list):
-                best_deps = results[key]
-                best_source = source_name
-                break
-        
-        if best_deps is None:
-            raise ParseError("JavaScript resolver", "No valid dependency files could be parsed")
-        
-        # Perform consistency analysis if requested and multiple results available
-        if check_consistency and len([k for k in results.keys() if not k.endswith("_error")]) > 1:
-            analyzer = ScanConsistencyAnalyzer()
-            
-            # Compare manifest vs lockfile if both available
-            manifest_deps = results.get("enhanced_package_json") or results.get("standard_package_json")
-            lockfile_deps = results.get("package_lock_json") or results.get("yarn_lock")
-            
-            if manifest_deps and lockfile_deps:
-                comparison = analyzer.compare_dependency_lists(manifest_deps, lockfile_deps)
-                consistency_report["manifest_vs_lockfile"] = {
-                    "consistency_score": comparison.consistency_score,
-                    "matching_dependencies": comparison.matching_dependencies,
-                    "version_mismatches": comparison.version_mismatches,
-                    "missing_in_manifest": comparison.missing_in_manifest,
-                    "missing_in_lockfile": comparison.missing_in_lockfile,
-                    "recommendations": comparison.recommendations
-                }
-            
-            # Compare standard vs enhanced package.json parsing if both available
-            if "standard_package_json" in results and "enhanced_package_json" in results:
-                standard_deps = results["standard_package_json"]
-                enhanced_deps = results["enhanced_package_json"]
-                
-                enhanced_comparison = analyzer.compare_dependency_lists(standard_deps, enhanced_deps)
-                consistency_report["standard_vs_enhanced"] = {
-                    "consistency_score": enhanced_comparison.consistency_score,
-                    "version_resolution_differences": enhanced_comparison.version_mismatches,
-                    "recommendations": enhanced_comparison.recommendations
-                }
-        
-        consistency_report.update({
-            "best_source": best_source,
-            "available_sources": list(results.keys()),
-            "parsing_errors": {k: v for k, v in results.items() if k.endswith("_error")}
-        })
-        
-        return best_deps, consistency_report

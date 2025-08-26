@@ -9,14 +9,12 @@ from pathlib import Path
 import logging
 import time
 
-from ..core.models import ScanRequest, ScanProgress, Report
+from ..core.models import ScanRequest, ScanProgress
 from .services.app_state import AppState, get_app_state
 from .services.scan_service import ScanService
-from .services.export_service import ExportService
-from .services.rate_limiter import check_rate_limit
-from .services.validation import validate_scan_request, validate_path_parameters
+from .services.consistency_service import ConsistencyService
+from .services.rate_limiter import check_rate_limit, check_status_rate_limit
 from ..core.config import settings
-from ..core.resolver.utils.npm_version_resolver import PackageVersionResolver
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -43,9 +41,8 @@ app = FastAPI(
     - 🔍 **Multi-Ecosystem Support**: Scan NPM (JavaScript) and PyPI (Python) dependencies
     - 📊 **Real-time Progress**: WebSocket-based scan progress tracking  
     - 📁 **Multiple Input Formats**: Support for lockfiles and manifest files
-    - 🚀 **Enhanced Consistency**: Advanced version resolution and consistency checking
+    - 🚀 **Lock File Generation**: Automatic generation of lock files for consistency
     - 📤 **Export Options**: JSON and CSV report exports
-    - 🗄️ **Cache Management**: Intelligent caching with management endpoints
     
     ### Supported File Formats
     **JavaScript/NPM:**
@@ -84,10 +81,6 @@ app = FastAPI(
             "description": "Retrieve and export scan results"
         },
         {
-            "name": "Cache Management",
-            "description": "Manage npm version resolution cache"
-        },
-        {
             "name": "System",
             "description": "Health checks and system information"
         }
@@ -100,9 +93,7 @@ app.add_middleware(
     allowed_hosts=settings.ALLOWED_HOSTS
 )
 
-# Input validation middleware
-app.middleware("http")(validate_scan_request)
-app.middleware("http")(validate_path_parameters)
+# Simplified middleware - removed complex validation since CLI handles it
 
 # Security headers middleware
 @app.middleware("http")
@@ -224,6 +215,7 @@ async def start_scan(
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+
 @app.get(
     "/status/{job_id}", 
     response_model=ScanProgress,
@@ -277,7 +269,7 @@ async def start_scan(
 async def get_scan_status(
     job_id: str, 
     scan_service: ScanService = Depends(get_scan_service),
-    _: None = Depends(check_rate_limit)
+    _: None = Depends(check_status_rate_limit)
 ):
     """Get current status and progress of a scan"""
     progress = scan_service.get_progress(job_id)
@@ -286,8 +278,7 @@ async def get_scan_status(
     return progress
 
 @app.get(
-    "/report/{job_id}", 
-    response_model=Report,
+    "/report/{job_id}",
     summary="Get Scan Report",
     description="""
     **Retrieve the complete vulnerability scan report**
@@ -359,179 +350,17 @@ async def get_scan_report(
     job_id: str, 
     scan_service: ScanService = Depends(get_scan_service)
 ):
-    """Get the final scan report"""
+    """Get the CLI JSON report directly"""
     report = scan_service.get_report(job_id)
     if not report:
         raise HTTPException(status_code=404, detail="Report not found or scan not completed")
     return report
 
-@app.get(
-    "/export/{job_id}.json",
-    summary="Export JSON Report",
-    description="""
-    **Download scan report as a JSON file**
-    
-    This endpoint streams the complete scan report as a downloadable JSON file.
-    The response includes proper Content-Disposition headers for browser downloads.
-    
-    ### Use Cases
-    - Programmatic integration with other security tools
-    - Long-term storage and archival
-    - Data analysis and custom reporting
-    - CI/CD pipeline integration
-    
-    ### File Format
-    Standard JSON format with the same structure as the `/report/{job_id}` endpoint,
-    but optimized for file download with appropriate MIME types.
-    """,
-    responses={
-        200: {
-            "description": "JSON report file download",
-            "content": {
-                "application/json": {
-                    "example": "Binary file download with filename: scan-report-{job_id}.json"
-                }
-            }
-        },
-        404: {
-            "description": "Report not found",
-            "content": {
-                "application/json": {
-                    "example": {"detail": "Report not found"}
-                }
-            }
-        }
-    },
-    tags=["Results & Reports"]
-)
-async def export_json_report(
-    job_id: str, 
-    scan_service: ScanService = Depends(get_scan_service)
-):
-    """Export scan report as JSON file"""
-    report = scan_service.get_report(job_id)
-    if not report:
-        raise HTTPException(status_code=404, detail="Report not found")
-    
-    return ExportService.export_json_streaming(report, job_id)
+# Export endpoints removed - CLI JSON is the standard format
+# Frontend can download /report/{job_id} directly as JSON
 
-@app.get(
-    "/export/{job_id}.csv",
-    summary="Export CSV Report",
-    description="""
-    **Download scan report as a CSV file**
-    
-    This endpoint exports vulnerability findings in CSV format for easy analysis
-    in spreadsheet applications and data analysis tools.
-    
-    ### CSV Structure
-    The CSV includes the following columns:
-    - Package name and version
-    - Vulnerability ID (GHSA/CVE)
-    - Severity level
-    - Summary and details
-    - Fixed version range
-    - Advisory URL
-    - Publication and modification dates
-    
-    ### Use Cases
-    - Spreadsheet analysis and reporting
-    - Integration with business intelligence tools
-    - Compliance reporting
-    - Risk assessment workflows
-    """,
-    responses={
-        200: {
-            "description": "CSV report file download",
-            "content": {
-                "text/csv": {
-                    "example": "Binary file download with filename: scan-report-{job_id}.csv"
-                }
-            }
-        },
-        404: {
-            "description": "Report not found",
-            "content": {
-                "application/json": {
-                    "example": {"detail": "Report not found"}
-                }
-            }
-        }
-    },
-    tags=["Results & Reports"]
-)
-async def export_csv_report(
-    job_id: str, 
-    scan_service: ScanService = Depends(get_scan_service)
-):
-    """Export scan report as CSV file"""
-    report = scan_service.get_report(job_id)
-    if not report:
-        raise HTTPException(status_code=404, detail="Report not found")
-    
-    return ExportService.export_csv_streaming(report, job_id)
-
-@app.websocket("/ws/{job_id}")
-async def websocket_endpoint(
-    websocket: WebSocket, 
-    job_id: str, 
-    state: AppState = Depends(get_app_state)
-):
-    """
-    **WebSocket endpoint for real-time scan progress updates**
-    
-    This WebSocket connection provides live updates during vulnerability scanning:
-    - Real-time progress percentage and current step information
-    - Immediate notification of scan completion or errors  
-    - Bidirectional keepalive to maintain connection stability
-    
-    ### Connection Protocol
-    1. Connect to `/ws/{job_id}` where job_id is from the `/scan` endpoint
-    2. Server immediately sends current progress if scan is active
-    3. Send any message as keepalive to maintain connection
-    4. Server sends progress updates as JSON messages
-    
-    ### Message Format
-    ```json
-    {
-        "job_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-        "status": "running", 
-        "progress_percent": 45,
-        "current_step": "Resolving dependencies",
-        "scanned_dependencies": 23,
-        "vulnerabilities_found": 1
-    }
-    ```
-    
-    ### Error Handling
-    Connection automatically closes on scan completion or client disconnect.
-    Use exponential backoff for reconnection attempts.
-    """
-    await websocket.accept()
-    scan_service = ScanService(state)
-    
-    # Add to active connections
-    if job_id not in state.active_connections:
-        state.active_connections[job_id] = []
-    state.active_connections[job_id].append(websocket)
-    
-    try:
-        # Send current progress if available
-        progress = scan_service.get_progress(job_id)
-        if progress:
-            await websocket.send_json(progress.model_dump())
-        
-        # Keep connection alive
-        while True:
-            # Wait for any message (keepalive)
-            await websocket.receive_text()
-            
-    except WebSocketDisconnect:
-        # Remove from active connections
-        if job_id in state.active_connections:
-            state.active_connections[job_id].remove(websocket)
-            if not state.active_connections[job_id]:
-                del state.active_connections[job_id]
+# WebSocket endpoint removed for simplicity
+# Frontend can poll /status/{job_id} for progress updates
 
 @app.get(
     "/health",
@@ -571,215 +400,97 @@ async def health_check():
     from datetime import datetime
     return {"status": "healthy", "timestamp": datetime.now().isoformat()}
 
-@app.post(
-    "/admin/cache/clear",
-    summary="Clear Version Cache",
-    description="""
-    **Clear the NPM version resolution cache**
-    
-    This administrative endpoint clears all cached NPM version resolution data,
-    forcing fresh lookups from the NPM registry for subsequent scans.
-    
-    ### Use Cases
-    - Clear stale version data after NPM registry updates
-    - Development and testing scenarios
-    - Troubleshooting version resolution issues
-    - Periodic cache maintenance
-    
-    ### Impact
-    - Next scans will fetch fresh version data from NPM registry
-    - May temporarily increase scan times until cache rebuilds
-    - No impact on completed scan reports
-    """,
-    responses={
-        200: {
-            "description": "Cache cleared successfully",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "success": True,
-                        "message": "NPM version resolution cache cleared successfully",
-                        "timestamp": 1705310400.0,
-                        "cache_type": "global"
-                    }
-                }
-            }
-        },
-        500: {
-            "description": "Cache clear operation failed",
-            "content": {
-                "application/json": {
-                    "example": {"detail": "Failed to clear cache: Permission denied"}
-                }
-            }
-        }
-    },
-    tags=["Cache Management"]
-)
-async def clear_version_cache():
-    """
-    Clear the npm version resolution cache
-    
-    This endpoint clears all cached npm version resolution data.
-    Useful for development, testing, or forcing fresh version lookups.
-    """
-    try:
-        # Clear the global cache
-        PackageVersionResolver.clear_global_cache()
-        
-        return {
-            "success": True,
-            "message": "NPM version resolution cache cleared successfully",
-            "timestamp": time.time(),
-            "cache_type": "global"
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to clear cache: {str(e)}")
 
-@app.get(
-    "/admin/cache/stats",
-    summary="Get Cache Statistics",
+@app.post(
+    "/validate-consistency",
+    summary="Validate Package.json vs Package-lock.json Consistency",
     description="""
-    **Retrieve NPM version resolution cache statistics**
+    **Validate consistency between package.json and package-lock.json files**
     
-    This endpoint provides detailed information about the current state
-    of the version resolution cache, including:
+    This endpoint compares vulnerability scan results from package.json and package-lock.json
+    to ensure they produce consistent findings. This is important because:
     
-    ### Statistics Provided
-    - Total number of cached entries
-    - Cache hit/miss ratios
-    - Memory usage and performance metrics
-    - Entry age distribution and expiration info
+    - package.json contains version ranges (^4.17.15, ~1.2.3)  
+    - package-lock.json contains exact resolved versions (4.17.15)
+    - Different parsing logic might produce different vulnerability results
     
-    ### Monitoring Use Cases
-    - Performance optimization and tuning
-    - Cache efficiency analysis
-    - Capacity planning
-    - Troubleshooting version resolution issues
+    ### What is Validated
+    - Same vulnerability counts for direct dependencies
+    - Same vulnerable packages identified
+    - Consistent severity distributions
+    - Expected differences (transitive deps) are explained
+    
+    ### When to Use
+    - Before deploying to production
+    - When version ranges might resolve to different versions  
+    - To verify scanner consistency
+    - When scan results seem unexpected
+    
+    ### Response
+    Returns detailed analysis including:
+    - Overall consistency status
+    - Specific differences found
+    - Actionable recommendations
+    - Both individual scan results for comparison
     """,
     responses={
         200: {
-            "description": "Cache statistics retrieved successfully",
+            "description": "Consistency validation completed successfully",
             "content": {
                 "application/json": {
                     "example": {
-                        "cache_stats": {
-                            "total_entries": 1247,
-                            "hit_ratio": 0.87,
-                            "average_age_seconds": 1800,
-                            "expired_entries": 23
+                        "is_consistent": True,
+                        "analysis": {
+                            "overall": {"is_consistent": True},
+                            "metrics": {"package_json": {"vulnerabilities": 3}, "package_lock": {"vulnerabilities": 3}}
                         },
-                        "timestamp": 1705310400.0
+                        "recommendations": ["✅ Scan results are consistent"],
+                        "warnings": [],
+                        "errors": []
                     }
                 }
             }
         },
-        500: {
-            "description": "Failed to retrieve cache statistics",
+        400: {
+            "description": "Invalid request or missing required files",
             "content": {
                 "application/json": {
-                    "example": {"detail": "Failed to get cache stats: Internal error"}
+                    "example": {"detail": "Both package.json and package-lock.json are required"}
                 }
             }
         }
     },
-    tags=["Cache Management"]
+    tags=["Consistency Validation"]
 )
-async def get_cache_stats():
-    """
-    Get npm version resolution cache statistics
-    
-    Returns information about the current state of the version resolution cache.
-    """
+async def validate_consistency(scan_request: ScanRequest):
+    """Validate consistency between package.json and package-lock.json scan results"""
     try:
-        stats = PackageVersionResolver.get_global_cache_stats()
+        # Validate that both files are provided
+        manifest_files = scan_request.manifest_files or {}
+        has_package_json = 'package.json' in manifest_files
+        has_package_lock = 'package-lock.json' in manifest_files
         
-        return {
-            "cache_stats": stats,
-            "timestamp": time.time()
-        }
+        if not (has_package_json and has_package_lock):
+            raise HTTPException(
+                status_code=400, 
+                detail="Both package.json and package-lock.json files are required for consistency validation"
+            )
+        
+        # Run consistency validation
+        result = await ConsistencyService.validate_consistency(
+            manifest_files=manifest_files,
+            include_dev=scan_request.options.include_dev_dependencies,
+            ignore_severities=[sev.value for sev in scan_request.options.ignore_severities]
+        )
+        
+        # Return validation results
+        return result.to_dict()
+        
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get cache stats: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Consistency validation failed: {str(e)}")
 
-@app.post(
-    "/admin/cache/cleanup",
-    summary="Clean Expired Cache",
-    description="""
-    **Remove expired entries from the NPM version resolution cache**
-    
-    This maintenance endpoint performs selective cache cleanup by removing
-    only expired entries while preserving valid cached data.
-    
-    ### Cleanup Process
-    - Identifies entries older than the configured TTL (1 hour default)
-    - Removes expired entries to free memory
-    - Preserves valid cache entries for continued performance
-    - Returns detailed cleanup statistics
-    
-    ### Benefits
-    - Maintains cache performance without full reset
-    - Reduces memory usage from stale entries
-    - Automated maintenance without service disruption
-    - Ideal for scheduled maintenance tasks
-    """,
-    responses={
-        200: {
-            "description": "Cache cleanup completed successfully",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "success": True,
-                        "message": "Cleaned up 45 expired cache entries",
-                        "expired_entries": 45,
-                        "remaining_entries": 1202,
-                        "timestamp": 1705310400.0
-                    }
-                }
-            }
-        },
-        500: {
-            "description": "Cache cleanup operation failed",
-            "content": {
-                "application/json": {
-                    "example": {"detail": "Failed to cleanup cache: Access denied"}
-                }
-            }
-        }
-    },
-    tags=["Cache Management"]
-)
-async def cleanup_expired_cache():
-    """
-    Clean up expired entries from the npm version resolution cache
-    
-    This endpoint removes only expired cache entries while keeping valid ones.
-    """
-    try:
-        from ..core.resolver.utils.npm_version_resolver import _GLOBAL_VERSION_CACHE
-        import time
-        
-        current_time = time.time()
-        default_ttl = 3600  # 1 hour default
-        expired_keys = []
-        
-        for key, cache_data in _GLOBAL_VERSION_CACHE.items():
-            age = current_time - cache_data.get("timestamp", 0)
-            if age >= default_ttl:
-                expired_keys.append(key)
-        
-        # Remove expired entries
-        for key in expired_keys:
-            del _GLOBAL_VERSION_CACHE[key]
-        
-        return {
-            "success": True,
-            "message": f"Cleaned up {len(expired_keys)} expired cache entries",
-            "expired_entries": len(expired_keys),
-            "remaining_entries": len(_GLOBAL_VERSION_CACHE),
-            "timestamp": time.time()
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to cleanup cache: {str(e)}")
 
 @app.get("/")
 async def read_root():
@@ -801,4 +512,3 @@ async def read_root():
 frontend_dist_dir = Path(__file__).parent.parent.parent / "frontend" / "dist"
 if frontend_dist_dir.exists():
     app.mount("/static", StaticFiles(directory=str(frontend_dist_dir)), name="static")
-

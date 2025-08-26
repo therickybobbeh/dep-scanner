@@ -8,12 +8,34 @@ import StatsCard from '../components/ui/StatsCard';
 import SeverityBadge from '../components/ui/SeverityBadge';
 import { SeverityLevel } from '../types/common';
 import { groupBySeverity, sortBySeverity } from '../utils/severity';
-import type { ScanProgress, ScanReport } from '../types/api';
+import type { ScanProgress } from '../types/api';
+
+// CLI JSON structure
+interface CLIVulnerability {
+  package: string;
+  version: string;
+  vulnerability_id: string;
+  severity: string;
+  summary: string;
+  cve_ids: string[];
+  advisory_url?: string;
+  fixed_range?: string;
+}
+
+interface CLIReport {
+  scan_info: {
+    total_dependencies: number;
+    vulnerable_packages: number;
+    [key: string]: any;
+  };
+  vulnerabilities: CLIVulnerability[];
+  [key: string]: any;
+}
 
 const ReportPage: React.FC = () => {
   const { jobId } = useParams<{ jobId: string }>();
   const [progress, setProgress] = useState<ScanProgress | null>(null);
-  const [report, setReport] = useState<ScanReport | null>(null);
+  const [report, setReport] = useState<CLIReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'severity' | 'package'>('severity');
@@ -67,21 +89,20 @@ const ReportPage: React.FC = () => {
     fetchStatus();
   }, [jobId]);
 
-  const handleExport = async (format: 'json' | 'csv') => {
-    if (!jobId) return;
+  const handleExportJSON = async () => {
+    if (!report) return;
     
     try {
-      const response = await axios.get(`/api/export/${jobId}.${format}`, {
-        responseType: 'blob',
-      });
-      
-      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const dataStr = JSON.stringify(report, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const url = window.URL.createObjectURL(dataBlob);
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `depscan_report_${jobId}.${format}`);
+      link.setAttribute('download', `depscan_report_${jobId}.json`);
       document.body.appendChild(link);
       link.click();
       link.remove();
+      window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Export failed:', err);
     }
@@ -95,7 +116,7 @@ const ReportPage: React.FC = () => {
         active={filterSeverity === 'all'}
         onClick={() => setFilterSeverity('all')}
       >
-        All <Badge bg="light" text="dark" className="ms-2">{report?.vulnerable_count ?? 0}</Badge>
+        All <Badge bg="light" text="dark" className="ms-2">{report?.vulnerabilities?.length ?? 0}</Badge>
       </Button>
       {Object.values(SeverityLevel).map(sev => (
         <Button
@@ -112,16 +133,16 @@ const ReportPage: React.FC = () => {
   );
 
   const sortedVulnerabilities = useMemo(() => {
-    if (!report) return [];
+    if (!report || !report.vulnerabilities) return [];
     
-    let filtered = report.vulnerable_packages;
+    let filtered = report.vulnerabilities;
     
     if (filterSeverity !== 'all') {
       filtered = filtered.filter(v => v.severity === filterSeverity);
     }
 
     if (sortBy === 'severity') {
-      return sortBySeverity(filtered);
+      return sortBySeverity(filtered as any);
     }
     return [...filtered].sort((a, b) => a.package.localeCompare(b.package));
   }, [report, sortBy, filterSeverity]);
@@ -174,14 +195,11 @@ const ReportPage: React.FC = () => {
         <Card.Body className="d-flex flex-wrap justify-content-between align-items-end">
           <div className="mb-3 mb-md-0">
             <h1 className="h2 fw-bold mb-1">Scan Results</h1>
-            <div className="text-muted">Completed on {new Date(report.meta.generated_at).toLocaleString()}</div>
+            <div className="text-muted">Scan completed</div>
           </div>
           <div className="d-flex gap-2">
-            <Button variant="light" size="sm" className="text-primary" onClick={() => handleExport('json')} aria-label="Export JSON">
-              <Download size={16} className="me-2" /> JSON
-            </Button>
-            <Button variant="light" size="sm" className="text-primary" onClick={() => handleExport('csv')} aria-label="Export CSV">
-              <Download size={16} className="me-2" /> CSV
+            <Button variant="light" size="sm" className="text-primary" onClick={handleExportJSON} aria-label="Export JSON">
+              <Download size={16} className="me-2" /> Export Results
             </Button>
           </div>
         </Card.Body>
@@ -190,27 +208,27 @@ const ReportPage: React.FC = () => {
       {/* Summary Cards */}
       <Row className="g-3 mb-4">
         <Col md={3} xs={12}>
-          <StatsCard title="Total Dependencies" value={report.total_dependencies} icon={<Shield size={24} />} variant="primary" />
+          <StatsCard title="Total Dependencies" value={report.scan_info.total_dependencies} icon={<Shield size={24} />} variant="primary" />
         </Col>
         <Col md={3} xs={12}>
-          <StatsCard title="Vulnerable Packages" value={report.vulnerable_count} icon={<AlertTriangle size={24} />} variant="danger" />
+          <StatsCard title="Vulnerable Packages" value={report.vulnerabilities.length} icon={<AlertTriangle size={24} />} variant="danger" />
         </Col>
         <Col md={3} xs={12}>
-          <StatsCard title="Clean Packages" value={report.total_dependencies - report.vulnerable_count} icon={<CheckCircle size={24} />} variant="success" />
+          <StatsCard title="Clean Packages" value={report.scan_info.total_dependencies - report.vulnerabilities.length} icon={<CheckCircle size={24} />} variant="success" />
         </Col>
         <Col md={3} xs={12}>
-          <StatsCard title="Ecosystems" value={report.meta.ecosystems.join(', ')} icon={<Clock size={24} />} variant="info" />
+          <StatsCard title="Scan Type" value="CLI Scan" icon={<Clock size={24} />} variant="info" />
         </Col>
       </Row>
 
       {/* Vulnerabilities */}
-      {report.vulnerable_count > 0 ? (
+      {report.vulnerabilities.length > 0 ? (
         <Card>
           <Card.Header className="d-flex flex-wrap justify-content-between align-items-center">
             <div className="h5 mb-0">Vulnerabilities Found</div>
             <div className="d-flex gap-2">
               {(() => {
-                const counts = groupBySeverity(report.vulnerable_packages);
+                const counts = groupBySeverity(report.vulnerabilities as any);
                 return <SeverityFilter counts={{
                   [SeverityLevel.CRITICAL]: counts[SeverityLevel.CRITICAL].length,
                   [SeverityLevel.HIGH]: counts[SeverityLevel.HIGH].length,
@@ -270,7 +288,7 @@ const ReportPage: React.FC = () => {
             <CheckCircle className="text-success mb-2" />
             <Card.Title>No Vulnerabilities Found</Card.Title>
             <Card.Text className="text-muted">
-              All {report.total_dependencies} dependencies are free of known security vulnerabilities.
+              All {report.scan_info.total_dependencies} dependencies are free of known security vulnerabilities.
             </Card.Text>
           </Card.Body>
         </Card>

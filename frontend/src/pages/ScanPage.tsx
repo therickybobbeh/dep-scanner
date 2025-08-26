@@ -1,7 +1,7 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Container, Row, Col, Card, Form, Button, Alert, ListGroup, Badge, Spinner } from 'react-bootstrap';
-import { Upload, FileText, X } from 'lucide-react';
+import { Upload, FileText, X, CheckCircle, AlertTriangle } from 'lucide-react';
 import axios from 'axios';
 import type { ScanRequest } from '../types/api';
 import { SeverityLevel } from '../types/common';
@@ -10,16 +10,20 @@ const ScanPage: React.FC = () => {
   const [files, setFiles] = useState<Record<string, File>>({});
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [consistencyResult, setConsistencyResult] = useState<any>(null);
+  const [isValidatingConsistency, setIsValidatingConsistency] = useState(false);
   const [options, setOptions] = useState({
     include_dev_dependencies: true,
     ignore_severities: [] as SeverityLevel[],
-    cache_control: {
-      bypass_cache: false,
-      use_enhanced_resolution: true, // Enable transitive dependencies by default
-    }
   });
   
   const navigate = useNavigate();
+
+  // Check if both package.json and package-lock.json are uploaded
+  const hasBothPackageFiles = useMemo(() => {
+    const fileNames = Object.keys(files);
+    return fileNames.includes('package.json') && fileNames.includes('package-lock.json');
+  }, [files]);
 
   const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const uploadedFiles = event.target.files;
@@ -66,8 +70,7 @@ const ScanPage: React.FC = () => {
         options: {
           include_dev_dependencies: options.include_dev_dependencies,
           ignore_severities: options.ignore_severities,
-          ignore_rules: [],
-          cache_control: options.cache_control
+          ignore_rules: []
         }
       };
 
@@ -83,6 +86,44 @@ const ScanPage: React.FC = () => {
       setIsUploading(false);
     }
   };
+
+  const validateConsistency = async () => {
+    if (!hasBothPackageFiles) return;
+    
+    setConsistencyResult(null);
+    setIsValidatingConsistency(true);
+    setError(null);
+    
+    try {
+      // Read file contents
+      const manifest_files: Record<string, string> = {};
+      
+      for (const [filename, file] of Object.entries(files)) {
+        if (filename === 'package.json' || filename === 'package-lock.json') {
+          const content = await file.text();
+          manifest_files[filename] = content;
+        }
+      }
+
+      const consistencyRequest = {
+        manifest_files,
+        options: {
+          include_dev_dependencies: options.include_dev_dependencies,
+          ignore_severities: options.ignore_severities,
+          ignore_rules: []
+        }
+      };
+
+      const response = await axios.post('/api/validate-consistency', consistencyRequest);
+      setConsistencyResult(response.data);
+    } catch (err) {
+      console.error('Consistency validation failed:', err);
+      setError(err instanceof Error ? err.message : 'Failed to validate consistency');
+    } finally {
+      setIsValidatingConsistency(false);
+    }
+  };
+
 
   const supportedFiles = [
     'package.json', 'package-lock.json', 'yarn.lock',
@@ -164,6 +205,137 @@ const ScanPage: React.FC = () => {
           </Card.Body>
         </Card>
 
+        {/* Consistency Validation */}
+        {hasBothPackageFiles && (
+          <Card className="mb-4">
+            <Card.Header className="bg-info-subtle">
+              <Card.Title className="mb-0 d-flex align-items-center">
+                <CheckCircle size={18} className="me-2 text-info" />
+                Package Consistency Validation
+              </Card.Title>
+            </Card.Header>
+            <Card.Body>
+              <div className="d-flex align-items-start">
+                <div className="flex-grow-1">
+                  <p className="mb-2">
+                    Both <code>package.json</code> and <code>package-lock.json</code> detected. 
+                    Validate that they produce consistent vulnerability scan results.
+                  </p>
+                  <small className="text-muted">
+                    This checks for differences in version resolution that might cause inconsistent results.
+                  </small>
+                </div>
+                <Button
+                  variant="info"
+                  size="sm"
+                  onClick={validateConsistency}
+                  disabled={isValidatingConsistency}
+                  className="ms-3"
+                >
+                  {isValidatingConsistency ? (
+                    <>
+                      <Spinner as="span" animation="border" size="sm" className="me-2" />
+                      Validating...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle size={16} className="me-2" />
+                      Validate Consistency
+                    </>
+                  )}
+                </Button>
+              </div>
+              
+              {/* Consistency Results */}
+              {consistencyResult && (
+                <div className="mt-3">
+                  <Alert 
+                    variant={consistencyResult.is_consistent ? 'success' : 'warning'}
+                    className="mb-3"
+                  >
+                    <div className="d-flex align-items-center">
+                      {consistencyResult.is_consistent ? (
+                        <CheckCircle size={18} className="me-2" />
+                      ) : (
+                        <AlertTriangle size={18} className="me-2" />
+                      )}
+                      <strong>
+                        {consistencyResult.is_consistent 
+                          ? 'Files are consistent' 
+                          : 'Inconsistencies detected'}
+                      </strong>
+                    </div>
+                  </Alert>
+                  
+                  {/* Metrics Comparison */}
+                  {consistencyResult.analysis?.metrics && (
+                    <div className="row mb-3">
+                      <div className="col-md-6">
+                        <Card className="border-primary">
+                          <Card.Header className="bg-primary-subtle">
+                            <small className="fw-semibold">package.json</small>
+                          </Card.Header>
+                          <Card.Body className="py-2">
+                            <div className="d-flex justify-content-between">
+                              <span>Vulnerabilities:</span>
+                              <Badge bg="danger">{consistencyResult.analysis.metrics.package_json.vulnerabilities}</Badge>
+                            </div>
+                            <div className="d-flex justify-content-between">
+                              <span>Dependencies:</span>
+                              <Badge bg="info">{consistencyResult.analysis.metrics.package_json.dependencies}</Badge>
+                            </div>
+                          </Card.Body>
+                        </Card>
+                      </div>
+                      <div className="col-md-6">
+                        <Card className="border-success">
+                          <Card.Header className="bg-success-subtle">
+                            <small className="fw-semibold">package-lock.json</small>
+                          </Card.Header>
+                          <Card.Body className="py-2">
+                            <div className="d-flex justify-content-between">
+                              <span>Vulnerabilities:</span>
+                              <Badge bg="danger">{consistencyResult.analysis.metrics.package_lock.vulnerabilities}</Badge>
+                            </div>
+                            <div className="d-flex justify-content-between">
+                              <span>Dependencies:</span>
+                              <Badge bg="info">{consistencyResult.analysis.metrics.package_lock.dependencies}</Badge>
+                            </div>
+                          </Card.Body>
+                        </Card>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Recommendations */}
+                  {consistencyResult.recommendations && consistencyResult.recommendations.length > 0 && (
+                    <div className="mb-2">
+                      <h6 className="fw-semibold mb-2">Recommendations:</h6>
+                      <ul className="mb-0 small">
+                        {consistencyResult.recommendations.slice(0, 3).map((rec: string, index: number) => (
+                          <li key={index}>{rec}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  
+                  {/* Warnings */}
+                  {consistencyResult.warnings && consistencyResult.warnings.length > 0 && (
+                    <div>
+                      <h6 className="fw-semibold mb-2 text-warning">Warnings:</h6>
+                      <ul className="mb-0 small text-muted">
+                        {consistencyResult.warnings.slice(0, 3).map((warning: string, index: number) => (
+                          <li key={index}>{warning}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+            </Card.Body>
+          </Card>
+        )}
+
         {/* Scan Options */}
         <Card className="mb-4">
           <Card.Header>
@@ -206,48 +378,6 @@ const ScanPage: React.FC = () => {
               </div>
             </Form.Group>
 
-            <Form.Group>
-              <Form.Label className="fw-semibold">Cache Control Options</Form.Label>
-              <div className="mt-2">
-                <Form.Check
-                  type="checkbox"
-                  id="bypass-cache"
-                  label="Bypass version resolution cache"
-                  checked={options.cache_control.bypass_cache}
-                  onChange={(e) => {
-                    setOptions(prev => ({
-                      ...prev,
-                      cache_control: {
-                        ...prev.cache_control,
-                        bypass_cache: e.target.checked
-                      }
-                    }));
-                  }}
-                />
-                <Form.Text className="text-muted d-block mb-2">
-                  Force fresh version lookups from NPM registry (slower but most up-to-date)
-                </Form.Text>
-                
-                <Form.Check
-                  type="checkbox"
-                  id="enhanced-resolution"
-                  label="Enhanced version resolution with transitive dependencies"
-                  checked={options.cache_control.use_enhanced_resolution}
-                  onChange={(e) => {
-                    setOptions(prev => ({
-                      ...prev,
-                      cache_control: {
-                        ...prev.cache_control,
-                        use_enhanced_resolution: e.target.checked
-                      }
-                    }));
-                  }}
-                />
-                <Form.Text className="text-muted d-block">
-                  Resolve package.json to include all transitive dependencies (recommended for comprehensive scans)
-                </Form.Text>
-              </div>
-            </Form.Group>
           </Card.Body>
         </Card>
 
