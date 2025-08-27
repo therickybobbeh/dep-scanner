@@ -1,29 +1,21 @@
 import asyncio
-import json
-import sqlite3
-import hashlib
 import logging
 import random
-from datetime import datetime, timedelta
-# Modern type annotations - no imports needed for basic types
+from datetime import datetime
 import httpx
 
 from ..models import Dep, OSVQuery, OSVBatchQuery, OSVBatchResponse, Vuln, SeverityLevel
 
+
 class OSVScanner:
-    """OSV.dev API client with batching, caching, and retry logic"""
+    """OSV.dev API client with batching and retry logic"""
     
-    def __init__(self, cache_db_path: str | None = None, batch_size: int = 100, 
-                 rate_limit_delay: float = 1.0, max_retries: int = 3):
+    def __init__(self, batch_size: int = 100, rate_limit_delay: float = 1.0, max_retries: int = 3):
         self.base_url = "https://api.osv.dev"
         self.batch_size = batch_size
         self.rate_limit_delay = rate_limit_delay
         self.max_retries = max_retries
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
-        
-        # Initialize cache
-        self.cache_db_path = cache_db_path or "osv_cache.db"
-        self._init_cache_db()
         
         # HTTP client with reasonable timeouts
         self.client = httpx.AsyncClient(
@@ -35,27 +27,6 @@ class OSVScanner:
         self._last_request_time = 0.0
         self._request_count = 0
     
-    def _init_cache_db(self):
-        """Initialize SQLite cache database"""
-        conn = sqlite3.connect(self.cache_db_path)
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS osv_cache (
-                query_hash TEXT PRIMARY KEY,
-                ecosystem TEXT NOT NULL,
-                name TEXT NOT NULL,
-                version TEXT NOT NULL,
-                vulnerabilities TEXT NOT NULL,
-                cached_at TEXT NOT NULL,
-                expires_at TEXT NOT NULL
-            )
-        """)
-        conn.execute("""
-            CREATE INDEX IF NOT EXISTS idx_osv_cache_package 
-            ON osv_cache(ecosystem, name, version)
-        """)
-        conn.commit()
-        conn.close()
-    
     async def scan_dependencies(self, dependencies: list[Dep]) -> list[Vuln]:
         """
         Scan a list of dependencies for vulnerabilities
@@ -64,27 +35,15 @@ class OSVScanner:
         # Deduplicate dependencies by (ecosystem, name, version)
         unique_deps = self._deduplicate_dependencies(dependencies)
         
-        # Check cache first
-        cached_results, uncached_deps = await self._check_cache(unique_deps)
-        
-        # Query OSV for uncached dependencies
-        if uncached_deps:
-            fresh_results = await self._query_osv_batch(uncached_deps)
-            # Cache the fresh results
-            await self._cache_results(uncached_deps, fresh_results)
-        else:
-            fresh_results = []
-        
-        # Combine cached and fresh results
-        all_vulnerabilities = cached_results + fresh_results
+        # Query OSV for all dependencies
+        fresh_results = await self._query_osv_batch(unique_deps)
         
         # Convert to Vuln objects and enrich with dependency metadata
-        # Use unique_deps to avoid duplicate vulnerabilities
         vulnerabilities = []
         seen_vulnerabilities = set()  # Track unique vulnerabilities by (id, package, ecosystem)
         
         for dep in unique_deps:
-            dep_vulns = [v for v in all_vulnerabilities 
+            dep_vulns = [v for v in fresh_results 
                         if v.get("package") == dep.name and v.get("ecosystem") == dep.ecosystem]
             
             for vuln_data in dep_vulns:
@@ -112,57 +71,6 @@ class OSVScanner:
                 unique_deps.append(dep)
         
         return unique_deps
-    
-    async def _check_cache(self, dependencies: list[Dep]) -> tuple[list[dict], list[Dep]]:
-        """
-        Check cache for vulnerability data
-        Returns: (cached_vulnerabilities, uncached_dependencies)
-        """
-        cached_results = []
-        uncached_deps = []
-        
-        conn = sqlite3.connect(self.cache_db_path)
-        conn.row_factory = sqlite3.Row
-        
-        try:
-            for dep in dependencies:
-                query_hash = self._generate_query_hash(dep.ecosystem, dep.name, dep.version)
-                
-                cursor = conn.execute("""
-                    SELECT vulnerabilities, expires_at FROM osv_cache 
-                    WHERE query_hash = ?
-                """, (query_hash,))
-                
-                row = cursor.fetchone()
-                if row and datetime.fromisoformat(row["expires_at"]) > datetime.now():
-                    # Cache hit and not expired
-                    vulns = json.loads(row["vulnerabilities"])
-
-                    # If cached vulnerabilities lack severity info, re-fetch them
-                    missing_severity = False
-                    for vuln in vulns:
-                        if not vuln.get("severity") and not (
-                            isinstance(vuln.get("database_specific"), dict)
-                            and vuln["database_specific"].get("severity")
-                        ):
-                            missing_severity = True
-                            break
-
-                    if missing_severity:
-                        # Treat as cache miss to refresh with severity data
-                        uncached_deps.append(dep)
-                    else:
-                        for vuln in vulns:
-                            vuln["package"] = dep.name
-                            vuln["ecosystem"] = dep.ecosystem
-                        cached_results.extend(vulns)
-                else:
-                    # Cache miss or expired
-                    uncached_deps.append(dep)
-        finally:
-            conn.close()
-        
-        return cached_results, uncached_deps
     
     async def _query_osv_batch(self, dependencies: list[Dep]) -> list[dict]:
         """Query OSV.dev API in batches with retry logic"""
@@ -255,58 +163,6 @@ class OSVScanner:
                 await asyncio.sleep(delay)
         
         return []  # Should not reach here
-    
-    async def _cache_results(self, dependencies: list[Dep], results: list[dict]):
-        """Cache OSV query results"""
-        conn = sqlite3.connect(self.cache_db_path)
-        
-        try:
-            # Group results by dependency
-            results_by_dep = {}
-            for result in results:
-                key = (result["ecosystem"], result["package"])
-                if key not in results_by_dep:
-                    results_by_dep[key] = []
-                results_by_dep[key].append(result)
-            
-            now = datetime.now()
-            expires_at = now + timedelta(hours=24)  # Cache for 24 hours
-            
-            for dep in dependencies:
-                key = (dep.ecosystem, dep.name)
-                dep_vulns = results_by_dep.get(key, [])
-                
-                query_hash = self._generate_query_hash(dep.ecosystem, dep.name, dep.version)
-                
-                # Remove package metadata before caching (it's redundant)
-                cache_vulns = []
-                for vuln in dep_vulns:
-                    cache_vuln = {k: v for k, v in vuln.items() 
-                                if k not in ["package", "ecosystem"]}
-                    cache_vulns.append(cache_vuln)
-                
-                conn.execute("""
-                    INSERT OR REPLACE INTO osv_cache 
-                    (query_hash, ecosystem, name, version, vulnerabilities, cached_at, expires_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    query_hash,
-                    dep.ecosystem,
-                    dep.name,
-                    dep.version,
-                    json.dumps(cache_vulns),
-                    now.isoformat(),
-                    expires_at.isoformat()
-                ))
-            
-            conn.commit()
-        finally:
-            conn.close()
-    
-    def _generate_query_hash(self, ecosystem: str, name: str, version: str) -> str:
-        """Generate a hash for cache key"""
-        content = f"{ecosystem}:{name}:{version}"
-        return hashlib.sha256(content.encode()).hexdigest()
     
     async def _rate_limit(self):
         """Implement rate limiting between requests"""
@@ -607,20 +463,6 @@ class OSVScanner:
                             return f">={event['fixed']}"
         
         return None
-    
-    async def cleanup_cache(self, max_age_days: int = 1):
-        """Remove old cache entries"""
-        cutoff_date = datetime.now() - timedelta(days=max_age_days)
-        
-        conn = sqlite3.connect(self.cache_db_path)
-        try:
-            conn.execute("""
-                DELETE FROM osv_cache 
-                WHERE expires_at < ?
-            """, (cutoff_date.isoformat(),))
-            conn.commit()
-        finally:
-            conn.close()
     
     async def close(self):
         """Clean up resources"""

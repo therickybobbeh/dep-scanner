@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
-import { Download, Shield, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
+import { Download, Shield, AlertTriangle, CheckCircle, Clock, Table as TableIcon } from 'lucide-react';
 import axios from 'axios';
-import { Container, Row, Col, Card, Button, ButtonGroup, Form, Alert, Badge } from 'react-bootstrap';
+import { Container, Row, Col, Card, Button, ButtonGroup, Form, Alert, Badge, Nav } from 'react-bootstrap';
 import ProgressBar from '../components/ui/ProgressBar';
 import StatsCard from '../components/ui/StatsCard';
 import SeverityBadge from '../components/ui/SeverityBadge';
+import DependencyTable from '../components/ui/DependencyTable';
 import { SeverityLevel } from '../types/common';
 import { groupBySeverity, sortBySeverity } from '../utils/severity';
 import type { ScanProgress } from '../types/api';
@@ -20,6 +21,11 @@ interface CLIVulnerability {
   cve_ids: string[];
   advisory_url?: string;
   fixed_range?: string;
+  type?: string; // 'direct' or 'transitive'
+  dependency_path?: string[];
+  details?: string;
+  published?: string;
+  modified?: string;
 }
 
 interface CLIReport {
@@ -40,6 +46,7 @@ const ReportPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'severity' | 'package'>('severity');
   const [filterSeverity, setFilterSeverity] = useState<SeverityLevel | 'all'>('all');
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('table');
 
   useEffect(() => {
     if (!jobId) return;
@@ -158,8 +165,10 @@ const ReportPage: React.FC = () => {
             <Card.Title className="mb-2">{progress?.current_step || 'Scanning dependencies...'}</Card.Title>
             {progress && (
               <div aria-live="polite" aria-label="Scan progress">
-                <ProgressBar value={progress.progress_percent} />
-                <div className="text-muted small mt-2">{Math.round(progress.progress_percent)}% complete</div>
+                <ProgressBar value={progress.progress_percent} showLabel={true} />
+                <div className="text-muted small mt-2">
+                  {progress.current_step || 'Processing...'}
+                </div>
               </div>
             )}
           </Card.Body>
@@ -221,8 +230,72 @@ const ReportPage: React.FC = () => {
         </Col>
       </Row>
 
+      {/* View Mode Toggle */}
+      <Nav variant="tabs" className="mb-3">
+        <Nav.Item>
+          <Nav.Link 
+            active={viewMode === 'table'} 
+            onClick={() => setViewMode('table')}
+          >
+            <TableIcon size={16} className="me-2" />
+            Table View
+          </Nav.Link>
+        </Nav.Item>
+        <Nav.Item>
+          <Nav.Link 
+            active={viewMode === 'cards'} 
+            onClick={() => setViewMode('cards')}
+          >
+            Cards View
+          </Nav.Link>
+        </Nav.Item>
+      </Nav>
+
       {/* Vulnerabilities */}
-      {report.vulnerabilities.length > 0 ? (
+      {viewMode === 'table' ? (
+        // Table view using the new component
+        <Card>
+          <Card.Body>
+            <DependencyTable
+              dependencies={report.vulnerabilities.map(vuln => {
+                // Calculate parent from dependency path
+                const parent = vuln.dependency_path && vuln.dependency_path.length > 1 
+                  ? vuln.dependency_path[vuln.dependency_path.length - 2]
+                  : undefined;
+                
+                // Generate a severity score based on severity level for sorting
+                const severityScore = (() => {
+                  switch (vuln.severity?.toLowerCase()) {
+                    case 'critical': return 9.5;
+                    case 'high': return 7.5;
+                    case 'medium': return 5.0;
+                    case 'low': return 2.5;
+                    default: return 0;
+                  }
+                })();
+                
+                return {
+                  package: vuln.package,
+                  version: vuln.version,
+                  vulnerability_id: vuln.vulnerability_id,
+                  severity: vuln.severity,
+                  severity_score: severityScore,
+                  summary: vuln.summary,
+                  cve_ids: vuln.cve_ids,
+                  advisory_url: vuln.advisory_url,
+                  fixed_range: vuln.fixed_range,
+                  is_direct: vuln.type === 'direct',
+                  parent: parent,
+                  path: vuln.dependency_path || [],
+                  required_by: [] // Could be calculated from dependency tree if needed
+                };
+              })}
+              title={`Vulnerability Report (${report.vulnerabilities.length} vulnerabilities)`}
+              showTransitive={true}
+            />
+          </Card.Body>
+        </Card>
+      ) : report.vulnerabilities.length > 0 ? (
         <Card>
           <Card.Header className="d-flex flex-wrap justify-content-between align-items-center">
             <div className="h5 mb-0">Vulnerabilities Found</div>

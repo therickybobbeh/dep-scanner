@@ -146,24 +146,47 @@ class CLIService:
         Returns:
             Tuple of (message, progress_percent) or None
         """
-        # Common progress patterns in CLI output
+        # Progress patterns mapped to CLI scanner stages:
+        # init (0-10%), discovery (10-30%), generation (30-50%), 
+        # parsing (50-70%), scanning (70-90%), reporting (90-100%)
         patterns = [
-            (r"Starting scan", 5.0),
-            (r"Found (\d+) (Python|JavaScript) dependencies", 15.0),
-            (r"Processing file: (.+)", 25.0),
-            (r"Scanning file: (.+)", 35.0),
-            (r"Resolving dependencies", 45.0),
-            (r"Scanning (\d+) dependencies", 60.0),
-            (r"Checking for vulnerabilities", 75.0),
+            # Init stage (0-10%)
+            (r"Processing file: (.+)", 8.0),
+            (r"Detected (Python|JavaScript) dependency file", 10.0),
+            
+            # Discovery stage (10-30%)
+            (r"Found manifest file: (.+)", 20.0),
+            (r"Found files: (.+)", 25.0),
+            (r"Checking for lock file generation opportunities", 30.0),
+            
+            # Generation stage (30-50%) - Lock file generation
+            (r"Generating.*lock.*file", 35.0),
+            (r"Running (npm install|pip-compile)", 40.0),
+            (r"Successfully generated.*lock", 45.0),
+            (r"Successfully added generated", 50.0),
+            
+            # Parsing stage (50-70%) - Dependency resolution
+            (r"Resolving dependencies", 52.0),
+            (r"Processing file: (.+)", 55.0),
+            (r"Found (\d+) (Python|JavaScript) dependencies", 65.0),
+            (r"Found dependencies in: (.+)", 70.0),
+            
+            # Scanning stage (70-90%) - Vulnerability scanning
+            (r"Scanning (\d+) dependencies", 75.0),
+            (r"Fetching detailed vulnerability data", 80.0),
+            (r"batch (\d+)/(\d+)", 85.0),
+            
+            # Reporting stage (90-100%)
             (r"Scan completed", 95.0),
+            (r"✅ Scan completed", 98.0),
         ]
         
         for pattern, progress in patterns:
             if re.search(pattern, line, re.IGNORECASE):
                 return (line.strip(), progress)
         
-        # Generic progress for any meaningful output
-        if line.strip() and not line.startswith("DEBUG"):
+        # Generic progress for any meaningful output (but don't override specific patterns)
+        if line.strip() and not line.startswith("DEBUG") and not line.startswith("INFO:"):
             return (line.strip(), None)
         
         return None

@@ -7,6 +7,9 @@ export interface Dependency {
   path: string[];
   is_direct: boolean;
   is_dev: boolean;
+  parent?: string; // Parent package for transitive deps
+  depth?: number; // Depth in dependency tree
+  required_by?: string[]; // List of packages requiring this
 }
 
 export interface Vulnerability {
@@ -15,6 +18,7 @@ export interface Vulnerability {
   ecosystem: EcosystemType;
   vulnerability_id: string;
   severity: SeverityLevel | null;
+  severity_score?: number; // CVSS score
   cve_ids: string[];
   summary: string;
   details?: string;
@@ -23,6 +27,15 @@ export interface Vulnerability {
   published?: string;
   modified?: string;
   aliases: string[];
+  affected_dependencies?: DependencyPath[]; // Which dependencies are affected
+}
+
+export interface DependencyPath {
+  package: string;
+  version: string;
+  path: string[]; // Full dependency path from root
+  is_direct: boolean;
+  parent: string;
 }
 
 export interface ScanReport {

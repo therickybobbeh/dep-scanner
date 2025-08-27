@@ -2,7 +2,7 @@
 Simplified Python dependency resolver
 
 This module provides a clean, easy-to-follow interface for resolving Python
-dependencies from various manifest and lockfile formats.
+dependencies from various manifest and lockfile formats using pip-tools for consistency.
 """
 from pathlib import Path
 from typing import Union
@@ -14,11 +14,14 @@ from ..models import Dep, Ecosystem
 
 class PythonResolver:
     """
-    Python dependency resolver
+    Python dependency resolver using unified pip-tools approach
     
-    Resolves dependencies using a prioritized approach:
-    1. Lockfiles (poetry.lock, Pipfile.lock) - Most accurate
-    2. Manifest files (pyproject.toml, Pipfile, requirements.txt) - Direct deps only
+    Resolves dependencies by converting all formats to requirements.lock:
+    1. requirements.lock (pip-tools output) - Most accurate
+    2. Lock files (poetry.lock, Pipfile.lock) → requirements.lock
+    3. Manifest files (requirements.txt, pyproject.toml, Pipfile) → requirements.lock
+    
+    This ensures consistent transitive dependency resolution across all Python formats.
     
     Example usage:
         resolver = PythonResolver()
@@ -31,21 +34,9 @@ class PythonResolver:
         deps = await resolver.resolve_dependencies(None, files)
     """
     
-    def __init__(
-        self, 
-        enhanced_requirements: bool = False,
-        enable_transitive: bool = False,
-        cache_control: dict = None
-    ):
+    def __init__(self):
         self.ecosystem: Ecosystem = "PyPI"
-        self.enhanced_requirements = enhanced_requirements
-        self.enable_transitive = enable_transitive
-        self.cache_control = cache_control or {}
-        
-        self.parser_factory = PythonParserFactory(
-            use_enhanced_requirements=enhanced_requirements,
-            enable_transitive=enable_transitive
-        )
+        self.parser_factory = PythonParserFactory()
     
     async def resolve_dependencies(
         self, 
@@ -56,274 +47,98 @@ class PythonResolver:
         Resolve Python dependencies from repository or manifest files
         
         Args:
-            repo_path: Path to repository directory (None if using manifest_files)
-            manifest_files: Dict of {filename: content} for uploaded files
+            repo_path: Path to repository directory (optional)
+            manifest_files: Dict of {filename: content} (optional)
             
         Returns:
-            List of dependency objects with full transitive resolution when possible
+            List of resolved dependencies with transitive dependencies
             
-        Raises:
-            FileNotFoundError: If no supported dependency files found
-            ParseError: If parsing fails
+        Note: 
+            Provide either repo_path OR manifest_files, not both.
+            When only manifest files are provided, pip-tools will generate
+            requirements.lock automatically for consistent resolution.
         """
-        if manifest_files:
-            return await self._resolve_from_uploaded_files(manifest_files)
-        elif repo_path:
+        if repo_path and manifest_files:
+            raise ValueError("Provide either repo_path OR manifest_files, not both")
+        
+        if repo_path:
             return await self._resolve_from_repository(repo_path)
+        elif manifest_files:
+            return await self._resolve_from_uploaded_files(manifest_files)
         else:
-            raise ValueError("Either repo_path or manifest_files must be provided")
+            raise ValueError("Must provide either repo_path or manifest_files")
     
     async def _resolve_from_repository(self, repo_path: str) -> list[Dep]:
-        """
-        Resolve dependencies from a repository directory
-        
-        Priority order:
-        1. poetry.lock (full transitive resolution)
-        2. Pipfile.lock (full transitive resolution)
-        3. pyproject.toml (direct dependencies only)
-        4. Pipfile (direct dependencies only)
-        5. requirements.txt files (direct dependencies only)
-        """
+        """Resolve dependencies from repository directory"""
         repo_path_obj = Path(repo_path)
         
-        # Step 1: Try lockfiles first (most accurate)
-        lockfiles = [
-            ("poetry.lock", "poetry.lock"),
-            ("Pipfile.lock", "Pipfile.lock")
+        if not repo_path_obj.exists() or not repo_path_obj.is_dir():
+            raise FileNotFoundError(f"Repository path not found: {repo_path}")
+        
+        # Find Python dependency files in repository
+        manifest_files = {}
+        
+        supported_files = [
+            "requirements.lock",    # pip-tools output (preferred)
+            "poetry.lock", 
+            "Pipfile.lock",
+            "requirements.txt",
+            "pyproject.toml", 
+            "Pipfile"
         ]
         
-        for filename, format_name in lockfiles:
+        for filename in supported_files:
             file_path = repo_path_obj / filename
-            if file_path.exists():
+            if file_path.exists() and file_path.is_file():
                 try:
                     content = file_path.read_text(encoding='utf-8')
-                    parser = self.parser_factory.get_parser(filename, content)
-                    deps = await parser.parse(content)
-                    
-                    if deps:  # Successfully parsed with dependencies
-                        return deps
-                        
+                    manifest_files[filename] = content
                 except Exception as e:
-                    # Log warning but continue to next method
-                    print(f"Warning: Failed to parse {filename}: {e}")
+                    # Skip files we can't read
                     continue
         
-        # Step 2: Try manifest files (direct dependencies only)
-        manifest_files = [
-            ("pyproject.toml", "pyproject"),
-            ("Pipfile", "pipfile"),
-            ("requirements.txt", "requirements")
-        ]
+        if not manifest_files:
+            raise ValueError(f"No supported Python dependency files found in {repo_path}")
         
-        for filename, format_name in manifest_files:
-            file_path = repo_path_obj / filename
-            if file_path.exists():
-                try:
-                    content = file_path.read_text(encoding='utf-8')
-                    parser = self.parser_factory.get_parser(filename, content)
-                    deps = await parser.parse(content)
-                    
-                    if deps:
-                        return deps
-                        
-                except Exception as e:
-                    print(f"Warning: Failed to parse {filename}: {e}")
-                    continue
-        
-        # Step 3: Look for any requirements files (dev-requirements.txt, etc.)
-        deps = await self._try_requirements_files(repo_path_obj)
-        if deps:
-            return deps
-        
-        raise FileNotFoundError("No Python dependency files found in repository")
+        return await self._resolve_from_uploaded_files(manifest_files)
     
     async def _resolve_from_uploaded_files(self, manifest_files: dict[str, str]) -> list[Dep]:
         """
-        Resolve dependencies from uploaded manifest files
+        Resolve dependencies from manifest files with pip-tools conversion
         
-        Uses the best available file format based on priority
+        This method ensures all Python dependency formats are converted to 
+        requirements.lock for consistent transitive dependency resolution.
         """
-        if not manifest_files:
-            raise ValueError("No manifest files provided")
+        # Use pip-tools to ensure requirements.lock exists for consistent resolution
+        from ..lock_generators.python_generator import python_lock_generator
+        
+        enhanced_files = await python_lock_generator.ensure_requirements_lock(manifest_files)
+        
+        # Select the best file to parse (prioritizing requirements.lock)
+        try:
+            filename, format_name = self.parser_factory.detect_best_format(enhanced_files)
+        except ValueError as e:
+            raise ParseError(f"No parseable Python dependency files found: {e}")
+        
+        # Get the appropriate parser
+        parser = self.parser_factory.get_parser(filename, enhanced_files[filename])
         
         try:
-            # Detect the best format to use
-            filename, format_name = self.parser_factory.detect_best_format(manifest_files)
-            content = manifest_files[filename]
+            # Parse dependencies
+            dependencies = await parser.parse(
+                content=enhanced_files[filename],
+                include_dev_dependencies=True  # Include dev dependencies by default
+            )
             
-            # Get appropriate parser and parse
-            parser = self.parser_factory.get_parser(filename, content)
-            
-            # Prepare parse options based on cache control
-            parse_kwargs = {}
-            if self.cache_control:
-                parse_kwargs.update({
-                    "bypass_cache": self.cache_control.get("bypass_cache", False),
-                    "enable_transitive": self.cache_control.get("use_enhanced_resolution", False) or self.enable_transitive
-                })
-            
-            deps = await parser.parse(content, **parse_kwargs)
-            
-            # If using requirements.txt, try to merge multiple requirements files
-            if format_name == "requirements":
-                deps = await self._merge_requirements_files(manifest_files, deps)
-            
-            return deps
+            return dependencies
             
         except Exception as e:
-            raise ParseError("Python manifest files", e)
-    
-    async def _try_requirements_files(self, repo_path: Path) -> list[Dep]:
-        """
-        Try to find and parse requirements files in repository
-        
-        Looks for:
-        - requirements.txt
-        - requirements/*.txt files
-        - dev-requirements.txt, test-requirements.txt, etc.
-        """
-        deps = []
-        requirements_parser = self.parser_factory.get_parser_by_format("requirements")
-        
-        # Check for main requirements.txt
-        main_requirements = repo_path / "requirements.txt"
-        if main_requirements.exists():
-            try:
-                content = main_requirements.read_text(encoding='utf-8')
-                main_deps = await requirements_parser.parse(content)
-                deps.extend(main_deps)
-            except Exception as e:
-                print(f"Warning: Failed to parse requirements.txt: {e}")
-        
-        # Check for requirements directory
-        requirements_dir = repo_path / "requirements"
-        if requirements_dir.exists() and requirements_dir.is_dir():
-            for req_file in requirements_dir.glob("*.txt"):
-                try:
-                    content = req_file.read_text(encoding='utf-8')
-                    is_dev = requirements_parser.detect_dev_requirements(req_file.name)
-                    file_deps = await requirements_parser.parse(content, is_dev=is_dev)
-                    deps.extend(file_deps)
-                except Exception as e:
-                    print(f"Warning: Failed to parse {req_file.name}: {e}")
-        
-        # Check for other requirements files (dev-requirements.txt, etc.)
-        for req_file in repo_path.glob("*requirements*.txt"):
-            if req_file.name == "requirements.txt":
-                continue  # Already processed
-                
-            try:
-                content = req_file.read_text(encoding='utf-8')
-                is_dev = requirements_parser.detect_dev_requirements(req_file.name)
-                file_deps = await requirements_parser.parse(content, is_dev=is_dev)
-                deps.extend(file_deps)
-            except Exception as e:
-                print(f"Warning: Failed to parse {req_file.name}: {e}")
-        
-        return deps
-    
-    async def _merge_requirements_files(
-        self, 
-        manifest_files: dict[str, str], 
-        initial_deps: list[Dep]
-    ) -> list[Dep]:
-        """
-        Merge dependencies from multiple requirements files
-        """
-        all_deps = initial_deps.copy()
-        requirements_parser = self.parser_factory.get_parser_by_format("requirements")
-        
-        # Process other requirements files
-        for filename, content in manifest_files.items():
-            if filename.endswith("requirements.txt") and filename != "requirements.txt":
-                try:
-                    is_dev = requirements_parser.detect_dev_requirements(filename)
-                    file_deps = await requirements_parser.parse(content, is_dev=is_dev)
-                    all_deps.extend(file_deps)
-                except Exception as e:
-                    print(f"Warning: Failed to parse {filename}: {e}")
-        
-        # Remove duplicates (same package name)
-        seen_names = set()
-        unique_deps = []
-        
-        for dep in all_deps:
-            if dep.name not in seen_names:
-                unique_deps.append(dep)
-                seen_names.add(dep.name)
-        
-        return unique_deps
+            raise ParseError(f"Failed to parse {filename}: {e}")
     
     def get_supported_formats(self) -> list[str]:
         """Get list of supported Python dependency file formats"""
         return self.parser_factory.get_supported_formats()
     
-    def can_resolve_transitive_dependencies(self, filename: str) -> bool:
-        """
-        Check if a file format supports full transitive dependency resolution
-        
-        Args:
-            filename: Name of dependency file
-            
-        Returns:
-            True if format supports transitive dependencies
-        """
-        transitive_formats = {
-            "poetry.lock": True,
-            "Pipfile.lock": True,
-            "pyproject.toml": False,  # Only direct dependencies
-            "Pipfile": False,         # Only direct dependencies
-            "requirements.txt": False # Only direct dependencies
-        }
-        
-        return transitive_formats.get(filename, False)
-    
-    def get_resolution_info(self, filename: str) -> dict[str, Union[str, bool]]:
-        """
-        Get information about resolution capabilities for a file format
-        
-        Args:
-            filename: Name of dependency file
-            
-        Returns:
-            Dict with resolution information
-        """
-        resolution_info = {
-            "poetry.lock": {
-                "format": "poetry.lock",
-                "transitive_resolution": True,
-                "deterministic_versions": True,
-                "description": "Poetry lockfile with full dependency tree and exact versions"
-            },
-            "Pipfile.lock": {
-                "format": "Pipfile.lock",
-                "transitive_resolution": True,
-                "deterministic_versions": True,
-                "description": "Pipenv lockfile with exact versions"
-            },
-            "pyproject.toml": {
-                "format": "pyproject.toml",
-                "transitive_resolution": False,
-                "deterministic_versions": False,
-                "description": "Python project manifest (PEP 621 or Poetry) with direct dependencies only"
-            },
-            "Pipfile": {
-                "format": "Pipfile",
-                "transitive_resolution": False,
-                "deterministic_versions": False,
-                "description": "Pipenv manifest with direct dependencies and version ranges only"
-            },
-            "requirements.txt": {
-                "format": "requirements.txt",
-                "transitive_resolution": False,
-                "deterministic_versions": False,
-                "description": "Pip requirements with direct dependencies only"
-            }
-        }
-        
-        return resolution_info.get(filename, {
-            "format": "unknown",
-            "transitive_resolution": False,
-            "deterministic_versions": False,
-            "description": "Unsupported format"
-        })
+    def can_resolve_files(self, filenames: list[str]) -> bool:
+        """Check if resolver can handle the given filenames"""
+        return any(self.parser_factory.can_handle_file(filename) for filename in filenames)

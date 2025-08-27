@@ -40,15 +40,25 @@ class ScanService:
             # Update status to running
             progress = self.state.scan_jobs[job_id]
             progress.status = JobStatus.RUNNING
-            progress.current_step = "Running CLI scan..."
-            progress.progress_percent = 50.0
+            progress.current_step = "Initializing scan..."
+            progress.progress_percent = 5.0
             
-            # Run CLI scan
+            # Create progress callback to update real-time progress
+            async def progress_callback(message: str, percent: float | None):
+                """Update progress in real-time from CLI"""
+                current_progress = self.state.scan_jobs.get(job_id)
+                if current_progress:
+                    current_progress.current_step = message
+                    if percent is not None:
+                        current_progress.progress_percent = min(95.0, percent)  # Cap at 95% until completion
+            
+            # Run CLI scan with progress callback
             cli_result = await CLIService.run_cli_scan_async(
                 path=scan_request.repo_path,
                 manifest_files=scan_request.manifest_files,
                 include_dev=scan_request.options.include_dev_dependencies,
-                ignore_severities=[sev.value for sev in scan_request.options.ignore_severities]
+                ignore_severities=[sev.value for sev in scan_request.options.ignore_severities],
+                progress_callback=progress_callback
             )
             
             # Store CLI JSON result directly

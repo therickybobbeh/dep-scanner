@@ -20,17 +20,22 @@ logger = logging.getLogger(__name__)
 
 class PythonLockGenerator:
     """
-    Generator for Python lock files to ensure consistent dependency resolution
+    Unified Python lock file generator using pip-tools for consistent dependency resolution
     
-    Supports generating lock files for:
-    - requirements.txt → requirements.lock (using pip-tools)
-    - pyproject.toml → poetry.lock (using poetry)
-    - pyproject.toml → requirements.lock (using pip-tools for non-poetry projects)
+    Converts all Python dependency formats to requirements.lock for unified processing:
+    - requirements.txt → requirements.lock (via pip-compile)
+    - poetry.lock + pyproject.toml → requirements.lock (via poetry export + pip-compile)  
+    - Pipfile.lock + Pipfile → requirements.lock (via pipenv requirements + pip-compile)
+    - pyproject.toml → requirements.lock (via pip-compile for non-poetry projects)
+    
+    This approach ensures all Python dependency files produce consistent transitive
+    dependency resolution using pip-tools, similar to how JavaScript uses package-lock.json.
     """
     
     def __init__(self):
         self._pip_tools_available = None
         self._poetry_available = None
+        self._pipenv_available = None
     
     async def is_pip_tools_available(self) -> bool:
         """Check if pip-tools (pip-compile) is available"""
@@ -73,6 +78,27 @@ class PythonLockGenerator:
             self._poetry_available = False
         
         return self._poetry_available
+    
+    async def is_pipenv_available(self) -> bool:
+        """Check if pipenv is available"""
+        if self._pipenv_available is not None:
+            return self._pipenv_available
+        
+        try:
+            result = await asyncio.create_subprocess_exec(
+                "pipenv", "--version",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            await result.wait()
+            self._pipenv_available = result.returncode == 0
+        except FileNotFoundError:
+            self._pipenv_available = False
+        except Exception as e:
+            logger.warning(f"Error checking pipenv availability: {e}")
+            self._pipenv_available = False
+        
+        return self._pipenv_available
     
     def _is_poetry_project(self, pyproject_content: str) -> bool:
         """Check if pyproject.toml is a Poetry project"""
@@ -224,6 +250,203 @@ class PythonLockGenerator:
         except Exception as e:
             logger.error(f"Error processing pyproject.toml: {e}")
             return None
+    
+    async def poetry_lock_to_requirements_lock(self, poetry_lock_content: str, pyproject_content: str = None) -> Optional[str]:
+        """
+        Convert poetry.lock to requirements.lock using poetry export + pip-compile
+        
+        Args:
+            poetry_lock_content: Content of poetry.lock file
+            pyproject_content: Content of pyproject.toml file (needed for poetry export)
+            
+        Returns:
+            Content of generated requirements.lock, or None if conversion failed
+        """
+        if not await self.is_poetry_available():
+            logger.warning("Poetry not available, cannot convert poetry.lock")
+            return None
+            
+        if not await self.is_pip_tools_available():
+            logger.warning("pip-tools not available, cannot generate requirements.lock")
+            return None
+        
+        with temp_manager.temp_directory("poetry_to_req_") as temp_dir:
+            try:
+                # Write poetry.lock and pyproject.toml (both needed for poetry export)
+                poetry_lock_path = temp_dir / "poetry.lock"
+                poetry_lock_path.write_text(poetry_lock_content, encoding='utf-8')
+                
+                if pyproject_content:
+                    pyproject_path = temp_dir / "pyproject.toml" 
+                    pyproject_path.write_text(pyproject_content, encoding='utf-8')
+                
+                # Step 1: Export poetry.lock to requirements.txt
+                logger.info("Converting poetry.lock to requirements.txt...")
+                req_path = temp_dir / "requirements.txt"
+                
+                export_result = await asyncio.create_subprocess_exec(
+                    "poetry", "export", "--format", "requirements.txt", 
+                    "--output", str(req_path), "--without-hashes",
+                    cwd=temp_dir,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE
+                )
+                
+                stdout, stderr = await export_result.communicate()
+                
+                if export_result.returncode != 0:
+                    logger.error(f"poetry export failed: {stderr.decode()}")
+                    return None
+                
+                if not req_path.exists():
+                    logger.error("requirements.txt was not generated by poetry export")
+                    return None
+                
+                # Step 2: Convert requirements.txt to requirements.lock using pip-compile
+                logger.info("Converting requirements.txt to requirements.lock...")
+                requirements_content = req_path.read_text(encoding='utf-8')
+                return await self.generate_requirements_lock(requirements_content)
+                
+            except Exception as e:
+                logger.error(f"Error converting poetry.lock to requirements.lock: {e}")
+                return None
+    
+    async def pipfile_lock_to_requirements_lock(self, pipfile_lock_content: str, pipfile_content: str = None) -> Optional[str]:
+        """
+        Convert Pipfile.lock to requirements.lock using pipenv requirements + pip-compile
+        
+        Args:
+            pipfile_lock_content: Content of Pipfile.lock file
+            pipfile_content: Content of Pipfile (needed for pipenv requirements)
+            
+        Returns:
+            Content of generated requirements.lock, or None if conversion failed
+        """
+        if not await self.is_pipenv_available():
+            logger.warning("pipenv not available, cannot convert Pipfile.lock")
+            return None
+            
+        if not await self.is_pip_tools_available():
+            logger.warning("pip-tools not available, cannot generate requirements.lock")
+            return None
+        
+        with temp_manager.temp_directory("pipfile_to_req_") as temp_dir:
+            try:
+                # Write Pipfile.lock and Pipfile (both needed for pipenv requirements)
+                pipfile_lock_path = temp_dir / "Pipfile.lock"
+                pipfile_lock_path.write_text(pipfile_lock_content, encoding='utf-8')
+                
+                if pipfile_content:
+                    pipfile_path = temp_dir / "Pipfile"
+                    pipfile_path.write_text(pipfile_content, encoding='utf-8')
+                
+                # Step 1: Export Pipfile.lock to requirements.txt
+                logger.info("Converting Pipfile.lock to requirements.txt...")
+                
+                req_result = await asyncio.create_subprocess_exec(
+                    "pipenv", "requirements", "--exclude-markers",
+                    cwd=temp_dir,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE
+                )
+                
+                stdout, stderr = await req_result.communicate()
+                
+                if req_result.returncode != 0:
+                    logger.error(f"pipenv requirements failed: {stderr.decode()}")
+                    return None
+                
+                requirements_content = stdout.decode('utf-8').strip()
+                if not requirements_content:
+                    logger.error("No requirements generated from Pipfile.lock")
+                    return None
+                
+                # Step 2: Convert requirements.txt to requirements.lock using pip-compile
+                logger.info("Converting requirements.txt to requirements.lock...")
+                return await self.generate_requirements_lock(requirements_content)
+                
+            except Exception as e:
+                logger.error(f"Error converting Pipfile.lock to requirements.lock: {e}")
+                return None
+    
+    async def ensure_requirements_lock(self, manifest_files: Dict[str, str]) -> Dict[str, str]:
+        """
+        Ensure requirements.lock exists for all Python manifest files using unified pip-tools approach
+        
+        This is the unified method that converts all Python dependency formats to requirements.lock:
+        - requirements.txt → requirements.lock (via pip-compile)  
+        - poetry.lock + pyproject.toml → requirements.lock (via poetry export + pip-compile)
+        - Pipfile.lock + Pipfile → requirements.lock (via pipenv requirements + pip-compile)
+        
+        Args:
+            manifest_files: Dict of {filename: content}
+            
+        Returns:
+            Updated dict with requirements.lock generated from available files
+        """
+        result = manifest_files.copy()
+        
+        # Skip if requirements.lock already exists
+        if "requirements.lock" in manifest_files:
+            logger.info("requirements.lock already exists, no conversion needed")
+            return result
+        
+        # Priority 1: Convert poetry.lock to requirements.lock (if available)
+        if "poetry.lock" in manifest_files:
+            logger.info("Converting poetry.lock to requirements.lock...")
+            try:
+                pyproject_content = manifest_files.get("pyproject.toml")
+                lock_content = await self.poetry_lock_to_requirements_lock(
+                    manifest_files["poetry.lock"], pyproject_content
+                )
+                if lock_content:
+                    result["requirements.lock"] = lock_content
+                    logger.info("Successfully converted poetry.lock to requirements.lock")
+                    return result
+            except Exception as e:
+                logger.warning(f"Failed to convert poetry.lock: {e}")
+        
+        # Priority 2: Convert Pipfile.lock to requirements.lock (if available)
+        if "Pipfile.lock" in manifest_files:
+            logger.info("Converting Pipfile.lock to requirements.lock...")
+            try:
+                pipfile_content = manifest_files.get("Pipfile")
+                lock_content = await self.pipfile_lock_to_requirements_lock(
+                    manifest_files["Pipfile.lock"], pipfile_content
+                )
+                if lock_content:
+                    result["requirements.lock"] = lock_content
+                    logger.info("Successfully converted Pipfile.lock to requirements.lock")
+                    return result
+            except Exception as e:
+                logger.warning(f"Failed to convert Pipfile.lock: {e}")
+        
+        # Priority 3: Generate requirements.lock from requirements.txt (if available)
+        if "requirements.txt" in manifest_files:
+            logger.info("Generating requirements.lock from requirements.txt...")
+            try:
+                lock_content = await self.generate_requirements_lock(manifest_files["requirements.txt"])
+                if lock_content:
+                    result["requirements.lock"] = lock_content
+                    logger.info("Successfully generated requirements.lock from requirements.txt")
+                    return result
+            except Exception as e:
+                logger.warning(f"Failed to generate requirements.lock: {e}")
+        
+        # Priority 4: Generate requirements.lock from pyproject.toml (if available)
+        if "pyproject.toml" in manifest_files:
+            logger.info("Generating requirements.lock from pyproject.toml...")
+            try:
+                lock_content = await self.generate_pyproject_requirements_lock(manifest_files["pyproject.toml"])
+                if lock_content:
+                    result["requirements.lock"] = lock_content
+                    logger.info("Successfully generated requirements.lock from pyproject.toml")
+                    return result
+            except Exception as e:
+                logger.warning(f"Failed to generate requirements.lock from pyproject.toml: {e}")
+        
+        logger.warning("No Python manifest files could be converted to requirements.lock")
+        return result
     
     async def ensure_lock_files(self, manifest_files: Dict[str, str]) -> Dict[str, str]:
         """

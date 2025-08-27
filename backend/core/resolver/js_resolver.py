@@ -11,7 +11,6 @@ from typing import Union
 from .base import ParseError
 from .factories.js_factory import JavaScriptParserFactory
 from .parsers.javascript import NpmLsParser
-from .utils.scan_consistency import ScanConsistencyAnalyzer
 from ..models import Dep, Ecosystem
 
 

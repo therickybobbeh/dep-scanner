@@ -5,7 +5,6 @@ from ..parsers.javascript import (
     PackageLockV2Parser, 
     YarnLockParser,
     PackageJsonParser,
-    EnhancedPackageJsonParser,
     NpmLsParser
 )
 
@@ -14,33 +13,12 @@ class JavaScriptParserFactory:
     """
     Factory for creating appropriate JavaScript dependency parsers
     
-    Handles format detection and parser selection based on file type
-    and content analysis.
+    Simplified factory that focuses on the core parsers needed for 
+    dependency resolution.
     """
     
-    def __init__(
-        self, 
-        use_enhanced_package_json: bool = False, 
-        resolve_versions: bool = False,
-        enable_transitive: bool = False,
-        max_depth: int = 10
-    ):
+    def __init__(self):
         self.detector = FileFormatDetector()
-        self.use_enhanced_package_json = use_enhanced_package_json
-        self.resolve_versions = resolve_versions
-        self.enable_transitive = enable_transitive
-        self.max_depth = max_depth
-        
-        # Choose package.json parser based on configuration
-        package_json_parser = (
-            EnhancedPackageJsonParser(
-                resolve_versions=resolve_versions,
-                enable_transitive=enable_transitive,
-                max_depth=max_depth
-            ) 
-            if use_enhanced_package_json 
-            else PackageJsonParser()
-        )
         
         self._parsers = {
             "package-lock": {
@@ -48,12 +26,7 @@ class JavaScriptParserFactory:
                 "v2": PackageLockV2Parser()
             },
             "yarn-lock": YarnLockParser(),
-            "package-json": package_json_parser,
-            "package-json-enhanced": EnhancedPackageJsonParser(
-                resolve_versions=resolve_versions,
-                enable_transitive=enable_transitive,
-                max_depth=max_depth
-            ),
+            "package-json": PackageJsonParser(),
             "npm-ls": NpmLsParser()
         }
     
@@ -91,13 +64,12 @@ class JavaScriptParserFactory:
         except Exception as e:
             raise ValueError(f"Could not determine JavaScript parser for {filename}: {e}")
     
-    def get_parser_by_format(self, format_name: str, **kwargs) -> DependencyParser:
+    def get_parser_by_format(self, format_name: str) -> DependencyParser:
         """
         Get parser by explicit format name
         
         Args:
             format_name: Explicit format identifier
-            **kwargs: Additional format-specific options
             
         Returns:
             Parser instance
@@ -112,14 +84,14 @@ class JavaScriptParserFactory:
             return self._parsers["yarn-lock"]
         elif format_name == "package-json":
             return self._parsers["package-json"]
-        elif format_name == "package-json-enhanced":
-            return self._parsers["package-json-enhanced"]
         else:
             raise ValueError(f"Unknown format: {format_name}")
     
     def detect_best_format(self, available_files: dict[str, str]) -> tuple[str, str]:
         """
         Detect the best format to use from available files
+        
+        Priority: lockfiles first (most accurate), then manifests
         
         Args:
             available_files: Dict of {filename: content}

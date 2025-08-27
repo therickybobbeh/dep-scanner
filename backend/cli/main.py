@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 
 @app.command()
 def scan(
-    path: str = typer.Argument(".", help="Path to scan for dependencies"),
+    path: str = typer.Argument(".", help="Path to directory or dependency file to scan"),
     json_output: Optional[str] = typer.Option(None, "--json", help="Export results as JSON"),
     include_dev: bool = typer.Option(True, "--include-dev/--no-include-dev", help="Include development dependencies (default: True)"),
     ignore_severity: Optional[str] = typer.Option(None, "--ignore-severity", help="Ignore vulnerabilities of specified severity"),
@@ -44,7 +44,7 @@ def scan(
     output_file: Optional[str] = typer.Option(None, "--output", "-o", help="HTML report output file"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show detailed scanning progress including files being processed")
 ):
-    """Scan a repository for dependency vulnerabilities."""
+    """Scan a directory or individual dependency file for vulnerabilities."""
     
     # Parse ignore severity
     ignore_sev = None
@@ -67,8 +67,8 @@ def scan(
         scanner = DepScanner(verbose=verbose)
         formatter = CLIFormatter()
         
-        # Run the scan
-        report = asyncio.run(scanner.scan_repository(path, options))
+        # Run the scan (auto-detect file vs directory)
+        report = asyncio.run(scanner.scan_path(path, options))
         
         # Print results to console
         formatter.print_scan_summary(report)
