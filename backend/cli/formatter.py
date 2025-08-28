@@ -97,13 +97,6 @@ class CLIFormatter:
         
         return Text(severity_str, style=style), score_str
     
-    def _create_clickable_link(self, url: str, display_text: str) -> str:
-        """
-        Create a clickable terminal link using ANSI escape sequences
-        Format: ESC]8;;url ESC\display_text ESC]8;; ESC\
-        """
-        return f"\033]8;;{url}\033\\{display_text}\033]8;;\033\\"
-    
     def _format_url(self, url: str) -> str:
         """
         Format URL to fit in table - show domain and key parts

@@ -31,7 +31,7 @@ class PythonLockGenerator:
     def __init__(self):
         pass  # No need to track pip availability anymore
     
-    async def ensure_lock_files(self, manifest_files: Dict[str, str]) -> Dict[str, str]:
+    async def ensure_lock_files(self, manifest_files: Dict[str, str], progress_callback: Optional[callable] = None) -> Dict[str, str]:
         """
         Ensure requirements.lock exists for consistent dependency resolution
         
@@ -43,7 +43,10 @@ class PythonLockGenerator:
         # If we already have a lock file, we're done
         lock_files = ["requirements.lock", "poetry.lock", "Pipfile.lock"]
         if any(f in manifest_files for f in lock_files):
-            logger.info("Lock file found, using existing resolution")
+            if progress_callback:
+                progress_callback("Lock file found, using existing resolution")
+            else:
+                logger.info("Lock file found, using existing resolution")
             return result
         
         # For manifest files, generate requirements.lock
@@ -55,7 +58,10 @@ class PythonLockGenerator:
                 lock_content = await self._generate_requirements_lock_simple(dependencies)
                 if lock_content:
                     result["requirements.lock"] = lock_content
-                    logger.info("Successfully generated requirements.lock")
+                    if progress_callback:
+                        progress_callback("Successfully generated requirements.lock")
+                    else:
+                        logger.info("Successfully generated requirements.lock")
                 else:
                     logger.warning("Could not generate requirements.lock")
             else:

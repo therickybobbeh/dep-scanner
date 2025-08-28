@@ -1,5 +1,8 @@
 """Factory for JavaScript dependency parsers"""
-from ..base import FileFormatDetector, DependencyParser
+from typing import Dict, Optional, Set
+import json
+from .base import BaseParserFactory
+from ..base import DependencyParser
 from ..parsers.javascript import (
     PackageLockV1Parser,
     PackageLockV2Parser, 
@@ -9,7 +12,7 @@ from ..parsers.javascript import (
 )
 
 
-class JavaScriptParserFactory:
+class JavaScriptParserFactory(BaseParserFactory):
     """
     Factory for creating appropriate JavaScript dependency parsers
     
@@ -17,9 +20,8 @@ class JavaScriptParserFactory:
     dependency resolution.
     """
     
-    def __init__(self):
-        self.detector = FileFormatDetector()
-        
+    def _initialize_parsers(self) -> None:
+        """Initialize JavaScript-specific parsers"""
         self._parsers = {
             "package-lock": {
                 "v1": PackageLockV1Parser(),
@@ -30,39 +32,36 @@ class JavaScriptParserFactory:
             "npm-ls": NpmLsParser()
         }
     
-    def get_parser(self, filename: str, content: str = "") -> DependencyParser:
-        """
-        Get appropriate parser for JavaScript dependency file
-        
-        Args:
-            filename: Name of the dependency file
-            content: File content (used for format detection)
-            
-        Returns:
-            Parser instance for the detected format
-            
-        Raises:
-            ValueError: If format is not supported
-        """
-        try:
-            format_name = self.detector.detect_js_format(filename, content)
-            
-            if format_name == "package-lock":
-                # Detect package-lock.json version
-                version = self._detect_package_lock_version(content)
-                return self._parsers["package-lock"][version]
-            
-            elif format_name == "yarn-lock":
-                return self._parsers["yarn-lock"]
-            
-            elif format_name == "package-json":
-                return self._parsers["package-json"]
-            
-            else:
-                raise ValueError(f"Unsupported JavaScript format: {format_name}")
-                
-        except Exception as e:
-            raise ValueError(f"Could not determine JavaScript parser for {filename}: {e}")
+    def _detect_format(self, filename: str, content: str) -> str:
+        """Detect JavaScript dependency file format"""
+        return self.detector.detect_js_format(filename, content)
+    
+    def _get_parser_for_format(self, format_name: str, content: str = "") -> DependencyParser:
+        """Get parser for specific JavaScript format"""
+        if format_name == "package-lock":
+            # Detect package-lock.json version
+            version = self._detect_package_lock_version(content)
+            return self._parsers["package-lock"][version]
+        elif format_name in self._parsers:
+            return self._parsers[format_name]
+        else:
+            raise ValueError(f"No parser available for format: {format_name}")
+    
+    def _get_format_priority(self) -> list:
+        """Return JavaScript format priority order"""
+        return [
+            "package-lock.json",  # NPM lockfile (most accurate)
+            "yarn.lock",          # Yarn lockfile
+            "package.json"        # Package manifest
+        ]
+    
+    def _get_supported_formats(self) -> Set[str]:
+        """Return set of supported JavaScript formats"""
+        return {
+            "package-lock.json",
+            "yarn.lock",
+            "package.json"
+        }
     
     def get_parser_by_format(self, format_name: str) -> DependencyParser:
         """
@@ -80,10 +79,8 @@ class JavaScriptParserFactory:
             return self._parsers["package-lock"]["v1"]
         elif format_name == "package-lock-v2":
             return self._parsers["package-lock"]["v2"]
-        elif format_name == "yarn-lock":
-            return self._parsers["yarn-lock"]
-        elif format_name == "package-json":
-            return self._parsers["package-json"]
+        elif format_name in self._parsers:
+            return self._parsers[format_name]
         else:
             raise ValueError(f"Unknown format: {format_name}")
     
@@ -99,14 +96,14 @@ class JavaScriptParserFactory:
         Returns:
             Tuple of (best_filename, format_name)
         """
-        # Priority order: lockfiles first, then manifests
-        priority_order = [
+        # Priority order mapping filename to format name
+        priority_mapping = [
             ("package-lock.json", "package-lock"),
             ("yarn.lock", "yarn-lock"),
             ("package.json", "package-json")
         ]
         
-        for filename, format_name in priority_order:
+        for filename, format_name in priority_mapping:
             if filename in available_files:
                 return filename, format_name
         
@@ -126,7 +123,6 @@ class JavaScriptParserFactory:
             return "v1"  # Default to v1 if empty
         
         try:
-            import json
             data = json.loads(content)
             lockfile_version = data.get("lockfileVersion", 1)
             
@@ -137,14 +133,6 @@ class JavaScriptParserFactory:
                 
         except json.JSONDecodeError:
             return "v1"  # Default to v1 if parsing fails
-    
-    def get_supported_formats(self) -> list[str]:
-        """Get list of all supported JavaScript formats"""
-        return [
-            "package-lock.json",
-            "yarn.lock", 
-            "package.json"
-        ]
     
     def can_handle_file(self, filename: str) -> bool:
         """Check if factory can handle the given filename"""

@@ -6,21 +6,23 @@ export class ScanPage {
   readonly fileUploadLabel: Locator;
   readonly uploadedFilesList: Locator;
   readonly includeDevDepsCheckbox: Locator;
-  readonly enhancedResolutionCheckbox: Locator;
-  readonly bypassCacheCheckbox: Locator;
   readonly startScanButton: Locator;
   readonly errorAlert: Locator;
+  readonly consistencyCheckButton: Locator;
+  readonly consistencyAlert: Locator;
+  readonly severityFilters: Locator;
 
   constructor(page: Page) {
     this.page = page;
-    this.fileUploadInput = page.locator('#file-upload');
-    this.fileUploadLabel = page.getByText('Drop files here or click to upload');
-    this.uploadedFilesList = page.getByText('Uploaded Files');
+    this.fileUploadInput = page.locator('input[type="file"]');
+    this.fileUploadLabel = page.getByText('Choose Files');
+    this.uploadedFilesList = page.locator('.list-group');
     this.includeDevDepsCheckbox = page.getByLabel('Include development dependencies');
-    this.enhancedResolutionCheckbox = page.getByLabel('Enhanced version resolution with transitive dependencies');
-    this.bypassCacheCheckbox = page.getByLabel('Bypass version resolution cache');
     this.startScanButton = page.getByRole('button', { name: 'Start Vulnerability Scan' });
     this.errorAlert = page.locator('.alert-danger');
+    this.consistencyCheckButton = page.getByRole('button', { name: 'Check Package Consistency' });
+    this.consistencyAlert = page.locator('.alert-info');
+    this.severityFilters = page.locator('.form-check-input');
   }
 
   async goto() {
@@ -42,17 +44,18 @@ export class ScanPage {
 
   async configureOptions({
     includeDevDeps = true,
-    enhancedResolution = true,
-    bypassCache = false
+    ignoreSeverities = []
   } = {}) {
     if (await this.includeDevDepsCheckbox.isChecked() !== includeDevDeps) {
       await this.includeDevDepsCheckbox.click();
     }
-    if (await this.enhancedResolutionCheckbox.isChecked() !== enhancedResolution) {
-      await this.enhancedResolutionCheckbox.click();
-    }
-    if (await this.bypassCacheCheckbox.isChecked() !== bypassCache) {
-      await this.bypassCacheCheckbox.click();
+    
+    // Handle severity filters
+    for (const severity of ignoreSeverities) {
+      const severityCheckbox = this.page.getByLabel(`Ignore ${severity} severity vulnerabilities`);
+      if (await severityCheckbox.isVisible()) {
+        await severityCheckbox.check();
+      }
     }
   }
 
@@ -63,6 +66,23 @@ export class ScanPage {
   async verifyFileUploaded(fileName: string) {
     const fileItem = this.page.locator(`.list-group-item:has-text("${fileName}")`);
     await expect(fileItem).toBeVisible();
+    
+    // Verify file badge shows correct type
+    const fileBadge = fileItem.locator('.badge');
+    await expect(fileBadge).toBeVisible();
+  }
+  
+  async checkPackageConsistency() {
+    await this.consistencyCheckButton.click();
+    await expect(this.consistencyAlert).toBeVisible({ timeout: 10000 });
+  }
+  
+  async verifyConsistencyResult(expectedResult: 'consistent' | 'inconsistent') {
+    if (expectedResult === 'consistent') {
+      await expect(this.consistencyAlert).toContainText('consistent');
+    } else {
+      await expect(this.consistencyAlert).toContainText('inconsistencies');
+    }
   }
 
   async verifyErrorMessage(message: string) {

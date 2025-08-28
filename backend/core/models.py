@@ -38,19 +38,10 @@ class Vuln(BaseModel):
     modified: datetime | None = None
     aliases: list[str] = Field(default_factory=list, description="Other identifiers for this vulnerability")
     
-class IgnoreRule(BaseModel):
-    """Configuration for ignoring specific vulnerabilities or packages"""
-    rule_type: Literal["vulnerability", "package"]
-    identifier: str  # CVE ID or package@version pattern
-    reason: str
-    expires: datetime | None = None
-
 class ScanOptions(BaseModel):
     """Configuration options for a scan"""
     include_dev_dependencies: bool = Field(default=True)
-    stale_months: int | None = Field(default=None, description="Consider packages stale if no release in X months")
     ignore_severities: list[SeverityLevel] = Field(default_factory=list)
-    ignore_rules: list[IgnoreRule] = Field(default_factory=list)
 
 class JobStatus(str, Enum):
     PENDING = "pending"
@@ -80,7 +71,6 @@ class Report(BaseModel):
     vulnerable_packages: list[Vuln]
     dependencies: list[Dep]
     suppressed_count: int = 0
-    stale_packages: list[str] = Field(default_factory=list, description="Packages with no recent releases")
     meta: dict[str, Any] = Field(
         default_factory=dict,
         description="Metadata: generated_at, scan_duration, rate_limit_info, warnings, etc."

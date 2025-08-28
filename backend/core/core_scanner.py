@@ -119,7 +119,7 @@ class CoreScanner:
         try:
             if progress_callback:
                 progress_callback("Generating NPM lock files if needed...")
-            result = await self.npm_lock_generator.ensure_lock_file(result)
+            result = await self.npm_lock_generator.ensure_lock_file(result, progress_callback)
         except Exception as e:
             if progress_callback:
                 progress_callback(f"Warning: NPM lock generation failed: {e}")
@@ -128,7 +128,7 @@ class CoreScanner:
         try:
             if progress_callback:
                 progress_callback("Generating Python lock files if needed...")
-            result = await self.python_lock_generator.ensure_lock_files(result)
+            result = await self.python_lock_generator.ensure_lock_files(result, progress_callback)
         except Exception as e:
             if progress_callback:
                 progress_callback(f"Warning: Python lock generation failed: {e}")

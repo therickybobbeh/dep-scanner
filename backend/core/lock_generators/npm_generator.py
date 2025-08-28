@@ -55,7 +55,7 @@ class NpmLockGenerator:
         
         return self._npm_available
     
-    async def generate_lock_file(self, package_json_content: str) -> Optional[str]:
+    async def generate_lock_file(self, package_json_content: str, progress_callback: Optional[callable] = None) -> Optional[str]:
         """
         Generate package-lock.json content from package.json content
         
@@ -85,7 +85,10 @@ class NpmLockGenerator:
             
             # Run npm install to generate package-lock.json
             try:
-                logger.info("Running npm install to generate package-lock.json...")
+                if progress_callback:
+                    progress_callback("Running npm install to generate package-lock.json...")
+                else:
+                    logger.info("Running npm install to generate package-lock.json...")
                 
                 # Run npm install with --package-lock-only flag for faster execution
                 result = await asyncio.create_subprocess_exec(
@@ -108,7 +111,10 @@ class NpmLockGenerator:
                     return None
                 
                 lock_content = package_lock_path.read_text(encoding='utf-8')
-                logger.info("Successfully generated package-lock.json")
+                if progress_callback:
+                    progress_callback("Successfully generated package-lock.json")
+                else:
+                    logger.info("Successfully generated package-lock.json")
                 return lock_content
                 
             except Exception as e:
@@ -161,7 +167,7 @@ class NpmLockGenerator:
             logger.error(f"Error generating package-lock.json: {e}")
             return None
     
-    async def ensure_lock_file(self, manifest_files: Dict[str, str]) -> Dict[str, str]:
+    async def ensure_lock_file(self, manifest_files: Dict[str, str], progress_callback: Optional[callable] = None) -> Dict[str, str]:
         """
         Ensure package-lock.json exists for package.json files
         
@@ -180,13 +186,19 @@ class NpmLockGenerator:
         
         # Check if we have package.json but no package-lock.json
         if "package.json" in manifest_files and "package-lock.json" not in manifest_files:
-            logger.info("package.json found without package-lock.json, generating lock file...")
+            if progress_callback:
+                progress_callback("package.json found without package-lock.json, generating lock file...")
+            else:
+                logger.info("package.json found without package-lock.json, generating lock file...")
             
             try:
-                lock_content = await self.generate_lock_file(manifest_files["package.json"])
+                lock_content = await self.generate_lock_file(manifest_files["package.json"], progress_callback)
                 if lock_content:
                     result["package-lock.json"] = lock_content
-                    logger.info("Successfully added generated package-lock.json")
+                    if progress_callback:
+                        progress_callback("Successfully added generated package-lock.json")
+                    else:
+                        logger.info("Successfully added generated package-lock.json")
                 else:
                     logger.warning("Failed to generate package-lock.json, proceeding with package.json only")
             except Exception as e:

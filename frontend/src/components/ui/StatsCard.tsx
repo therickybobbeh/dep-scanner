@@ -50,12 +50,12 @@ const StatsCard: React.FC<StatsCardProps> = ({
     <Card 
       className={`h-100 ${className}`} 
       style={{
-        ...getBorderStyle(),
         borderRadius: tokens.component.card.borderRadius,
         boxShadow: tokens.component.card.boxShadow,
         transition: 'all 0.15s ease',
         backgroundColor: tokens.component.card.background,
         border: tokens.component.card.border,
+        ...getBorderStyle(), // Apply after border to override
       }} 
       {...props}
     >

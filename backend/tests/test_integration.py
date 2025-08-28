@@ -27,8 +27,7 @@ def test_complete_scan_workflow():
         },
         "options": {
             "include_dev_dependencies": False,
-            "ignore_severities": [],
-            "ignore_rules": []
+            "ignore_severities": []
         }
     }
     
@@ -100,8 +99,7 @@ def test_python_dependencies():
         },
         "options": {
             "include_dev_dependencies": False,
-            "ignore_severities": [],
-            "ignore_rules": []
+            "ignore_severities": []
         }
     }
     
@@ -144,8 +142,7 @@ def test_empty_scan():
         },
         "options": {
             "include_dev_dependencies": False,
-            "ignore_severities": [],
-            "ignore_rules": []
+            "ignore_severities": []
         }
     }
     

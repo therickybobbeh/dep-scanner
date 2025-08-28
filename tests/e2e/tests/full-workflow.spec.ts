@@ -31,8 +31,7 @@ test.describe('Complete User Workflows', () => {
     // Step 4: Configure scan options
     await scanPage.configureOptions({
       includeDevDeps: true,
-      enhancedResolution: true,
-      bypassCache: false
+      ignoreSeverities: [] // Empty array means don't ignore any severities
     });
 
     // Step 5: Start the scan
@@ -58,7 +57,10 @@ test.describe('Complete User Workflows', () => {
       await reportPage.verifyNoVulnerabilities();
     }
 
-    // Step 8: Test export functionality
+    // Step 8: Test table view functionality
+    await reportPage.verifyTableColumns();
+    
+    // Step 9: Test export functionality
     const jsonDownload = await reportPage.exportToJson();
     expect(jsonDownload.suggestedFilename()).toMatch(/depscan_report_.*\.json$/);
 
@@ -70,13 +72,13 @@ test.describe('Complete User Workflows', () => {
     await scanPage.goto();
 
     // Test 1: Try to scan without uploading files
-    await scanPage.startScan();
-    await scanPage.verifyErrorMessage('Please upload at least one dependency file');
+    await expect(scanPage.startScanButton).toBeDisabled();
 
-    // Test 2: Upload a file, then remove it, then try to scan
+    // Test 2: Upload a file, then remove it, then verify button is disabled
     const packageJsonPath = path.join(__dirname, '../fixtures/package.json');
     await scanPage.uploadFile(packageJsonPath);
     await scanPage.verifyFileUploaded('package.json');
+    await expect(scanPage.startScanButton).toBeEnabled();
 
     await scanPage.removeUploadedFile('package.json');
     await expect(scanPage.startScanButton).toBeDisabled();
@@ -98,8 +100,7 @@ test.describe('Complete User Workflows', () => {
     // Configure for comprehensive scan
     await scanPage.configureOptions({
       includeDevDeps: true,
-      enhancedResolution: true,
-      bypassCache: false
+      ignoreSeverities: []
     });
 
     await scanPage.startScan();
@@ -124,7 +125,7 @@ test.describe('Complete User Workflows', () => {
     await scanPage.uploadFile(packageJsonPath);
 
     await scanPage.configureOptions({
-      enhancedResolution: true // This should trigger more progress updates
+      includeDevDeps: true // Include dev deps for more comprehensive scan
     });
 
     await scanPage.startScan();

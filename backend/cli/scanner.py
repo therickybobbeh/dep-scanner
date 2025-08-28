@@ -7,7 +7,7 @@ from typing import Optional
 from contextlib import contextmanager
 
 from rich.console import Console
-from rich.progress import Progress, BarColumn, TextColumn, TaskProgressColumn
+from rich.progress import Progress, BarColumn, TextColumn, TaskProgressColumn, SpinnerColumn
 
 try:
     from ..core.core_scanner import CoreScanner
@@ -75,6 +75,7 @@ class DepScanner:
         filename = file_path_obj.name
         
         with Progress(
+            SpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
             BarColumn(),
             TaskProgressColumn(),
@@ -140,6 +141,7 @@ class DepScanner:
         """Scan a repository for vulnerabilities with enhanced progress display"""
         
         with Progress(
+            SpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
             BarColumn(),
             TaskProgressColumn(),
