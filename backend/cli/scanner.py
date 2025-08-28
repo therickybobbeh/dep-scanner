@@ -4,6 +4,7 @@ CLI Scanner orchestrator - handles progress display and user interaction
 import logging
 from pathlib import Path
 from typing import Optional
+from contextlib import contextmanager
 
 from rich.console import Console
 from rich.progress import Progress, BarColumn, TextColumn, TaskProgressColumn
@@ -36,6 +37,23 @@ class DepScanner:
             "scanning": (70, 90),      # Vulnerability scanning (OSV API)
             "reporting": (90, 100)     # Report generation and finalization
         }
+    
+    @contextmanager
+    def _suppress_logging(self):
+        """Temporarily suppress INFO level logging to prevent interference with progress bar"""
+        # Get root logger and current level
+        root_logger = logging.getLogger()
+        original_level = root_logger.level
+        
+        # Temporarily raise level to WARNING to hide INFO messages
+        if original_level <= logging.INFO:
+            root_logger.setLevel(logging.WARNING)
+        
+        try:
+            yield
+        finally:
+            # Restore original level
+            root_logger.setLevel(original_level)
     
     async def scan_path(self, path: str, options: ScanOptions) -> Report:
         """Scan either a directory or individual dependency file"""
@@ -103,14 +121,15 @@ class DepScanner:
                 self._update_progress_stage("discovery", 1.0)
                 
                 # Stage 3-6: Use existing manifest file processing (30-100%)
-                report = await self.core_scanner.scan_manifest_files(
-                    manifest_files=manifest_files,
-                    options=options,
-                    progress_callback=self._update_progress_from_callback
-                )
+                with self._suppress_logging():
+                    report = await self.core_scanner.scan_manifest_files(
+                        manifest_files=manifest_files,
+                        options=options,
+                        progress_callback=self._update_progress_from_callback
+                    )
                 
                 progress.update(task, completed=100)
-                self.console.print("\\n[green]✅ Scan completed![/green]")
+                self.console.print("\n[green]✅ Scan completed![/green]")
                 return report
                 
             except Exception as e:
@@ -151,14 +170,15 @@ class DepScanner:
                 self._update_progress_stage("discovery", 1.0)
                 
                 # Stages 3-6: Use enhanced manifest file processing (30-100%)
-                report = await self.core_scanner.scan_manifest_files(
-                    manifest_files=manifest_files,
-                    options=options,
-                    progress_callback=self._update_progress_from_callback
-                )
+                with self._suppress_logging():
+                    report = await self.core_scanner.scan_manifest_files(
+                        manifest_files=manifest_files,
+                        options=options,
+                        progress_callback=self._update_progress_from_callback
+                    )
                 
                 progress.update(task, completed=100)
-                self.console.print("\\n[green]✅ Scan completed![/green]")
+                self.console.print("\n[green]✅ Scan completed![/green]")
                 return report
                 
             except Exception as e:

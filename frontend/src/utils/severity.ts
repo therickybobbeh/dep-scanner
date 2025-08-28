@@ -38,8 +38,17 @@ export function getSeverityVariant(severity: SeverityLevel | null): string {
 
 export function sortBySeverity(vulnerabilities: any[]): any[] {
   return [...vulnerabilities].sort((a, b) => {
-    const priorityA = a.severity ? severityPriority[a.severity as SeverityLevel] : 0;
-    const priorityB = b.severity ? severityPriority[b.severity as SeverityLevel] : 0;
+    // Normalize severity strings for consistent comparison
+    const severityA = a.severity?.toUpperCase() as SeverityLevel;
+    const severityB = b.severity?.toUpperCase() as SeverityLevel;
+    
+    const priorityA = severityA && Object.values(SeverityLevel).includes(severityA) 
+      ? severityPriority[severityA] 
+      : 0;
+    const priorityB = severityB && Object.values(SeverityLevel).includes(severityB) 
+      ? severityPriority[severityB] 
+      : 0;
+    
     return priorityB - priorityA; // Descending order (highest severity first)
   });
 }
@@ -54,7 +63,14 @@ export function groupBySeverity(vulnerabilities: any[]): Record<SeverityLevel, a
   };
 
   vulnerabilities.forEach(vuln => {
-    const severity = (vuln.severity as SeverityLevel) || SeverityLevel.UNKNOWN;
+    // Normalize severity string to enum value (case-insensitive)
+    const severityStr = vuln.severity?.toUpperCase();
+    let severity: SeverityLevel = SeverityLevel.UNKNOWN;
+    
+    if (severityStr && Object.values(SeverityLevel).includes(severityStr as SeverityLevel)) {
+      severity = severityStr as SeverityLevel;
+    }
+    
     groups[severity].push(vuln);
   });
 

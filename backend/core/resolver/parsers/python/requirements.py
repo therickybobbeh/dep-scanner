@@ -90,9 +90,21 @@ class RequirementsParser(BaseDependencyParser):
             Dep object or None if line should be skipped
         """
         try:
-            # Handle inline comments
+            # Check for dependency type comments (# direct, # transitive)
+            is_direct = True  # Default assumption
+            
             if '#' in line:
-                line = line.split('#')[0].strip()
+                parts = line.split('#', 1)
+                requirement_part = parts[0].strip()
+                comment_part = parts[1].strip().lower() if len(parts) > 1 else ""
+                
+                # Check for direct/transitive markers
+                if 'transitive' in comment_part:
+                    is_direct = False
+                elif 'direct' in comment_part:
+                    is_direct = True
+                
+                line = requirement_part
             
             if not line:
                 return None
@@ -110,7 +122,7 @@ class RequirementsParser(BaseDependencyParser):
                 name=name,
                 version=version,
                 path=[name],
-                is_direct=True,
+                is_direct=is_direct,
                 is_dev=False  # requirements.txt doesn't distinguish dev deps
             )
             

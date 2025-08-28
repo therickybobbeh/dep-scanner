@@ -28,6 +28,7 @@ class Vuln(BaseModel):
     ecosystem: Ecosystem
     vulnerability_id: str = Field(description="OSV ID or CVE ID")
     severity: SeverityLevel | None = None
+    cvss_score: float | None = Field(default=None, description="CVSS score (0.0-10.0)")
     cve_ids: list[str] = Field(default_factory=list)
     summary: str
     details: str | None = None

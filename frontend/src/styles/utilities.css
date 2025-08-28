@@ -1,0 +1,187 @@
+/**
+ * Utility Classes - Generated from Design Tokens
+ * Token-driven utility classes for consistent styling
+ */
+
+/* Color Utilities */
+.text-primary { color: var(--semantic-interactive-primary) !important; }
+.text-secondary { color: var(--semantic-text-secondary) !important; }
+.text-muted { color: var(--semantic-text-muted) !important; }
+.text-brand { color: var(--semantic-text-brand) !important; }
+
+.bg-primary { background-color: var(--semantic-interactive-primary) !important; }
+.bg-secondary { background-color: var(--semantic-background-secondary) !important; }
+.bg-elevated { background-color: var(--semantic-background-elevated) !important; }
+.bg-brand { background-color: var(--semantic-background-brand) !important; }
+
+/* Status Colors */
+.text-success { color: var(--semantic-status-success) !important; }
+.text-warning { color: var(--semantic-status-warning) !important; }
+.text-danger { color: var(--semantic-status-danger) !important; }
+.text-info { color: var(--semantic-status-info) !important; }
+
+.bg-success { background-color: var(--semantic-status-success) !important; }
+.bg-warning { background-color: var(--semantic-status-warning) !important; }
+.bg-danger { background-color: var(--semantic-status-danger) !important; }
+.bg-info { background-color: var(--semantic-status-info) !important; }
+
+/* Severity Colors */
+.severity-critical { 
+  background-color: var(--semantic-severity-critical) !important; 
+  color: white !important;
+}
+.severity-high { 
+  background-color: var(--semantic-severity-high) !important; 
+  color: white !important;
+}
+.severity-medium { 
+  background-color: var(--semantic-severity-medium) !important; 
+  color: var(--semantic-text-primary) !important;
+}
+.severity-low { 
+  background-color: var(--semantic-severity-low) !important; 
+  color: white !important;
+}
+.severity-unknown { 
+  background-color: var(--semantic-severity-unknown) !important; 
+  color: white !important;
+}
+
+/* Typography Utilities */
+.font-weight-normal { font-weight: var(--font-weight-normal) !important; }
+.font-weight-medium { font-weight: var(--font-weight-medium) !important; }
+.font-weight-semibold { font-weight: var(--font-weight-semibold) !important; }
+.font-weight-bold { font-weight: var(--font-weight-bold) !important; }
+
+.text-xs { font-size: var(--font-size-xs) !important; }
+.text-sm { font-size: var(--font-size-sm) !important; }
+.text-base { font-size: var(--font-size-base) !important; }
+.text-lg { font-size: var(--font-size-lg) !important; }
+.text-xl { font-size: var(--font-size-xl) !important; }
+.text-2xl { font-size: var(--font-size-2xl) !important; }
+
+/* Spacing Utilities */
+.p-0 { padding: var(--spacing-0) !important; }
+.p-1 { padding: var(--spacing-1) !important; }
+.p-2 { padding: var(--spacing-2) !important; }
+.p-3 { padding: var(--spacing-3) !important; }
+.p-4 { padding: var(--spacing-4) !important; }
+.p-5 { padding: var(--spacing-5) !important; }
+.p-6 { padding: var(--spacing-6) !important; }
+
+.m-0 { margin: var(--spacing-0) !important; }
+.m-1 { margin: var(--spacing-1) !important; }
+.m-2 { margin: var(--spacing-2) !important; }
+.m-3 { margin: var(--spacing-3) !important; }
+.m-4 { margin: var(--spacing-4) !important; }
+.m-5 { margin: var(--spacing-5) !important; }
+.m-6 { margin: var(--spacing-6) !important; }
+
+/* Border Utilities */
+.border-primary { border-color: var(--semantic-border-primary) !important; }
+.border-secondary { border-color: var(--semantic-border-secondary) !important; }
+.border-brand { border-color: var(--semantic-border-brand) !important; }
+
+.rounded-sm { border-radius: var(--border-radius-sm) !important; }
+.rounded-md { border-radius: var(--border-radius-md) !important; }
+.rounded-lg { border-radius: var(--border-radius-lg) !important; }
+.rounded-xl { border-radius: var(--border-radius-xl) !important; }
+.rounded-2xl { border-radius: var(--border-radius-2xl) !important; }
+
+/* Shadow Utilities */
+.shadow-sm { box-shadow: var(--box-shadow-sm) !important; }
+.shadow-md { box-shadow: var(--box-shadow-md) !important; }
+.shadow-lg { box-shadow: var(--box-shadow-lg) !important; }
+.shadow-xl { box-shadow: var(--box-shadow-xl) !important; }
+
+/* Interactive States */
+.interactive-primary {
+  background-color: var(--semantic-interactive-primary);
+  color: white;
+  transition: all 0.15s ease;
+}
+
+.interactive-primary:hover {
+  background-color: var(--semantic-interactive-primaryHover);
+  transform: translateY(-1px);
+}
+
+.interactive-secondary {
+  background-color: var(--semantic-interactive-secondary);
+  color: var(--semantic-text-primary);
+  transition: all 0.15s ease;
+}
+
+.interactive-secondary:hover {
+  background-color: var(--semantic-interactive-secondaryHover);
+}
+
+/* Component-like Utilities */
+.card-style {
+  background-color: var(--semantic-background-elevated);
+  border-radius: var(--border-radius-2xl);
+  box-shadow: var(--box-shadow-md);
+  border: 1px solid var(--semantic-border-primary);
+  transition: all 0.15s ease;
+}
+
+.card-style:hover {
+  box-shadow: var(--box-shadow-lg);
+  transform: translateY(-1px);
+}
+
+.button-style {
+  border-radius: var(--border-radius-lg);
+  font-weight: var(--font-weight-medium);
+  padding: var(--spacing-3) var(--spacing-4);
+  transition: all 0.15s ease;
+  border: none;
+  cursor: pointer;
+}
+
+.input-style {
+  border-radius: var(--border-radius-lg);
+  border: 1px solid var(--semantic-border-secondary);
+  padding: var(--spacing-3) var(--spacing-4);
+  font-size: var(--font-size-base);
+  background-color: var(--semantic-background-elevated);
+  color: var(--semantic-text-primary);
+}
+
+.input-style:focus {
+  outline: none;
+  border-color: var(--semantic-interactive-primary);
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+}
+
+/* Animation Utilities */
+.transition-all { transition: all 0.15s ease !important; }
+.transition-colors { transition: color 0.15s ease, background-color 0.15s ease !important; }
+.transition-transform { transition: transform 0.15s ease !important; }
+
+.hover-lift:hover { transform: translateY(-2px) !important; }
+.hover-scale:hover { transform: scale(1.02) !important; }
+
+/* Accessibility Utilities */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.focus-visible:focus-visible {
+  outline: 2px solid var(--semantic-interactive-primary);
+  outline-offset: 2px;
+}
+
+/* Print Utilities */
+@media print {
+  .print-hidden { display: none !important; }
+  .print-visible { display: block !important; }
+}

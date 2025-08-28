@@ -248,8 +248,8 @@ class OSVScanner:
             if "database_specific" in osv_data:
                 self.logger.debug(f"Database specific: {osv_data['database_specific']}")
         
-        # Extract severity (including database_specific fallback)
-        severity = self._extract_severity(
+        # Extract severity and CVSS score (including database_specific fallback)
+        severity, cvss_score = self._extract_severity_and_score(
             osv_data.get("severity", []),
             osv_data.get("database_specific"),
             osv_data.get("ecosystem_specific")
@@ -302,6 +302,7 @@ class OSVScanner:
             ecosystem=dep.ecosystem,
             vulnerability_id=osv_data.get("id", ""),
             severity=severity,
+            cvss_score=cvss_score,
             cve_ids=cve_ids,
             summary=osv_data.get("summary", ""),
             details=osv_data.get("details"),
@@ -311,6 +312,114 @@ class OSVScanner:
             modified=modified,
             aliases=osv_data.get("aliases", [])
         )
+    
+    def _extract_severity_and_score(self, severity_list: list[dict], db_specific: dict | None = None, ecosystem_specific: dict | None = None) -> tuple[SeverityLevel, float | None]:
+        """Extract and normalize severity and CVSS score from OSV data"""
+        
+        def _to_float(val) -> float:
+            """Safely convert severity scores to float"""
+            try:
+                return float(val)
+            except Exception:
+                return 0.0
+        
+        def _parse_cvss_score(cvss_string: str) -> float:
+            """Parse CVSS score from string like 'CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H'"""
+            try:
+                # CVSS v3/v4 scoring - we need to calculate from vector or use a lookup
+                # For simplicity, let's use a basic heuristic based on impact values
+                if 'A:H' in cvss_string or 'VA:H' in cvss_string:  # High availability impact
+                    if 'AC:L' in cvss_string and 'PR:N' in cvss_string:  # Low complexity, no privileges
+                        return 7.5  # HIGH
+                    else:
+                        return 5.3  # MEDIUM
+                elif 'A:L' in cvss_string or 'VA:L' in cvss_string:  # Low availability impact
+                    return 3.1  # LOW
+                else:
+                    return 7.5  # HIGH (default for CVSS strings)
+            except Exception:
+                return 0.0
+
+        cvss_score = None
+        severity_level = SeverityLevel.UNKNOWN
+        
+        if severity_list:
+            # OSV can have multiple severity ratings, prefer CVSS
+            for sev in severity_list:
+                if sev.get("type") in ["CVSS_V3", "CVSS_V4", "CVSS_V2"]:
+                    score_str = sev.get("score", "")
+                    if isinstance(score_str, str) and score_str.startswith("CVSS:"):
+                        score = _parse_cvss_score(score_str)
+                    else:
+                        score = _to_float(score_str)
+                    
+                    cvss_score = score
+                    
+                    if score >= 9.0:
+                        severity_level = SeverityLevel.CRITICAL
+                    elif score >= 7.0:
+                        severity_level = SeverityLevel.HIGH
+                    elif score >= 4.0:
+                        severity_level = SeverityLevel.MEDIUM
+                    elif score > 0:
+                        severity_level = SeverityLevel.LOW
+                    break
+
+            # If no CVSS found, look for other severity descriptors
+            if cvss_score is None:
+                for sev in severity_list:
+                    severity_str = sev.get("severity", "").upper()
+                    if severity_str in ["CRITICAL", "HIGH", "MEDIUM", "LOW"]:
+                        severity_level = SeverityLevel(severity_str)
+                        # Estimate CVSS score based on severity level
+                        cvss_score = {"CRITICAL": 9.5, "HIGH": 7.5, "MEDIUM": 5.0, "LOW": 2.5}.get(severity_str)
+                        break
+                    if severity_str == "MODERATE":
+                        severity_level = SeverityLevel.MEDIUM
+                        cvss_score = 5.0
+                        break
+
+        # Check database_specific severity (e.g., GitHub advisories)
+        if cvss_score is None and db_specific and isinstance(db_specific, dict):
+            sev_str = db_specific.get("severity") or db_specific.get("github_severity")
+            if isinstance(sev_str, str):
+                sev_str = sev_str.upper()
+                if sev_str in ["CRITICAL", "HIGH", "MEDIUM", "LOW"]:
+                    severity_level = SeverityLevel(sev_str)
+                    cvss_score = {"CRITICAL": 9.5, "HIGH": 7.5, "MEDIUM": 5.0, "LOW": 2.5}.get(sev_str)
+                elif sev_str == "MODERATE":
+                    severity_level = SeverityLevel.MEDIUM
+                    cvss_score = 5.0
+
+            # Some databases expose numeric score
+            if cvss_score is None:
+                score_val = _to_float(db_specific.get("score", 0))
+                if score_val > 0:
+                    cvss_score = score_val
+                    if score_val >= 9.0:
+                        severity_level = SeverityLevel.CRITICAL
+                    elif score_val >= 7.0:
+                        severity_level = SeverityLevel.HIGH
+                    elif score_val >= 4.0:
+                        severity_level = SeverityLevel.MEDIUM
+                    else:
+                        severity_level = SeverityLevel.LOW
+
+        # Check ecosystem_specific data
+        if cvss_score is None and ecosystem_specific and isinstance(ecosystem_specific, dict):
+            score_val = _to_float(ecosystem_specific.get("score", 0))
+            if score_val > 0:
+                cvss_score = score_val
+                if score_val >= 9.0:
+                    severity_level = SeverityLevel.CRITICAL
+                elif score_val >= 7.0:
+                    severity_level = SeverityLevel.HIGH
+                elif score_val >= 4.0:
+                    severity_level = SeverityLevel.MEDIUM
+                else:
+                    severity_level = SeverityLevel.LOW
+
+        return severity_level, cvss_score
     
     def _extract_severity(self, severity_list: list[dict], db_specific: dict | None = None, ecosystem_specific: dict | None = None) -> SeverityLevel:
         """Extract and normalize severity from OSV data"""

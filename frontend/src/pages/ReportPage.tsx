@@ -115,6 +115,59 @@ const ReportPage: React.FC = () => {
     }
   };
 
+  const handleExportCSV = async () => {
+    if (!report || !report.vulnerabilities) return;
+    
+    try {
+      // CSV headers
+      const headers = [
+        'Package',
+        'Version', 
+        'Vulnerability ID',
+        'Severity',
+        'Summary',
+        'CVE IDs',
+        'Advisory URL',
+        'Fix Available',
+        'Type',
+        'Dependency Path'
+      ];
+      
+      // Convert vulnerabilities to CSV rows
+      const rows = report.vulnerabilities.map(vuln => [
+        vuln.package || '',
+        vuln.version || '',
+        vuln.vulnerability_id || '',
+        vuln.severity || '',
+        (vuln.summary || '').replace(/,/g, ';').replace(/\n/g, ' '), // Escape commas and newlines
+        (vuln.cve_ids || []).join('; '),
+        vuln.advisory_url || '',
+        vuln.fixed_range || 'No fix available',
+        vuln.type || 'unknown',
+        (vuln.dependency_path || []).join(' → ')
+      ]);
+      
+      // Combine headers and rows
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.map(field => `"${field}"`).join(','))
+      ].join('\n');
+      
+      // Create and download CSV file
+      const dataBlob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
+      const url = window.URL.createObjectURL(dataBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `depscan_report_${jobId}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('CSV export failed:', err);
+    }
+  };
+
   const SeverityFilter: React.FC<{ counts: Record<SeverityLevel, number> }>=({ counts }) => (
     <ButtonGroup size="sm" role="group" aria-label="Filter vulnerabilities by severity">
       <Button 
@@ -145,7 +198,12 @@ const ReportPage: React.FC = () => {
     let filtered = report.vulnerabilities;
     
     if (filterSeverity !== 'all') {
-      filtered = filtered.filter(v => v.severity === filterSeverity);
+      filtered = filtered.filter(v => {
+        // Case-insensitive comparison for severity filtering
+        const vulnSeverity = v.severity?.toUpperCase();
+        const filterVal = filterSeverity.toUpperCase();
+        return vulnSeverity === filterVal;
+      });
     }
 
     if (sortBy === 'severity') {
@@ -153,6 +211,13 @@ const ReportPage: React.FC = () => {
     }
     return [...filtered].sort((a, b) => a.package.localeCompare(b.package));
   }, [report, sortBy, filterSeverity]);
+
+  // Calculate unique vulnerable packages count
+  const uniqueVulnerablePackages = useMemo(() => {
+    if (!report || !report.vulnerabilities) return 0;
+    const uniquePackages = new Set(report.vulnerabilities.map(vuln => vuln.package));
+    return uniquePackages.size;
+  }, [report]);
 
   if (loading) {
     return (
@@ -208,7 +273,10 @@ const ReportPage: React.FC = () => {
           </div>
           <div className="d-flex gap-2">
             <Button variant="light" size="sm" className="text-primary" onClick={handleExportJSON} aria-label="Export JSON">
-              <Download size={16} className="me-2" /> Export Results
+              <Download size={16} className="me-2" /> Export JSON
+            </Button>
+            <Button variant="light" size="sm" className="text-primary" onClick={handleExportCSV} aria-label="Export CSV">
+              <Download size={16} className="me-2" /> Export CSV
             </Button>
           </div>
         </Card.Body>
@@ -220,10 +288,10 @@ const ReportPage: React.FC = () => {
           <StatsCard title="Total Dependencies" value={report.scan_info.total_dependencies} icon={<Shield size={24} />} variant="primary" />
         </Col>
         <Col md={3} xs={12}>
-          <StatsCard title="Vulnerable Packages" value={report.vulnerabilities.length} icon={<AlertTriangle size={24} />} variant="danger" />
+          <StatsCard title="Vulnerable Packages" value={uniqueVulnerablePackages} icon={<AlertTriangle size={24} />} variant="danger" />
         </Col>
         <Col md={3} xs={12}>
-          <StatsCard title="Clean Packages" value={report.scan_info.total_dependencies - report.vulnerabilities.length} icon={<CheckCircle size={24} />} variant="success" />
+          <StatsCard title="Clean Packages" value={report.scan_info.total_dependencies - uniqueVulnerablePackages} icon={<CheckCircle size={24} />} variant="success" />
         </Col>
         <Col md={3} xs={12}>
           <StatsCard title="Scan Type" value="CLI Scan" icon={<Clock size={24} />} variant="info" />

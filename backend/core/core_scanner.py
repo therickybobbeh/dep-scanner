@@ -159,7 +159,7 @@ class CoreScanner:
                 py_deps = await self.python_resolver.resolve_dependencies(repo_path)
             elif manifest_files:
                 py_files = {k: v for k, v in manifest_files.items() 
-                          if k in ["requirements.txt", "poetry.lock", "Pipfile.lock", "pyproject.toml"]}
+                          if k in ["requirements.txt", "requirements.lock", "poetry.lock", "Pipfile.lock", "pyproject.toml", "Pipfile"]}
                 if py_files:
                     if progress_callback:
                         for filename in py_files.keys():

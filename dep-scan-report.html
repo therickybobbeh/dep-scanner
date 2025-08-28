@@ -1,138 +1,11 @@
-"""
-Modern HTML report generation for DepScan CLI with enhanced design
-"""
-from pathlib import Path
-from html import escape
-from datetime import datetime
-from typing import Optional
 
-try:
-    from .models import Report
-except ImportError:
-    from app.models import Report
-
-
-def generate_modern_html_report(report: Report, output_path: Optional[str] = None) -> str:
-    """Generate a comprehensive, modern HTML report with enhanced design."""
-
-    if output_path:
-        output_path = Path(output_path).resolve()
-    else:
-        output_path = Path("dep-scan-report.html").resolve()
-
-    if output_path.exists():
-        output_path.unlink()
-
-    # Calculate statistics
-    total_vulns = len(report.vulnerable_packages)
-    unique_packages = len(set(vp.package for vp in report.vulnerable_packages))
-    total_deps = len(report.dependencies)
-    direct_deps = sum(1 for d in report.dependencies if d.is_direct)
-    transitive_deps = total_deps - direct_deps
-    
-    # Group vulnerabilities by severity with CVSS scores
-    severity_counts = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0, "UNKNOWN": 0}
-    cvss_scores = []
-    
-    for vuln in report.vulnerable_packages:
-        severity = vuln.severity.value if vuln.severity else "UNKNOWN"
-        severity_counts[severity] += 1
-        if vuln.cvss_score:
-            cvss_scores.append(vuln.cvss_score)
-
-    avg_cvss = sum(cvss_scores) / len(cvss_scores) if cvss_scores else 0
-    max_cvss = max(cvss_scores) if cvss_scores else 0
-
-    # Generate vulnerability table rows with enhanced data
-    rows = []
-    for vuln in report.vulnerable_packages:
-        severity = vuln.severity.value if vuln.severity else "UNKNOWN"
-        dep_match = next((d for d in report.dependencies if d.name == vuln.package and d.version == vuln.version), None)
-        dep_type = "direct" if dep_match and dep_match.is_direct else "transitive"
-        
-        # Format CVSS score with visual indicator
-        cvss_display = f"{vuln.cvss_score:.1f}" if vuln.cvss_score else "-"
-        cvss_bar_width = int((vuln.cvss_score or 0) * 10) if vuln.cvss_score else 0
-        
-        # Generate multiple links
-        links = []
-        if vuln.advisory_url:
-            links.append(f"<a href='{escape(vuln.advisory_url)}' target='_blank' class='link advisory'>Advisory</a>")
-        if vuln.vulnerability_id:
-            osv_url = f"https://osv.dev/vulnerability/{vuln.vulnerability_id}"
-            links.append(f"<a href='{osv_url}' target='_blank' class='link osv'>OSV</a>")
-        if vuln.cve_ids:
-            for cve_id in vuln.cve_ids[:2]:  # Show first 2 CVEs
-                cve_url = f"https://nvd.nist.gov/vuln/detail/{cve_id}"
-                links.append(f"<a href='{cve_url}' target='_blank' class='link cve'>{cve_id}</a>")
-        
-        links_html = " ".join(links) if links else "No links"
-        
-        # Format published date
-        published_date = vuln.published.strftime("%Y-%m-%d") if vuln.published else "Unknown"
-        
-        rows.append(f"""
-        <tr class="vuln-row" data-severity="{severity.lower()}">
-            <td>
-                <div class="package-info">
-                    <strong class="package-name">{escape(vuln.package)}</strong>
-                    <code class="version">{escape(vuln.version)}</code>
-                </div>
-            </td>
-            <td>
-                <span class="severity-badge severity-{severity.lower()}">{severity}</span>
-            </td>
-            <td class="cvss-cell">
-                <div class="cvss-container">
-                    <span class="cvss-score">{cvss_display}</span>
-                    <div class="cvss-bar">
-                        <div class="cvss-fill severity-{severity.lower()}" style="width: {cvss_bar_width}%"></div>
-                    </div>
-                </div>
-            </td>
-            <td><span class="dep-type dep-{dep_type}">{dep_type}</span></td>
-            <td class="vuln-id-cell">
-                <code class="vuln-id">{escape(vuln.vulnerability_id or 'N/A')}</code>
-            </td>
-            <td class="published-cell">{published_date}</td>
-            <td class="links-cell">{links_html}</td>
-            <td class="summary-cell">
-                <div class="summary-text" title="{escape(vuln.summary or 'No description available')}">
-                    {escape((vuln.summary or 'No description available')[:100] + '...' if len(vuln.summary or '') > 100 else vuln.summary or 'No description available')}
-                </div>
-                {f'<div class="fixed-version">Fixed in: {escape(vuln.fixed_range)}</div>' if vuln.fixed_range else ''}
-            </td>
-        </tr>
-        """)
-
-    def get_cvss_range(severity):
-        ranges = {
-            "CRITICAL": "9.0 - 10.0",
-            "HIGH": "7.0 - 8.9", 
-            "MEDIUM": "4.0 - 6.9",
-            "LOW": "0.1 - 3.9",
-            "UNKNOWN": "No Score"
-        }
-        return ranges.get(severity, "Unknown")
-
-    # Generate summary cards
-    summary_cards = ""
-    for severity, count in severity_counts.items():
-        if count > 0:
-            percentage = (count / total_vulns) * 100
-            summary_cards += f"""
-            <div class="summary-card severity-{severity.lower()}">
-                <div class="card-header">
-                    <h3 class="count">{count}</h3>
-                    <span class="percentage">{percentage:.1f}%</span>
-                </div>
-                <div class="label">{severity}</div>
-                <div class="cvss-range">{get_cvss_range(severity)}</div>
-            </div>
-            """
-
-    # Enhanced CSS with modern design
-    css_styles = """
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Dependency Vulnerability Report</title>
+        <style>
         /* Reset and Base Styles */
         * { 
             box-sizing: border-box; 
@@ -600,17 +473,7 @@ def generate_modern_html_report(report: Report, output_path: Optional[str] = Non
                 break-inside: avoid;
             }
         }
-    """
-
-    # Generate the complete HTML
-    html_content = f"""
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Dependency Vulnerability Report</title>
-        <style>{css_styles}</style>
+    </style>
     </head>
     <body>
         <div class="container">
@@ -618,7 +481,7 @@ def generate_modern_html_report(report: Report, output_path: Optional[str] = Non
                 <div class="header-content">
                     <h1>🛡️ Dependency Security Report</h1>
                     <div class="subtitle">Comprehensive vulnerability analysis</div>
-                    <div class="scan-timestamp">Generated on {datetime.now().strftime('%B %d, %Y at %I:%M %p')}</div>
+                    <div class="scan-timestamp">Generated on August 27, 2025 at 09:03 PM</div>
                 </div>
             </div>
 
@@ -626,32 +489,50 @@ def generate_modern_html_report(report: Report, output_path: Optional[str] = Non
                 <h2>📊 Executive Summary</h2>
                 
                 <div class="summary-grid">
-                    {summary_cards}
+                    
+            <div class="summary-card severity-high">
+                <div class="card-header">
+                    <h3 class="count">4</h3>
+                    <span class="percentage">66.7%</span>
+                </div>
+                <div class="label">HIGH</div>
+                <div class="cvss-range">7.0 - 8.9</div>
+            </div>
+            
+            <div class="summary-card severity-unknown">
+                <div class="card-header">
+                    <h3 class="count">2</h3>
+                    <span class="percentage">33.3%</span>
+                </div>
+                <div class="label">UNKNOWN</div>
+                <div class="cvss-range">No Score</div>
+            </div>
+            
                 </div>
 
                 <div class="stats-grid">
                     <div class="stat-item">
-                        <div class="stat-value">{total_vulns}</div>
+                        <div class="stat-value">6</div>
                         <div class="stat-label">Total Vulnerabilities</div>
                     </div>
                     <div class="stat-item">
-                        <div class="stat-value">{unique_packages}</div>
+                        <div class="stat-value">2</div>
                         <div class="stat-label">Vulnerable Packages</div>
                     </div>
                     <div class="stat-item">
-                        <div class="stat-value">{total_deps}</div>
+                        <div class="stat-value">2</div>
                         <div class="stat-label">Total Dependencies</div>
                     </div>
                     <div class="stat-item">
-                        <div class="stat-value">{direct_deps}</div>
+                        <div class="stat-value">2</div>
                         <div class="stat-label">Direct Dependencies</div>
                     </div>
                     <div class="stat-item">
-                        <div class="stat-value">{transitive_deps}</div>
+                        <div class="stat-value">0</div>
                         <div class="stat-label">Transitive Dependencies</div>
                     </div>
                     <div class="stat-item">
-                        <div class="stat-value">{avg_cvss:.1f}</div>
+                        <div class="stat-value">7.5</div>
                         <div class="stat-label">Average CVSS Score</div>
                     </div>
                 </div>
@@ -661,7 +542,7 @@ def generate_modern_html_report(report: Report, output_path: Optional[str] = Non
                 <h2 class="section-title">
                     🚨 Detailed Vulnerabilities
                     <span style="font-size: 1rem; font-weight: normal; color: #6b7280;">
-                        ({total_vulns} findings across {unique_packages} packages)
+                        (6 findings across 2 packages)
                     </span>
                 </h2>
 
@@ -680,7 +561,199 @@ def generate_modern_html_report(report: Report, output_path: Optional[str] = Non
                             </tr>
                         </thead>
                         <tbody>
-                            {''.join(rows)}
+                            
+        <tr class="vuln-row" data-severity="high">
+            <td>
+                <div class="package-info">
+                    <strong class="package-name">flask</strong>
+                    <code class="version">2.0.1</code>
+                </div>
+            </td>
+            <td>
+                <span class="severity-badge severity-high">HIGH</span>
+            </td>
+            <td class="cvss-cell">
+                <div class="cvss-container">
+                    <span class="cvss-score">7.5</span>
+                    <div class="cvss-bar">
+                        <div class="cvss-fill severity-high" style="width: 75%"></div>
+                    </div>
+                </div>
+            </td>
+            <td><span class="dep-type dep-direct">direct</span></td>
+            <td class="vuln-id-cell">
+                <code class="vuln-id">GHSA-m2qf-hxjv-5gpq</code>
+            </td>
+            <td class="published-cell">2023-05-01</td>
+            <td class="links-cell"><a href='https://nvd.nist.gov/vuln/detail/CVE-2023-30861' target='_blank' class='link advisory'>Advisory</a> <a href='https://osv.dev/vulnerability/GHSA-m2qf-hxjv-5gpq' target='_blank' class='link osv'>OSV</a> <a href='https://nvd.nist.gov/vuln/detail/CVE-2023-30861' target='_blank' class='link cve'>CVE-2023-30861</a></td>
+            <td class="summary-cell">
+                <div class="summary-text" title="Flask vulnerable to possible disclosure of permanent session cookie due to missing Vary: Cookie header">
+                    Flask vulnerable to possible disclosure of permanent session cookie due to missing Vary: Cookie head...
+                </div>
+                <div class="fixed-version">Fixed in: &gt;=2.3.2</div>
+            </td>
+        </tr>
+        
+        <tr class="vuln-row" data-severity="unknown">
+            <td>
+                <div class="package-info">
+                    <strong class="package-name">flask</strong>
+                    <code class="version">2.0.1</code>
+                </div>
+            </td>
+            <td>
+                <span class="severity-badge severity-unknown">UNKNOWN</span>
+            </td>
+            <td class="cvss-cell">
+                <div class="cvss-container">
+                    <span class="cvss-score">-</span>
+                    <div class="cvss-bar">
+                        <div class="cvss-fill severity-unknown" style="width: 0%"></div>
+                    </div>
+                </div>
+            </td>
+            <td><span class="dep-type dep-direct">direct</span></td>
+            <td class="vuln-id-cell">
+                <code class="vuln-id">PYSEC-2023-62</code>
+            </td>
+            <td class="published-cell">2023-05-02</td>
+            <td class="links-cell"><a href='https://github.com/pallets/flask/security/advisories/GHSA-m2qf-hxjv-5gpq' target='_blank' class='link advisory'>Advisory</a> <a href='https://osv.dev/vulnerability/PYSEC-2023-62' target='_blank' class='link osv'>OSV</a> <a href='https://nvd.nist.gov/vuln/detail/CVE-2023-30861' target='_blank' class='link cve'>CVE-2023-30861</a></td>
+            <td class="summary-cell">
+                <div class="summary-text" title="No description available">
+                    No description available
+                </div>
+                <div class="fixed-version">Fixed in: &gt;=70f906c51ce49c485f1d355703e9cc3386b1cc2b</div>
+            </td>
+        </tr>
+        
+        <tr class="vuln-row" data-severity="high">
+            <td>
+                <div class="package-info">
+                    <strong class="package-name">requests</strong>
+                    <code class="version">2.25.1</code>
+                </div>
+            </td>
+            <td>
+                <span class="severity-badge severity-high">HIGH</span>
+            </td>
+            <td class="cvss-cell">
+                <div class="cvss-container">
+                    <span class="cvss-score">7.5</span>
+                    <div class="cvss-bar">
+                        <div class="cvss-fill severity-high" style="width: 75%"></div>
+                    </div>
+                </div>
+            </td>
+            <td><span class="dep-type dep-direct">direct</span></td>
+            <td class="vuln-id-cell">
+                <code class="vuln-id">GHSA-9hjg-9r4m-mvj7</code>
+            </td>
+            <td class="published-cell">2025-06-09</td>
+            <td class="links-cell"><a href='https://nvd.nist.gov/vuln/detail/CVE-2024-47081' target='_blank' class='link advisory'>Advisory</a> <a href='https://osv.dev/vulnerability/GHSA-9hjg-9r4m-mvj7' target='_blank' class='link osv'>OSV</a> <a href='https://nvd.nist.gov/vuln/detail/CVE-2024-47081' target='_blank' class='link cve'>CVE-2024-47081</a></td>
+            <td class="summary-cell">
+                <div class="summary-text" title="Requests vulnerable to .netrc credentials leak via malicious URLs">
+                    Requests vulnerable to .netrc credentials leak via malicious URLs
+                </div>
+                <div class="fixed-version">Fixed in: &gt;=2.32.4</div>
+            </td>
+        </tr>
+        
+        <tr class="vuln-row" data-severity="high">
+            <td>
+                <div class="package-info">
+                    <strong class="package-name">requests</strong>
+                    <code class="version">2.25.1</code>
+                </div>
+            </td>
+            <td>
+                <span class="severity-badge severity-high">HIGH</span>
+            </td>
+            <td class="cvss-cell">
+                <div class="cvss-container">
+                    <span class="cvss-score">7.5</span>
+                    <div class="cvss-bar">
+                        <div class="cvss-fill severity-high" style="width: 75%"></div>
+                    </div>
+                </div>
+            </td>
+            <td><span class="dep-type dep-direct">direct</span></td>
+            <td class="vuln-id-cell">
+                <code class="vuln-id">GHSA-9wx4-h78v-vm56</code>
+            </td>
+            <td class="published-cell">2024-05-20</td>
+            <td class="links-cell"><a href='https://nvd.nist.gov/vuln/detail/CVE-2024-35195' target='_blank' class='link advisory'>Advisory</a> <a href='https://osv.dev/vulnerability/GHSA-9wx4-h78v-vm56' target='_blank' class='link osv'>OSV</a> <a href='https://nvd.nist.gov/vuln/detail/CVE-2024-35195' target='_blank' class='link cve'>CVE-2024-35195</a></td>
+            <td class="summary-cell">
+                <div class="summary-text" title="Requests `Session` object does not verify requests after making first request with verify=False">
+                    Requests `Session` object does not verify requests after making first request with verify=False
+                </div>
+                <div class="fixed-version">Fixed in: &gt;=2.32.0</div>
+            </td>
+        </tr>
+        
+        <tr class="vuln-row" data-severity="high">
+            <td>
+                <div class="package-info">
+                    <strong class="package-name">requests</strong>
+                    <code class="version">2.25.1</code>
+                </div>
+            </td>
+            <td>
+                <span class="severity-badge severity-high">HIGH</span>
+            </td>
+            <td class="cvss-cell">
+                <div class="cvss-container">
+                    <span class="cvss-score">7.5</span>
+                    <div class="cvss-bar">
+                        <div class="cvss-fill severity-high" style="width: 75%"></div>
+                    </div>
+                </div>
+            </td>
+            <td><span class="dep-type dep-direct">direct</span></td>
+            <td class="vuln-id-cell">
+                <code class="vuln-id">GHSA-j8r2-6x86-q33q</code>
+            </td>
+            <td class="published-cell">2023-05-22</td>
+            <td class="links-cell"><a href='https://nvd.nist.gov/vuln/detail/CVE-2023-32681' target='_blank' class='link advisory'>Advisory</a> <a href='https://osv.dev/vulnerability/GHSA-j8r2-6x86-q33q' target='_blank' class='link osv'>OSV</a> <a href='https://nvd.nist.gov/vuln/detail/CVE-2023-32681' target='_blank' class='link cve'>CVE-2023-32681</a></td>
+            <td class="summary-cell">
+                <div class="summary-text" title="Unintended leak of Proxy-Authorization header in requests">
+                    Unintended leak of Proxy-Authorization header in requests
+                </div>
+                <div class="fixed-version">Fixed in: &gt;=2.31.0</div>
+            </td>
+        </tr>
+        
+        <tr class="vuln-row" data-severity="unknown">
+            <td>
+                <div class="package-info">
+                    <strong class="package-name">requests</strong>
+                    <code class="version">2.25.1</code>
+                </div>
+            </td>
+            <td>
+                <span class="severity-badge severity-unknown">UNKNOWN</span>
+            </td>
+            <td class="cvss-cell">
+                <div class="cvss-container">
+                    <span class="cvss-score">-</span>
+                    <div class="cvss-bar">
+                        <div class="cvss-fill severity-unknown" style="width: 0%"></div>
+                    </div>
+                </div>
+            </td>
+            <td><span class="dep-type dep-direct">direct</span></td>
+            <td class="vuln-id-cell">
+                <code class="vuln-id">PYSEC-2023-74</code>
+            </td>
+            <td class="published-cell">2023-05-26</td>
+            <td class="links-cell"><a href='https://github.com/psf/requests/security/advisories/GHSA-j8r2-6x86-q33q' target='_blank' class='link advisory'>Advisory</a> <a href='https://osv.dev/vulnerability/PYSEC-2023-74' target='_blank' class='link osv'>OSV</a> <a href='https://nvd.nist.gov/vuln/detail/CVE-2023-32681' target='_blank' class='link cve'>CVE-2023-32681</a></td>
+            <td class="summary-cell">
+                <div class="summary-text" title="No description available">
+                    No description available
+                </div>
+                <div class="fixed-version">Fixed in: &gt;=74ea7cf7a6a27a4eeb2ae24e162bcc942a6706d5</div>
+            </td>
+        </tr>
+        
                         </tbody>
                     </table>
                 </div>
@@ -689,18 +762,18 @@ def generate_modern_html_report(report: Report, output_path: Optional[str] = Non
 
         <script>
             // Add some interactivity
-            document.addEventListener('DOMContentLoaded', function() {{
+            document.addEventListener('DOMContentLoaded', function() {
                 // Add click-to-expand for long descriptions
                 const summaryTexts = document.querySelectorAll('.summary-text');
-                summaryTexts.forEach(text => {{
-                    if (text.textContent.length > 100) {{
+                summaryTexts.forEach(text => {
+                    if (text.textContent.length > 100) {
                         text.style.cursor = 'pointer';
                         text.title = 'Click to expand full description';
-                        text.addEventListener('click', function() {{
+                        text.addEventListener('click', function() {
                             this.style.whiteSpace = this.style.whiteSpace === 'normal' ? 'nowrap' : 'normal';
-                        }});
-                    }}
-                }});
+                        });
+                    }
+                });
 
                 // Add severity filtering (basic)
                 const severityBadges = document.querySelectorAll('.severity-badge');
@@ -720,7 +793,7 @@ def generate_modern_html_report(report: Report, output_path: Optional[str] = Non
                 // Add filter button styles
                 const style = document.createElement('style');
                 style.textContent = `
-                    .filter-btn {{
+                    .filter-btn {
                         margin: 0 5px;
                         padding: 8px 16px;
                         border: 2px solid #e5e7eb;
@@ -730,16 +803,16 @@ def generate_modern_html_report(report: Report, output_path: Optional[str] = Non
                         font-size: 0.875rem;
                         font-weight: 500;
                         transition: all 0.2s ease;
-                    }}
-                    .filter-btn:hover {{
+                    }
+                    .filter-btn:hover {
                         border-color: #3730a3;
                         color: #3730a3;
-                    }}
-                    .filter-btn.active {{
+                    }
+                    .filter-btn.active {
                         background: #3730a3;
                         color: white;
                         border-color: #3730a3;
-                    }}
+                    }
                 `;
                 document.head.appendChild(style);
                 
@@ -747,26 +820,23 @@ def generate_modern_html_report(report: Report, output_path: Optional[str] = Non
                 tableContainer.parentNode.insertBefore(filterContainer, tableContainer);
                 
                 // Add filter functionality
-                filterContainer.addEventListener('click', function(e) {{
-                    if (e.target.classList.contains('filter-btn')) {{
+                filterContainer.addEventListener('click', function(e) {
+                    if (e.target.classList.contains('filter-btn')) {
                         document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
                         e.target.classList.add('active');
                         
                         const severity = e.target.dataset.severity;
-                        rows.forEach(row => {{
-                            if (severity === 'all' || row.dataset.severity === severity) {{
+                        rows.forEach(row => {
+                            if (severity === 'all' || row.dataset.severity === severity) {
                                 row.style.display = '';
-                            }} else {{
+                            } else {
                                 row.style.display = 'none';
-                            }}
-                        }});
-                    }}
-                }});
-            }});
+                            }
+                        });
+                    }
+                });
+            });
         </script>
     </body>
     </html>
-    """
-
-    output_path.write_text(html_content, encoding='utf-8')
-    return str(output_path)
+    

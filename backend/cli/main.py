@@ -77,6 +77,9 @@ def scan(
             console.print()  # Add spacing
             table = formatter.create_vulnerability_table(report)
             console.print(table)
+            
+            # Show remediation suggestions
+            formatter.print_remediation_suggestions(report)
         
         # Export JSON if requested
         if json_output:

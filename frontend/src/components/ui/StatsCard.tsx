@@ -1,5 +1,6 @@
 import React from 'react';
 import { Card, CardProps } from 'react-bootstrap';
+import { useToken } from '../../providers/ThemeProvider';
 
 interface StatsCardProps extends CardProps {
   title: string;
@@ -24,16 +25,74 @@ const StatsCard: React.FC<StatsCardProps> = ({
   className = '',
   ...props 
 }) => {
-  const borderColor = `border-${variant}`;
+  const { tokens } = useToken();
+  
+  // Get semantic colors for better consistency
+  const getBorderStyle = () => {
+    const borderWidth = '4px';
+    switch (variant) {
+      case 'primary':
+        return { borderLeftColor: tokens.semantic.colors.interactive.primary, borderLeftWidth: borderWidth };
+      case 'danger':
+        return { borderLeftColor: tokens.semantic.colors.status.danger, borderLeftWidth: borderWidth };
+      case 'success':
+        return { borderLeftColor: tokens.semantic.colors.status.success, borderLeftWidth: borderWidth };
+      case 'warning':
+        return { borderLeftColor: tokens.semantic.colors.status.warning, borderLeftWidth: borderWidth };
+      case 'info':
+        return { borderLeftColor: tokens.semantic.colors.status.info, borderLeftWidth: borderWidth };
+      default:
+        return { borderLeftColor: tokens.semantic.colors.text.secondary, borderLeftWidth: borderWidth };
+    }
+  };
 
   return (
-    <Card className={`h-100 ${borderColor} ${className}`} style={{ borderLeftWidth: '4px' }} {...props}>
+    <Card 
+      className={`h-100 ${className}`} 
+      style={{
+        ...getBorderStyle(),
+        borderRadius: tokens.component.card.borderRadius,
+        boxShadow: tokens.component.card.boxShadow,
+        transition: 'all 0.15s ease',
+        backgroundColor: tokens.component.card.background,
+        border: tokens.component.card.border,
+      }} 
+      {...props}
+    >
       <Card.Body>
         <div className="d-flex justify-content-between align-items-start">
           <div className="flex-grow-1">
-            <div className="text-muted small text-uppercase fw-bold">{title}</div>
-            <div className="h4 mb-1 fw-bold">{value}</div>
-            {subtitle && <div className="text-muted small">{subtitle}</div>}
+            <div 
+              className="small text-uppercase fw-bold"
+              style={{ 
+                color: tokens.semantic.colors.text.secondary,
+                fontSize: tokens.base.typography.fontSize.xs,
+                fontWeight: tokens.base.typography.fontWeight.bold,
+              }}
+            >
+              {title}
+            </div>
+            <div 
+              className="mb-1 fw-bold"
+              style={{
+                fontSize: tokens.base.typography.fontSize['2xl'],
+                fontWeight: tokens.base.typography.fontWeight.bold,
+                color: tokens.semantic.colors.text.primary,
+              }}
+            >
+              {value}
+            </div>
+            {subtitle && (
+              <div 
+                className="small"
+                style={{ 
+                  color: tokens.semantic.colors.text.muted,
+                  fontSize: tokens.base.typography.fontSize.sm,
+                }}
+              >
+                {subtitle}
+              </div>
+            )}
             {trend && (
               <div className={`small mt-1 ${trend.isPositive ? 'text-success' : 'text-danger'}`}>
                 <span>{trend.isPositive ? '↑' : '↓'}</span>
@@ -42,7 +101,12 @@ const StatsCard: React.FC<StatsCardProps> = ({
             )}
           </div>
           {icon && (
-            <div className={`text-${variant} opacity-75`}>
+            <div 
+              style={{ 
+                color: getBorderStyle().borderLeftColor,
+                opacity: 0.75,
+              }}
+            >
               {icon}
             </div>
           )}
