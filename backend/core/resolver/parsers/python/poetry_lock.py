@@ -168,5 +168,5 @@ class PoetryLockParser(BaseDependencyParser):
                 "content_hash": metadata.get("content-hash", ""),
                 "files": metadata.get("files", {}),
             }
-        except Exception:
+        except (KeyError, TypeError):
             return {}

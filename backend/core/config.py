@@ -41,8 +41,8 @@ class Settings(BaseSettings):
     OSV_RATE_LIMIT_PERIOD: int = Field(default=60, env="OSV_RATE_LIMIT_PERIOD")
     
     # Security settings  
-    ALLOWED_HOSTS: str = Field(default="localhost,127.0.0.1,0.0.0.0,*", env="ALLOWED_HOSTS")
-    CORS_ORIGINS: str = Field(default="http://localhost:3000,http://localhost:5173", env="CORS_ORIGINS")
+    ALLOWED_HOSTS: str = Field(default="localhost,127.0.0.1,127.0.0.1:8000,localhost:8000,0.0.0.0", env="ALLOWED_HOSTS")
+    CORS_ORIGINS: str = Field(default="http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173", env="CORS_ORIGINS")
     MAX_REQUEST_SIZE: int = Field(default=16777216, env="MAX_REQUEST_SIZE")  # 16MB
     ENABLE_SECURITY_HEADERS: bool = Field(default=True, env="ENABLE_SECURITY_HEADERS")
     ENABLE_RATE_LIMITING: bool = Field(default=True, env="ENABLE_RATE_LIMITING")
@@ -71,8 +71,14 @@ class Settings(BaseSettings):
 def setup_logging(settings: Settings) -> None:
     """Configure logging for the application."""
     
-    # Create logs directory if it doesn't exist
-    settings.LOGS_DIR.mkdir(exist_ok=True)
+    # Create logs directory if it doesn't exist and filesystem is writable
+    try:
+        settings.LOGS_DIR.mkdir(exist_ok=True)
+        file_logging_enabled = True
+    except OSError as e:
+        # Handle read-only filesystems or permission issues
+        print(f"Warning: Cannot create logs directory ({e}). File logging disabled.")
+        file_logging_enabled = False
     
     # Determine log level
     log_level = getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO)
@@ -101,24 +107,26 @@ def setup_logging(settings: Settings) -> None:
     console_handler.setFormatter(simple_formatter if not settings.DEBUG else detailed_formatter)
     root_logger.addHandler(console_handler)
     
-    # File handler for warnings and errors
-    file_handler = logging.FileHandler(
-        settings.LOGS_DIR / "depscan.log",
-        encoding='utf-8'
-    )
-    file_handler.setLevel(logging.WARNING)
-    file_handler.setFormatter(detailed_formatter)
-    root_logger.addHandler(file_handler)
-    
-    # Separate debug log in debug mode
-    if settings.DEBUG:
-        debug_handler = logging.FileHandler(
-            settings.LOGS_DIR / "depscan-debug.log",
+    # File handlers (only if filesystem is writable)
+    if file_logging_enabled:
+        # File handler for warnings and errors
+        file_handler = logging.FileHandler(
+            settings.LOGS_DIR / "depscan.log",
             encoding='utf-8'
         )
-        debug_handler.setLevel(logging.DEBUG)
-        debug_handler.setFormatter(detailed_formatter)
-        root_logger.addHandler(debug_handler)
+        file_handler.setLevel(logging.WARNING)
+        file_handler.setFormatter(detailed_formatter)
+        root_logger.addHandler(file_handler)
+        
+        # Separate debug log in debug mode
+        if settings.DEBUG:
+            debug_handler = logging.FileHandler(
+                settings.LOGS_DIR / "depscan-debug.log",
+                encoding='utf-8'
+            )
+            debug_handler.setLevel(logging.DEBUG)
+            debug_handler.setFormatter(detailed_formatter)
+            root_logger.addHandler(debug_handler)
     
     # Configure third-party loggers
     logging.getLogger("httpx").setLevel(logging.WARNING)

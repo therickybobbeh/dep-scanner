@@ -6,8 +6,8 @@ build-backend = "setuptools.build_meta"
 name = "dep-scan"
 version = "1.0.0"
 description = "Professional-grade dependency vulnerability scanner with CLI and web interfaces"
-readme = "README.md"
-license = {file = "LICENSE"}
+readme = {text = "Simple dependency vulnerability scanner", content-type = "text/plain"}
+license = {text = "MIT"}
 authors = [
     {name = "DepScan Team", email = "depscan@example.com"},
 ]
@@ -111,7 +111,7 @@ extend-exclude = '''
 profile = "black"
 multi_line_output = 3
 line_length = 88
-known_first_party = ["backend", "tests"]
+known_first_party = ["backend"]
 
 [tool.mypy]
 python_version = "3.10"
@@ -167,3 +167,52 @@ exclude_lines = [
 [tool.bandit]
 exclude_dirs = ["tests", "frontend"]
 skips = ["B101", "B601"]
+
+[tool.flake8]
+max-line-length = 88
+extend-ignore = ["E203", "W503", "E501"]
+exclude = [
+    ".git",
+    "__pycache__",
+    "build",
+    "dist",
+    ".eggs",
+    "*.egg-info",
+    ".venv",
+    ".mypy_cache",
+    ".pytest_cache",
+    "frontend"
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings  
+    "F",  # pyflakes
+    "UP", # pyupgrade
+    "C4", # flake8-comprehensions
+    "B",  # flake8-bugbear
+    "SIM", # flake8-simplify
+    "I",  # isort
+]
+ignore = [
+    "E501", # line too long (handled by black)
+    "B904", # raise-without-from-inside-except
+]
+exclude = [
+    ".git",
+    "__pycache__", 
+    "build",
+    "dist",
+    ".eggs",
+    "*.egg-info",
+    ".venv",
+    ".mypy_cache",
+    ".pytest_cache",
+    "frontend"
+]
+
+[tool.ruff.per-file-ignores]
+"backend/tests/*" = ["F401", "F811"]  # Allow unused imports in tests

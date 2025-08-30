@@ -1,4 +1,6 @@
 """Factory for JavaScript dependency parsers"""
+from __future__ import annotations
+
 from typing import Dict, Optional, Set
 import json
 from .base import BaseParserFactory

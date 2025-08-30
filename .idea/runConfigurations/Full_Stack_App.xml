@@ -1,7 +1,0 @@
-&lt;component name="ProjectRunConfigurationManager"&gt;
-  &lt;configuration default="false" name="Full Stack App" type="CompoundRunConfigurationType"&gt;
-    &lt;toRun name="Backend Server" type="PythonConfigurationType" /&gt;
-    &lt;toRun name="Frontend Dev Server" type="js.build_tools.npm" /&gt;
-    &lt;method v="2" /&gt;
-  &lt;/configuration&gt;
-&lt;/component&gt;

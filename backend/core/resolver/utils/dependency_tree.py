@@ -92,6 +92,7 @@ class DependencyTreeBuilder:
             if not name:
                 continue
             
+            
             version = info.get("version", "")
             is_dev = info.get("dev", False)
             
@@ -181,9 +182,19 @@ class DependencyTreeBuilder:
     def _extract_package_name(self, package_path: str) -> str:
         """
         Extract package name from path like 'node_modules/package' or 'node_modules/@scope/package'
+        Also handles nested paths like 'node_modules/parent/node_modules/child'
         """
         if not package_path.startswith("node_modules/"):
             return ""
+        
+        # Handle nested node_modules paths
+        # e.g., "node_modules/vite/node_modules/fdir" should return "fdir"
+        if "/node_modules/" in package_path:
+            # Find the last occurrence of node_modules/
+            last_node_modules = package_path.rfind("/node_modules/")
+            # Extract everything after the last node_modules/
+            remaining_path = package_path[last_node_modules + 14:]  # +14 for "/node_modules/"
+            return self._extract_package_name("node_modules/" + remaining_path)
         
         path_parts = package_path[13:].split("/")  # Remove "node_modules/"
         
@@ -192,7 +203,9 @@ class DependencyTreeBuilder:
         elif len(path_parts) == 2 and path_parts[0].startswith("@"):
             return "/".join(path_parts[:2])  # Scoped package like @babel/core
         else:
-            return path_parts[0]  # Fallback to first part
+            # For other cases (like nested paths), take the first part
+            # This handles edge cases where there might be other path structures
+            return path_parts[0]
     
     def deduplicate_dependencies(self, deps: list[Dep]) -> list[Dep]:
         """

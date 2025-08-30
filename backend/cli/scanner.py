@@ -1,6 +1,8 @@
 """
 CLI Scanner orchestrator - handles progress display and user interaction
 """
+from __future__ import annotations
+
 import logging
 from pathlib import Path
 from typing import Optional
@@ -32,7 +34,7 @@ class DepScanner:
         self.progress_stages = {
             "init": (0, 10),           # Initial setup and validation
             "discovery": (10, 30),     # File discovery and reading  
-            "generation": (30, 50),    # Lock file generation (npm/pip-tools)
+            "generation": (30, 50),    # Lock file generation (npm/PyPI API)
             "parsing": (50, 70),       # Dependency parsing and tree building
             "scanning": (70, 90),      # Vulnerability scanning (OSV API)
             "reporting": (90, 100)     # Report generation and finalization
@@ -240,7 +242,7 @@ class DepScanner:
         if self.current_progress and self.current_task is not None:
             
             # Map callback messages to progress stages
-            if "generating" in message.lower() or "npm install" in message.lower() or "pip-compile" in message.lower():
+            if "generating" in message.lower() or "registry" in message.lower() or "pypi" in message.lower():
                 # Lock file generation stage (30-50%)
                 if "running" in message.lower():
                     self._update_progress_stage("generation", 0.5)
@@ -271,7 +273,7 @@ class DepScanner:
                             self._update_progress_stage("scanning", batch_progress)
                         else:
                             self._update_progress_stage("scanning", 0.5)
-                    except:
+                    except (ValueError, IndexError):
                         self._update_progress_stage("scanning", 0.5)
                 else:
                     self._update_progress_stage("scanning", 0.3)

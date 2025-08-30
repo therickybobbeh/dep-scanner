@@ -1,10 +1,13 @@
 """
-Simplified Python lock file generator
+Python lock file generator using PyPI API
 
-This module provides a clean, unified approach to Python dependency resolution.
-For lock files: Just parse them (they already have everything)
-For manifest files: Use PyPI API directly (no complex fallbacks)
+This module provides a simple, reliable approach to Python dependency resolution:
+- For lock files (poetry.lock, Pipfile.lock): Return as-is (already resolved)
+- For requirements.txt: Query PyPI API directly for dependency resolution
+- No external tool dependencies (pip-compile, pip-tools, etc.)
 """
+from __future__ import annotations
+
 import asyncio
 import json
 import logging
@@ -20,16 +23,17 @@ logger = logging.getLogger(__name__)
 
 class PythonLockGenerator:
     """
-    Simplified Python lock file generator
+    Python lock file generator using PyPI API
     
     Approach:
-    - Lock files already contain all dependencies - just return them
-    - Manifest files: Query PyPI API for dependency info (simple and reliable)
-    - No complex fallback chains - one approach per file type
+    - Lock files already contain all dependencies - return as-is
+    - requirements.txt: Query PyPI API directly for complete dependency tree
+    - No external dependencies or subprocess calls
+    - Consistent behavior across all environments
     """
     
     def __init__(self):
-        pass  # No need to track pip availability anymore
+        pass  # No external dependencies needed
     
     async def ensure_lock_files(self, manifest_files: Dict[str, str], progress_callback: Optional[callable] = None) -> Dict[str, str]:
         """
@@ -54,8 +58,8 @@ class PythonLockGenerator:
             dependencies = self._extract_dependencies_from_manifests(manifest_files)
             
             if dependencies:
-                # Generate requirements.lock using simple PyPI queries
-                lock_content = await self._generate_requirements_lock_simple(dependencies)
+                # Generate requirements.lock using PyPI API
+                lock_content = await self._generate_requirements_lock(dependencies)
                 if lock_content:
                     result["requirements.lock"] = lock_content
                     if progress_callback:
@@ -78,18 +82,17 @@ class PythonLockGenerator:
     
     def _extract_dependencies_from_manifests(self, manifest_files: Dict[str, str]) -> list[str]:
         """
-        Extract dependency list from various Python manifest formats
-        Simple extraction - no complex parsing needed
+        Extract dependency list from requirements.txt
+        
+        Simplified to only support requirements.txt as per Socket requirements.
+        Lock files (poetry.lock, Pipfile.lock) are handled separately as they
+        already contain resolved dependencies.
         """
         dependencies = []
         
-        # Priority: requirements.txt > pyproject.toml > Pipfile
+        # Only support requirements.txt for manifest files
         if "requirements.txt" in manifest_files:
             dependencies.extend(self._parse_requirements_txt(manifest_files["requirements.txt"]))
-        elif "pyproject.toml" in manifest_files:
-            dependencies.extend(self._parse_pyproject_toml(manifest_files["pyproject.toml"]))
-        elif "Pipfile" in manifest_files:
-            dependencies.extend(self._parse_pipfile(manifest_files["Pipfile"]))
         
         return list(dict.fromkeys(dependencies))  # Remove duplicates
     
@@ -113,95 +116,62 @@ class PythonLockGenerator:
         
         return dependencies
     
-    def _parse_pyproject_toml(self, content: str) -> list[str]:
-        """Simple pyproject.toml parser"""
-        try:
-            import toml
-            data = toml.loads(content)
-            
-            # Check for dependencies in standard location
-            if "project" in data and "dependencies" in data["project"]:
-                return data["project"]["dependencies"]
-            
-            # Fallback to build-system requires
-            if "build-system" in data and "requires" in data["build-system"]:
-                return data["build-system"]["requires"]
-            
-        except Exception as e:
-            logger.warning(f"Error parsing pyproject.toml: {e}")
-        
-        return []
     
-    def _parse_pipfile(self, content: str) -> list[str]:
-        """Simple Pipfile parser"""
-        try:
-            import toml
-            data = toml.loads(content)
-            dependencies = []
-            
-            if "packages" in data:
-                for package, version in data["packages"].items():
-                    if isinstance(version, str) and version != "*":
-                        if version.startswith("=="):
-                            dependencies.append(f"{package}{version}")
-                        else:
-                            dependencies.append(f"{package}=={version}")
-                    else:
-                        dependencies.append(package)
-            
-            return dependencies
-            
-        except Exception as e:
-            logger.warning(f"Error parsing Pipfile: {e}")
-            return []
-    
-    async def _generate_requirements_lock_simple(self, dependencies: list[str]) -> Optional[str]:
+    async def _generate_requirements_lock(self, dependencies: list[str]) -> Optional[str]:
         """
-        Generate requirements.lock using simple PyPI API queries
-        No complex fallbacks - just query PyPI directly
+        Generate requirements.lock using PyPI API for dependency resolution
+        
+        This method queries PyPI directly to resolve all dependencies including
+        transitive ones, creating a complete lock file with exact versions.
         """
         if not dependencies:
             return None
         
+        # Generate lock file using PyPI API
         lines = [
             "# Generated by dep-scan using PyPI API",
-            "# This file contains resolved dependencies with exact versions",
-            "# Direct dependencies are marked with # direct, transitive with # transitive",
+            "# This file contains all resolved dependencies with exact versions",
             "#"
         ]
         
         resolved = {}
         direct_packages = set()
         
-        # First pass: Resolve direct dependencies
+        # Resolve direct dependencies
         for dep in dependencies:
             package_name, version = self._parse_dependency_spec(dep)
             if package_name:
                 direct_packages.add(package_name.lower())
                 
-                # Get exact version from PyPI
                 if not version or not version.startswith("=="):
                     version = await self._get_latest_version_from_pypi(package_name)
                 else:
-                    version = version[2:]  # Remove ==
+                    version = version[2:]
                 
                 if version:
                     resolved[package_name] = version
         
-        # Second pass: Get transitive dependencies (simple approach)
+        # Get transitive dependencies - no limit!
         transitive = {}
-        for package_name in list(resolved.keys()):
-            package_deps = await self._get_package_dependencies_from_pypi(package_name, resolved[package_name])
+        to_process = list(resolved.keys())
+        processed = set()
+        
+        while to_process:
+            package_name = to_process.pop(0)
+            if package_name in processed:
+                continue
+            processed.add(package_name)
+            
+            package_deps = await self._get_package_dependencies_from_pypi(package_name, resolved.get(package_name, ""))
             for dep_name, dep_version in package_deps.items():
                 if dep_name.lower() not in direct_packages and dep_name not in transitive:
                     transitive[dep_name] = dep_version
+                    to_process.append(dep_name)
         
-        # Build the output
-        # Direct dependencies first
+        # Build output
         for name in sorted(resolved.keys()):
             lines.append(f"{name}=={resolved[name]}  # direct")
         
-        # Then transitive
         for name in sorted(transitive.keys()):
             lines.append(f"{name}=={transitive[name]}  # transitive")
         
@@ -211,6 +181,12 @@ class PythonLockGenerator:
         """Parse dependency spec like 'django==3.2.13' -> ('django', '==3.2.13')"""
         dep = dep.strip()
         
+        # Handle parentheses - extract package name before any operator
+        if '(' in dep:
+            package_name = dep.split('(')[0].strip()
+            return package_name, ""  # Just return package name for complex specs
+        
+        # Handle simple operators
         for op in ["==", ">=", "<=", ">", "<", "~=", "!="]:
             if op in dep:
                 parts = dep.split(op, 1)
@@ -238,46 +214,53 @@ class PythonLockGenerator:
     async def _get_package_dependencies_from_pypi(self, package_name: str, version: str) -> dict[str, str]:
         """Get package dependencies from PyPI - simple approach"""
         try:
-            url = f"https://pypi.org/pypi/{package_name}/{version}/json"
-            request = urllib.request.Request(url)
-            request.add_header('User-Agent', 'dep-scan/1.0')
+            # Try specific version first, then fall back to latest
+            urls = []
+            if version:
+                urls.append(f"https://pypi.org/pypi/{package_name}/{version}/json")
+            urls.append(f"https://pypi.org/pypi/{package_name}/json")
             
-            with urllib.request.urlopen(request, timeout=10) as response:
-                if response.status == 200:
-                    data = json.loads(response.read().decode())
-                    deps = {}
+            for url in urls:
+                try:
+                    request = urllib.request.Request(url)
+                    request.add_header('User-Agent', 'dep-scan/1.0')
                     
-                    requires_dist = data.get('info', {}).get('requires_dist', [])
-                    if requires_dist:
-                        for req_str in requires_dist[:10]:  # Limit to first 10 to keep it simple
-                            if req_str and ';' not in req_str:  # Skip conditional deps
-                                dep_name, dep_version = self._parse_dependency_spec(req_str)
-                                if dep_name:
-                                    # Just use latest version for simplicity
-                                    if not dep_version or not dep_version.startswith("=="):
-                                        dep_version = await self._get_latest_version_from_pypi(dep_name)
-                                    else:
-                                        dep_version = dep_version[2:]
-                                    
-                                    if dep_version:
-                                        deps[dep_name] = dep_version
-                    
-                    return deps
+                    with urllib.request.urlopen(request, timeout=10) as response:
+                        if response.status == 200:
+                            data = json.loads(response.read().decode())
+                            deps = {}
+                            
+                            requires_dist = data.get('info', {}).get('requires_dist', [])
+                            if requires_dist:
+                                for req_str in requires_dist:  # No limit - get all dependencies
+                                    if req_str:
+                                        # Check if this is a conditional dependency (extra feature)
+                                        if 'extra ==' in req_str:
+                                            continue  # Skip extra dependencies
+                                        
+                                        # Clean the requirement string - remove environment markers
+                                        clean_req = req_str.split(';')[0].strip()
+                                        dep_name, dep_version = self._parse_dependency_spec(clean_req)
+                                        
+                                        if dep_name and dep_name.lower() not in ['setuptools', 'wheel', 'pip']:
+                                            # Just use latest version for simplicity
+                                            if not dep_version or not dep_version.startswith("=="):
+                                                dep_version = await self._get_latest_version_from_pypi(dep_name)
+                                            else:
+                                                dep_version = dep_version[2:]
+                                            
+                                            if dep_version:
+                                                deps[dep_name] = dep_version
+                            
+                            return deps
+                except Exception:
+                    continue  # Try next URL
                     
         except Exception as e:
             logger.debug(f"Could not get dependencies for {package_name}: {e}")
         
         return {}
     
-    def _create_simple_requirements_lock(self, dependencies: list[str]) -> str:
-        """Create simple requirements.lock as fallback"""
-        lines = [
-            "# Generated by dep-scan (simple format)",
-            "# Only direct dependencies available",
-            "#"
-        ]
-        lines.extend(dependencies)
-        return '\n'.join(lines)
 
 
 # Global instance

@@ -40,7 +40,8 @@ app = FastAPI(
     - 🔍 **Multi-Ecosystem Support**: Scan NPM (JavaScript) and PyPI (Python) dependencies
     - 📊 **Real-time Progress**: WebSocket-based scan progress tracking  
     - 📁 **Multiple Input Formats**: Support for lockfiles and manifest files
-    - 🚀 **Lock File Generation**: Automatic generation of lock files for consistency
+    - 🚀 **Registry API Resolution**: Automatic dependency resolution using npm Registry and PyPI APIs
+    - 🛠️ **No External Dependencies**: Works without npm or pip-tools installation
     - 📤 **Export Options**: JSON and CSV report exports
     
     ### Supported File Formats
@@ -50,10 +51,9 @@ app = FastAPI(
     - `yarn.lock` - Yarn lockfile format
     
     **Python/PyPI:**
-    - `requirements.txt` - Pip requirements format
-    - `Pipfile.lock` - Pipenv lockfile format  
-    - `poetry.lock` - Poetry lockfile format
-    - `pyproject.toml` - Modern Python project configuration
+    - `requirements.txt` - Pip requirements format (primary supported format)
+    - `poetry.lock` - Poetry lockfile format (when provided directly)
+    - `Pipfile.lock` - Pipenv lockfile format (when provided directly)
     
     ### Getting Started
     1. Upload dependency files using the `/scan` endpoint
@@ -86,10 +86,10 @@ app = FastAPI(
     ]
 )
 
-# Security middleware
+# Security middleware (allow testclient for testing)
 app.add_middleware(
     TrustedHostMiddleware,
-    allowed_hosts=settings.ALLOWED_HOSTS
+    allowed_hosts=settings.allowed_hosts_list + ["testserver"]
 )
 
 # Simplified middleware - removed complex validation since CLI handles it
@@ -117,20 +117,24 @@ async def add_security_headers(request: Request, call_next):
     
     return response
 
-# Trusted host configuration for security
-app.add_middleware(
-    TrustedHostMiddleware,
-    allowed_hosts=settings.allowed_hosts_list
-)
+# Remove duplicate - already configured above
 
-# CORS configuration using settings
-# TODO: Refine CORS settings for production
+# CORS configuration using settings - hardened for security
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
     allow_credentials=True,
-    allow_methods=["GET", "POST"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=[
+        "Accept",
+        "Accept-Language", 
+        "Content-Language",
+        "Content-Type",
+        "Authorization",
+        "X-Requested-With"
+    ],
+    expose_headers=["X-RateLimit-Remaining", "X-RateLimit-Reset"],
+    max_age=600,  # Cache preflight requests for 10 minutes
 )
 
 # Service factory functions for dependency injection
@@ -211,8 +215,11 @@ async def start_scan(
     try:
         job_id = await scan_service.start_scan(scan_request)
         return {"job_id": job_id}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid scan request: {str(e)}")
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logging.error(f"Unexpected error starting scan: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.get(

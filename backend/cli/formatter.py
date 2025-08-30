@@ -1,6 +1,8 @@
 """
 CLI output formatting utilities - Simple and readable
 """
+from __future__ import annotations
+
 from rich.console import Console
 from rich.table import Table
 from rich.text import Text
@@ -235,3 +237,60 @@ class CLIFormatter:
             self.console.print(f"  ... and {remaining} more packages with vulnerabilities")
         
         self.console.print("\nRun with --json flag for full details and advisory URLs")
+    
+    def format_json(self, report: Report) -> str:
+        """Format report as JSON string"""
+        import json
+        from datetime import datetime
+        
+        # Get unique ecosystems
+        ecosystems = list(set(dep.ecosystem for dep in report.dependencies))
+        
+        # Simple lookup for direct vs transitive
+        direct_packages = {dep.name.lower() for dep in report.dependencies if dep.is_direct}
+        
+        # Convert vulnerabilities to CLI format
+        cli_vulnerabilities = []
+        for vuln in report.vulnerable_packages:
+            # Simple classification: if package is in direct_packages, it's direct, else transitive
+            is_direct = vuln.package.lower() in direct_packages
+            
+            # Find the dependency to get the actual path
+            dep_match = next((d for d in report.dependencies if d.name.lower() == vuln.package.lower()), None)
+            dependency_path = dep_match.path if dep_match and dep_match.path else [vuln.package]
+            
+            cli_vuln = {
+                "package": vuln.package,
+                "version": vuln.version,
+                "vulnerability_id": vuln.vulnerability_id,
+                "severity": vuln.severity.value if vuln.severity else "UNKNOWN",
+                "summary": vuln.summary,
+                "cve_ids": vuln.cve_ids,
+                "advisory_url": vuln.advisory_url,
+                "type": "direct" if is_direct else "transitive",
+                "dependency_path": dependency_path,
+                "fixed_range": vuln.fixed_range,
+                "details": vuln.details,
+                "cvss_score": vuln.cvss_score,
+                "published": vuln.published.isoformat() if vuln.published else None,
+                "modified": vuln.modified.isoformat() if vuln.modified else None
+            }
+            cli_vulnerabilities.append(cli_vuln)
+        
+        result = {
+            "scan_info": {
+                "total_dependencies": report.total_dependencies,
+                "vulnerable_packages": report.vulnerable_count,
+                "ecosystems": ecosystems
+            },
+            "vulnerabilities": cli_vulnerabilities,
+            "meta": {
+                "generated_at": datetime.now().isoformat(),
+                "scan_options": {
+                    "include_dev_dependencies": True,
+                    "ignore_severities": []
+                }
+            }
+        }
+        
+        return json.dumps(result, indent=2)

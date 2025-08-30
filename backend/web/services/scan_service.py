@@ -29,8 +29,10 @@ class ScanService:
         )
         self.state.scan_jobs[job_id] = progress
         
-        # Start CLI scan in background
-        asyncio.create_task(self._run_cli_scan(job_id, scan_request))
+        # Start CLI scan in background with proper task handling
+        task = asyncio.create_task(self._run_cli_scan(job_id, scan_request))
+        # Store task reference to prevent it from being garbage collected
+        self.state.scan_tasks[job_id] = task
         
         return job_id
     
@@ -75,6 +77,10 @@ class ScanService:
             progress.total_dependencies = scan_info.get('total_dependencies', 0)
             progress.vulnerabilities_found = scan_info.get('vulnerable_packages', 0)
             
+            # Clean up task reference
+            if job_id in self.state.scan_tasks:
+                del self.state.scan_tasks[job_id]
+            
         except Exception as e:
             # Handle scan failure
             progress = self.state.scan_jobs.get(job_id)
@@ -82,6 +88,10 @@ class ScanService:
                 progress.status = JobStatus.FAILED
                 progress.error_message = str(e)
                 progress.completed_at = datetime.now()
+            
+            # Clean up task reference
+            if job_id in self.state.scan_tasks:
+                del self.state.scan_tasks[job_id]
     
     def get_progress(self, job_id: str) -> ScanProgress | None:
         """Get scan progress"""

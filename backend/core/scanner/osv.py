@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import asyncio
 import logging
 import random
+import time
 from datetime import datetime
 import httpx
 
@@ -32,32 +35,42 @@ class OSVScanner:
         Scan a list of dependencies for vulnerabilities
         Returns a list of vulnerabilities found
         """
-        # Deduplicate dependencies by (ecosystem, name, version)
-        unique_deps = self._deduplicate_dependencies(dependencies)
+        # Removed accuracy tracking
         
-        # Query OSV for all dependencies
-        fresh_results = await self._query_osv_batch(unique_deps)
-        
-        # Convert to Vuln objects and enrich with dependency metadata
-        vulnerabilities = []
-        seen_vulnerabilities = set()  # Track unique vulnerabilities by (id, package, ecosystem)
-        
-        for dep in unique_deps:
-            dep_vulns = [v for v in fresh_results 
-                        if v.get("package") == dep.name and v.get("ecosystem") == dep.ecosystem]
+        try:
+            # Deduplicate dependencies by (ecosystem, name, version)
+            unique_deps = self._deduplicate_dependencies(dependencies)
             
-            for vuln_data in dep_vulns:
-                # Create unique key for this vulnerability
-                vuln_id = vuln_data.get("id", "")
-                vuln_key = (vuln_id, dep.name, dep.ecosystem)
+            # Query OSV for all dependencies
+            fresh_results = await self._query_osv_batch(unique_deps)
+            
+            # Convert to Vuln objects and enrich with dependency metadata
+            vulnerabilities = []
+            seen_vulnerabilities = set()  # Track unique vulnerabilities by (id, package, ecosystem)
+            
+            for dep in unique_deps:
+                dep_vulns = [v for v in fresh_results 
+                            if v.get("package") == dep.name and v.get("ecosystem") == dep.ecosystem]
                 
-                # Only add if we haven't seen this vulnerability for this package before
-                if vuln_key not in seen_vulnerabilities:
-                    vuln = self._convert_osv_to_vuln(vuln_data, dep)
-                    vulnerabilities.append(vuln)
-                    seen_vulnerabilities.add(vuln_key)
-        
-        return vulnerabilities
+                for vuln_data in dep_vulns:
+                    # Create unique key for this vulnerability
+                    vuln_id = vuln_data.get("id", "")
+                    vuln_key = (vuln_id, dep.name, dep.ecosystem)
+                    
+                    # Only add if we haven't seen this vulnerability for this package before
+                    if vuln_key not in seen_vulnerabilities:
+                        vuln = self._convert_osv_to_vuln(vuln_data, dep)
+                        vulnerabilities.append(vuln)
+                        seen_vulnerabilities.add(vuln_key)
+            
+            # Removed accuracy tracking
+            
+            return vulnerabilities
+            
+        except Exception as e:
+            # Log scan failure but don't track inaccurate results
+            self.logger.error(f"Scan failed: {e}")
+            raise
     
     def _deduplicate_dependencies(self, dependencies: list[Dep]) -> list[Dep]:
         """Remove duplicate dependencies based on (ecosystem, name, version)"""
@@ -91,13 +104,15 @@ class OSVScanner:
         """Query a single batch of dependencies with retry logic"""
         queries = []
         for dep in batch:
+            version_to_send = dep.version if dep.version != "unknown" else None
             query = OSVQuery(
                 package={"name": dep.name, "ecosystem": dep.ecosystem},
-                version=dep.version if dep.version != "unknown" else None
+                version=version_to_send
             )
             queries.append(query)
         
         batch_query = OSVBatchQuery(queries=queries)
+        
         
         for attempt in range(self.max_retries):
             try:
@@ -166,14 +181,15 @@ class OSVScanner:
     
     async def _rate_limit(self):
         """Implement rate limiting between requests"""
-        current_time = asyncio.get_event_loop().time()
+        # Use time.time() instead of event loop time for better performance
+        current_time = time.time()
         time_since_last = current_time - self._last_request_time
         
         if time_since_last < self.rate_limit_delay:
             sleep_time = self.rate_limit_delay - time_since_last
             await asyncio.sleep(sleep_time)
         
-        self._last_request_time = asyncio.get_event_loop().time()
+        self._last_request_time = time.time()
         self._request_count += 1
     
     async def _enrich_vulnerability_data(self, minimal_results: list[dict]) -> list[dict]:
@@ -185,18 +201,24 @@ class OSVScanner:
         for i in range(0, len(minimal_results), batch_size):
             batch = minimal_results[i:i + batch_size]
             
-            # Fetch details for each vulnerability in batch
-            batch_tasks = []
+            # Separate sync and async tasks for better performance
+            async_tasks = []
+            sync_results = []
+            
             for vuln in batch:
                 if vuln.get('id'):
-                    batch_tasks.append(self._fetch_individual_vulnerability(vuln))
+                    async_tasks.append(self._fetch_individual_vulnerability(vuln))
                 else:
-                    batch_tasks.append(asyncio.create_task(self._return_original(vuln)))
+                    # Handle sync results immediately
+                    sync_results.append(self._return_original_sync(vuln))
             
-            # Wait for all tasks in batch
-            batch_results = await asyncio.gather(*batch_tasks, return_exceptions=True)
+            # Wait for async tasks only if we have any
+            async_results = []
+            if async_tasks:
+                async_results = await asyncio.gather(*async_tasks, return_exceptions=True)
             
-            for result in batch_results:
+            # Combine results
+            for result in sync_results + async_results:
                 if isinstance(result, dict):
                     enriched_results.append(result)
                 elif not isinstance(result, Exception):
@@ -207,6 +229,10 @@ class OSVScanner:
     
     async def _return_original(self, vuln: dict) -> dict:
         """Return original vulnerability data as fallback"""
+        return vuln
+    
+    def _return_original_sync(self, vuln: dict) -> dict:
+        """Return original vulnerability data synchronously"""
         return vuln
     
     async def _fetch_individual_vulnerability(self, minimal_vuln: dict) -> dict:
@@ -320,25 +346,35 @@ class OSVScanner:
             """Safely convert severity scores to float"""
             try:
                 return float(val)
-            except Exception:
+            except (ValueError, TypeError):
                 return 0.0
         
         def _parse_cvss_score(cvss_string: str) -> float:
-            """Parse CVSS score from string like 'CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H'"""
+            """Parse CVSS score - simplified: just extract numeric score if present"""
             try:
-                # CVSS v3/v4 scoring - we need to calculate from vector or use a lookup
-                # For simplicity, let's use a basic heuristic based on impact values
-                if 'A:H' in cvss_string or 'VA:H' in cvss_string:  # High availability impact
-                    if 'AC:L' in cvss_string and 'PR:N' in cvss_string:  # Low complexity, no privileges
-                        return 7.5  # HIGH
-                    else:
-                        return 5.3  # MEDIUM
-                elif 'A:L' in cvss_string or 'VA:L' in cvss_string:  # Low availability impact
-                    return 3.1  # LOW
+                # If it's already a number, use it
+                if isinstance(cvss_string, (int, float)):
+                    return float(cvss_string)
+                
+                # Try to extract score from CVSS vector string
+                # Sometimes the score is embedded like "CVSS:3.1/.../ score:7.5"
+                import re
+                score_match = re.search(r'score[:\s]+(\d+\.?\d*)', cvss_string, re.IGNORECASE)
+                if score_match:
+                    return float(score_match.group(1))
+                
+                # Default scores based on severity indicators in the vector
+                if 'C:H' in cvss_string or 'I:H' in cvss_string or 'A:H' in cvss_string:
+                    # High impact on any CIA metric
+                    if 'AV:N' in cvss_string and 'AC:L' in cvss_string:
+                        return 8.5  # Network exploitable, low complexity
+                    return 7.5  # High severity
+                elif 'C:L' in cvss_string or 'I:L' in cvss_string or 'A:L' in cvss_string:
+                    return 5.5  # Medium severity
                 else:
-                    return 7.5  # HIGH (default for CVSS strings)
-            except Exception:
-                return 0.0
+                    return 7.5  # Default HIGH if we can't parse
+            except (ValueError, TypeError):
+                return 7.5  # Default to HIGH if parsing fails
 
         cvss_score = None
         severity_level = SeverityLevel.UNKNOWN
@@ -348,8 +384,20 @@ class OSVScanner:
             for sev in severity_list:
                 if sev.get("type") in ["CVSS_V3", "CVSS_V4", "CVSS_V2"]:
                     score_str = sev.get("score", "")
-                    if isinstance(score_str, str) and score_str.startswith("CVSS:"):
-                        score = _parse_cvss_score(score_str)
+                    
+                    # First check if we have a direct numeric score
+                    if isinstance(score_str, (int, float)):
+                        score = float(score_str)
+                    elif isinstance(score_str, str):
+                        # Try to parse as float first
+                        try:
+                            score = float(score_str)
+                        except ValueError:
+                            # If not a direct number, parse the CVSS vector
+                            if score_str.startswith("CVSS:"):
+                                score = _parse_cvss_score(score_str)
+                            else:
+                                score = _to_float(score_str)
                     else:
                         score = _to_float(score_str)
                     
@@ -428,28 +476,54 @@ class OSVScanner:
             """Safely convert severity scores to float"""
             try:
                 return float(val)
-            except Exception:
+            except (ValueError, TypeError):
                 return 0.0
         
         def _parse_cvss_score(cvss_string: str) -> float:
-            """Parse CVSS score from string like 'CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H'"""
+            """Parse CVSS score from vector - simplified calculation"""
             try:
-                # CVSS v3/v4 scoring - we need to calculate from vector or use a lookup
-                # For simplicity, let's use a basic heuristic based on impact values
-                if 'A:H' in cvss_string or 'VA:H' in cvss_string:  # High availability impact
-                    if 'AC:L' in cvss_string and 'PR:N' in cvss_string:  # Low complexity, no privileges
-                        return 7.5  # HIGH
-                    else:
-                        return 5.3  # MEDIUM
-                elif 'A:L' in cvss_string or 'VA:L' in cvss_string:  # Low availability impact
-                    return 3.1  # LOW
-                elif 'C:H' in cvss_string or 'VC:H' in cvss_string:  # High confidentiality impact
-                    return 7.5  # HIGH
-                elif 'I:H' in cvss_string or 'VI:H' in cvss_string:  # High integrity impact
-                    return 7.5  # HIGH
-                else:
+                # This is a simplified CVSS calculator - for production use a proper library
+                
+                # Base metrics extraction
+                av_score = 0.85 if 'AV:N' in cvss_string else (0.62 if 'AV:A' in cvss_string else (0.55 if 'AV:L' in cvss_string else 0.2))
+                ac_score = 0.77 if 'AC:L' in cvss_string else 0.44
+                pr_score = 0.85 if 'PR:N' in cvss_string else (0.68 if 'PR:L' in cvss_string else 0.5)
+                # Adjust PR score based on scope for CVSS v3
+                if scope and 'PR:L' in cvss_string:
+                    pr_score = 0.68
+                elif scope and 'PR:H' in cvss_string:
+                    pr_score = 0.5
+                ui_score = 0.85 if 'UI:N' in cvss_string else 0.62
+                scope = 'S:C' in cvss_string
+                
+                # Impact metrics
+                c_impact = 0.56 if 'C:H' in cvss_string else (0.22 if 'C:L' in cvss_string else 0)
+                i_impact = 0.56 if 'I:H' in cvss_string else (0.22 if 'I:L' in cvss_string else 0)
+                a_impact = 0.56 if 'A:H' in cvss_string else (0.22 if 'A:L' in cvss_string else 0)
+                
+                # Impact calculation
+                impact = 1 - ((1 - c_impact) * (1 - i_impact) * (1 - a_impact))
+                
+                # Exploitability calculation
+                exploitability = 8.22 * av_score * ac_score * pr_score * ui_score
+                
+                # Base score calculation
+                if impact <= 0:
                     return 0.0
-            except Exception:
+                
+                if scope:
+                    # Changed scope
+                    impact_score = 7.52 * (impact - 0.029) - 3.25 * pow((impact - 0.02), 15)
+                else:
+                    # Unchanged scope
+                    impact_score = 6.42 * impact
+                
+                base_score = min(10.0, impact_score + exploitability)
+                
+                # Round up to next tenth
+                return round(base_score * 10) / 10.0
+                
+            except (ValueError, TypeError):
                 return 0.0
 
         if severity_list:

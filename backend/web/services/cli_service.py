@@ -1,4 +1,6 @@
 """Service for running CLI commands and returning results"""
+from __future__ import annotations
+
 import asyncio
 import json
 import re
@@ -6,12 +8,16 @@ import tempfile
 from pathlib import Path
 from typing import Dict, Optional, Any, Callable, Awaitable
 import logging
+from datetime import datetime
+
+from ...core.core_scanner import CoreScanner
+from ...core.models import ScanOptions, SeverityLevel
 
 logger = logging.getLogger(__name__)
 
 
 class CLIService:
-    """Service to execute dep-scan CLI and return results"""
+    """Service to execute vulnerability scans using core scanner"""
     
     @staticmethod
     async def run_cli_scan(
@@ -23,7 +29,7 @@ class CLIService:
         progress_callback: Optional[Callable[[str, float], Awaitable[None]]] = None
     ) -> Dict[str, Any]:
         """
-        Run dep-scan CLI command and return JSON results
+        Run vulnerability scan using core scanner directly
         
         Args:
             path: Directory path to scan
@@ -33,110 +39,175 @@ class CLIService:
             verbose: Show detailed output
             
         Returns:
-            JSON output from CLI command
+            JSON output in CLI format
         """
-        temp_dir = None
+        scanner = CoreScanner()
+        
         try:
-            # Build command arguments
-            cmd = ["dep-scan", "scan"]
+            if progress_callback:
+                await progress_callback("Initializing vulnerability scanner...", 5.0)
+            
+            # Create scan options
+            ignore_severities = []
+            if ignore_severity:
+                # Convert string to SeverityLevel enum
+                severity_map = {
+                    'critical': SeverityLevel.CRITICAL,
+                    'high': SeverityLevel.HIGH,
+                    'medium': SeverityLevel.MEDIUM,
+                    'low': SeverityLevel.LOW
+                }
+                if ignore_severity.lower() in severity_map:
+                    ignore_severities.append(severity_map[ignore_severity.lower()])
+            
+            scan_options = ScanOptions(
+                include_dev_dependencies=include_dev,
+                ignore_severities=ignore_severities
+            )
+            
+            # Setup progress callback for core scanner
+            def sync_progress_callback(message: str, percent: Optional[float] = None):
+                # Convert to sync callback since core scanner may not handle async properly
+                if progress_callback:
+                    import asyncio
+                    try:
+                        loop = asyncio.get_event_loop()
+                        if loop.is_running():
+                            # Create a task if we're already in an async context
+                            asyncio.create_task(progress_callback(message, percent))
+                        else:
+                            # Run directly if no event loop is running
+                            loop.run_until_complete(progress_callback(message, percent))
+                    except RuntimeError:
+                        # Fallback: just log the message
+                        logger.info(f"Progress: {message} ({percent}%)")
+            
+            async def async_progress_callback(message: str, percent: Optional[float] = None):
+                if progress_callback:
+                    await progress_callback(message, percent)
             
             # Handle path or manifest files
             if manifest_files:
-                # Create temp directory with uploaded files
-                temp_dir = tempfile.mkdtemp(prefix="depscan_")
-                for filename, content in manifest_files.items():
-                    file_path = Path(temp_dir) / filename
-                    file_path.write_text(content)
-                scan_path = temp_dir
-            elif path:
-                scan_path = path
-            else:
-                scan_path = "."
-            
-            cmd.append(scan_path)
-            
-            # Add JSON output to temp file
-            json_output = tempfile.NamedTemporaryFile(
-                mode='w+', 
-                suffix='.json', 
-                delete=False
-            )
-            cmd.extend(["--json", json_output.name])
-            
-            # Add optional flags
-            if include_dev:
-                cmd.append("--include-dev")
-            if ignore_severity:
-                cmd.extend(["--ignore-severity", ignore_severity])
-            if verbose:
-                cmd.append("--verbose")
-            
-            # Run CLI command with progress monitoring
-            logger.info(f"Running CLI command: {' '.join(cmd)}")
-            process = await asyncio.create_subprocess_exec(
-                *cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
-            )
-            
-            # Parse progress from stderr if callback provided
-            if progress_callback and verbose:
-                stderr_text = ""
-                stdout_text = ""
+                if progress_callback:
+                    await progress_callback("Processing uploaded manifest files...", 10.0)
                 
-                # Read stderr line by line for progress
-                async def read_stream(stream, is_stderr=False):
-                    nonlocal stderr_text, stdout_text
-                    while True:
-                        line = await stream.readline()
-                        if not line:
-                            break
-                        text = line.decode('utf-8', errors='ignore')
-                        if is_stderr:
-                            stderr_text += text
-                            # Parse progress from stderr
-                            progress = CLIService._parse_progress(text)
-                            if progress:
-                                await progress_callback(progress[0], progress[1] or 0.0)
-                        else:
-                            stdout_text += text
-                
-                # Read both streams concurrently
-                await asyncio.gather(
-                    read_stream(process.stderr, is_stderr=True),
-                    read_stream(process.stdout, is_stderr=False)
+                # Use core scanner with manifest files
+                report = await scanner.scan_manifest_files(
+                    manifest_files=manifest_files,
+                    options=scan_options,
+                    progress_callback=sync_progress_callback
                 )
+            elif path:
+                if progress_callback:
+                    await progress_callback(f"Scanning repository: {path}", 10.0)
                 
-                await process.wait()
-                stdout = stdout_text.encode()
-                stderr = stderr_text.encode()
+                # Use core scanner with repository path
+                report = await scanner.scan_repository(
+                    repo_path=path,
+                    options=scan_options,
+                    progress_callback=sync_progress_callback
+                )
             else:
-                stdout, stderr = await process.communicate()
+                # Scan current directory
+                if progress_callback:
+                    await progress_callback("Scanning current directory...", 10.0)
+                
+                report = await scanner.scan_repository(
+                    repo_path=".",
+                    options=scan_options,
+                    progress_callback=sync_progress_callback
+                )
             
-            # Read JSON output
-            json_output.seek(0)
-            result = json.load(json_output)
+            if progress_callback:
+                await progress_callback("Generating scan report...", 95.0)
             
-            # Add metadata
-            result["cli_exit_code"] = process.returncode
-            result["cli_stdout"] = stdout.decode() if stdout else ""
-            result["cli_stderr"] = stderr.decode() if stderr else ""
+            # Convert core scanner report to CLI JSON format
+            result = CLIService._convert_report_to_cli_format(report)
             
-            # Clean up temp file
-            json_output.close()
-            Path(json_output.name).unlink(missing_ok=True)
+            if progress_callback:
+                await progress_callback("Scan completed", 100.0)
             
             return result
             
         except Exception as e:
-            logger.error(f"Error running CLI scan: {e}")
-            raise
-        finally:
-            # Clean up temp directory if created
-            if temp_dir:
-                import shutil
-                shutil.rmtree(temp_dir, ignore_errors=True)
+            logger.error(f"Error running scan: {e}")
+            
+            # Return error in CLI format
+            return {
+                "scan_info": {
+                    "total_dependencies": 0,
+                    "vulnerable_packages": 0,
+                    "ecosystems": []
+                },
+                "vulnerabilities": [],
+                "meta": {
+                    "generated_at": datetime.now().isoformat(),
+                    "scan_options": {
+                        "include_dev_dependencies": include_dev,
+                        "ignore_severities": [sev.value for sev in ignore_severities]
+                    },
+                    "error": str(e)
+                },
+                "cli_exit_code": 1,
+                "cli_stdout": "",
+                "cli_stderr": str(e)
+            }
     
+    @staticmethod
+    def _convert_report_to_cli_format(report) -> Dict[str, Any]:
+        """Convert core scanner Report to CLI JSON format"""
+        
+        # Get unique ecosystems
+        ecosystems = list(set(dep.ecosystem for dep in report.dependencies))
+        
+        # Simple lookup for direct vs transitive
+        direct_packages = {dep.name.lower() for dep in report.dependencies if dep.is_direct}
+        
+        # Convert vulnerabilities to CLI format
+        cli_vulnerabilities = []
+        for vuln in report.vulnerable_packages:
+            # Simple classification: if package is in direct_packages, it's direct, else transitive
+            is_direct = vuln.package.lower() in direct_packages
+            
+            # Find the dependency to get the actual path
+            dep_match = next((d for d in report.dependencies if d.name.lower() == vuln.package.lower()), None)
+            dependency_path = dep_match.path if dep_match and dep_match.path else [vuln.package]
+            
+            cli_vuln = {
+                "package": vuln.package,
+                "version": vuln.version,
+                "vulnerability_id": vuln.vulnerability_id,
+                "severity": vuln.severity.value if vuln.severity else "UNKNOWN",
+                "summary": vuln.summary,
+                "cve_ids": vuln.cve_ids,
+                "advisory_url": vuln.advisory_url,
+                "type": "direct" if is_direct else "transitive",
+                "dependency_path": dependency_path,
+                "fixed_range": vuln.fixed_range,
+                "details": vuln.details,
+                "published": vuln.published.isoformat() if vuln.published else None,
+                "modified": vuln.modified.isoformat() if vuln.modified else None
+            }
+            cli_vulnerabilities.append(cli_vuln)
+        
+        return {
+            "scan_info": {
+                "total_dependencies": report.total_dependencies,
+                "vulnerable_packages": report.vulnerable_count,
+                "ecosystems": ecosystems
+            },
+            "vulnerabilities": cli_vulnerabilities,
+            "meta": {
+                "generated_at": datetime.now().isoformat(),
+                "scan_options": {
+                    "include_dev_dependencies": True,  # TODO: Get from actual options
+                    "ignore_severities": []
+                }
+            },
+            "cli_exit_code": 0,
+            "cli_stdout": "",
+            "cli_stderr": ""
+        }
     
     @staticmethod
     def _parse_progress(line: str) -> Optional[tuple[str, float]]:
@@ -146,48 +217,20 @@ class CLIService:
         Returns:
             Tuple of (message, progress_percent) or None
         """
-        # Progress patterns mapped to CLI scanner stages:
-        # init (0-10%), discovery (10-30%), generation (30-50%), 
-        # parsing (50-70%), scanning (70-90%), reporting (90-100%)
+        # Progress patterns mapped to CLI scanner stages
         patterns = [
-            # Init stage (0-10%)
-            (r"Processing file: (.+)", 8.0),
-            (r"Detected (Python|JavaScript) dependency file", 10.0),
-            
-            # Discovery stage (10-30%)
-            (r"Found manifest file: (.+)", 20.0),
-            (r"Found files: (.+)", 25.0),
-            (r"Checking for lock file generation opportunities", 30.0),
-            
-            # Generation stage (30-50%) - Lock file generation
-            (r"Generating.*lock.*file", 35.0),
-            (r"Running (npm install|pip-compile)", 40.0),
-            (r"Successfully generated.*lock", 45.0),
-            (r"Successfully added generated", 50.0),
-            
-            # Parsing stage (50-70%) - Dependency resolution
-            (r"Resolving dependencies", 52.0),
-            (r"Processing file: (.+)", 55.0),
-            (r"Found (\d+) (Python|JavaScript) dependencies", 65.0),
-            (r"Found dependencies in: (.+)", 70.0),
-            
-            # Scanning stage (70-90%) - Vulnerability scanning
-            (r"Scanning (\d+) dependencies", 75.0),
-            (r"Fetching detailed vulnerability data", 80.0),
-            (r"batch (\d+)/(\d+)", 85.0),
-            
-            # Reporting stage (90-100%)
-            (r"Scan completed", 95.0),
-            (r"✅ Scan completed", 98.0),
+            (r"Initializing", 5.0),
+            (r"Processing.*manifest", 15.0),
+            (r"Resolving dependencies", 30.0),
+            (r"Found (\d+).*dependencies", 50.0),
+            (r"Scanning.*dependencies", 70.0),
+            (r"Generating.*report", 90.0),
+            (r"completed", 100.0),
         ]
         
         for pattern, progress in patterns:
             if re.search(pattern, line, re.IGNORECASE):
                 return (line.strip(), progress)
-        
-        # Generic progress for any meaningful output (but don't override specific patterns)
-        if line.strip() and not line.startswith("DEBUG") and not line.startswith("INFO:"):
-            return (line.strip(), None)
         
         return None
     

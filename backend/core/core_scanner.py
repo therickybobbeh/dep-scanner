@@ -1,6 +1,8 @@
 """
 Core vulnerability scanning logic shared between CLI and web service
 """
+from __future__ import annotations
+
 import asyncio
 from pathlib import Path
 from typing import Optional
@@ -203,6 +205,8 @@ class CoreScanner:
             if js_deps:
                 all_dependencies.extend(js_deps)
                 ecosystems_found.append("JavaScript")
+                
+                
                 if progress_callback:
                     progress_callback(f"Found {len(js_deps)} JavaScript dependencies")
                 
