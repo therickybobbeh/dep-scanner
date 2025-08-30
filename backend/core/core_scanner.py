@@ -147,7 +147,7 @@ class CoreScanner:
         """Core scanning logic"""
         
         if progress_callback:
-            progress_callback("Resolving dependencies...")
+            progress_callback("📦 Resolving dependency tree...")
         
         # Resolve dependencies from both ecosystems
         all_dependencies = []
@@ -225,7 +225,7 @@ class CoreScanner:
             all_dependencies = [dep for dep in all_dependencies if not dep.is_dev]
         
         if progress_callback:
-            progress_callback(f"Scanning {len(all_dependencies)} dependencies...")
+            progress_callback(f"🛡️ Querying OSV database for {len(all_dependencies)} dependencies - this can take a while...")
         
         # Scan for vulnerabilities
         vulnerable_packages = await self.osv_scanner.scan_dependencies(all_dependencies)

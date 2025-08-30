@@ -10,7 +10,10 @@
 .text-brand { color: var(--semantic-text-brand) !important; }
 
 .bg-primary { background-color: var(--semantic-interactive-primary) !important; }
-.bg-secondary { background-color: var(--semantic-background-secondary) !important; }
+.bg-secondary { 
+  background-color: var(--semantic-background-secondary) !important; 
+  color: var(--semantic-text-primary) !important;
+}
 .bg-elevated { background-color: var(--semantic-background-elevated) !important; }
 .bg-brand { background-color: var(--semantic-background-brand) !important; }
 

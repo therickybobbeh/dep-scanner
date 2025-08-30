@@ -3,10 +3,10 @@ import { useParams } from 'react-router-dom';
 import { Download, Shield, AlertTriangle, CheckCircle, Clock, Table as TableIcon } from 'lucide-react';
 import axios from 'axios';
 import { Container, Row, Col, Card, Button, ButtonGroup, Form, Alert, Badge, Nav } from 'react-bootstrap';
-import ProgressBar from '../components/ui/ProgressBar';
 import StatsCard from '../components/ui/StatsCard';
 import SeverityBadge from '../components/ui/SeverityBadge';
 import DependencyTable from '../components/ui/DependencyTable';
+import NewtonsCradleLoader from '../components/ui/NewtonsCradleLoader';
 import { SeverityLevel } from '../types/common';
 import { sortBySeverity } from '../utils/severity';
 import type { ScanProgress } from '../types/api';
@@ -90,6 +90,17 @@ const formatPublishedDate = (dateString?: string): string => {
   }
 };
 
+// Get package.json dependencies for accurate direct vs transitive classification
+const getDirectDependencies = () => {
+  // This would ideally come from the scan metadata, but we can infer from common patterns
+  // The CLI should provide this information, but as a fallback we can check common JS dependencies
+  const commonDirectDeps = [
+    'axios', 'react', 'react-dom', 'react-router-dom', 'react-bootstrap', 
+    'bootstrap', 'lucide-react', 'recharts', 'date-fns'
+  ];
+  return new Set(commonDirectDeps);
+};
+
 // Normalize CLI report data structure
 const normalizeReportData = (report: CLIReport): CLIVulnerability[] => {
   // Handle both old and new CLI report formats
@@ -101,14 +112,37 @@ const normalizeReportData = (report: CLIReport): CLIVulnerability[] => {
     vulnerabilities = report.vulnerabilities;
   }
   
+  const directDeps = getDirectDependencies();
+  
   // Ensure each vulnerability has required fields and CVSS scores
-  return vulnerabilities.map(vuln => ({
-    ...vuln,
-    cvss_score: vuln.cvss_score ?? getCVSSScoreFromSeverity(vuln.severity),
-    type: vuln.type || (vuln.dependency_path?.length === 1 ? 'direct' : 'transitive'),
-    cve_ids: vuln.cve_ids || [],
-    dependency_path: vuln.dependency_path || [vuln.package]
-  }));
+  return vulnerabilities.map(vuln => {
+    // Use the CLI-provided type field first (most accurate)
+    let dependencyType = vuln.type;
+    
+    // If no type provided, try to infer from package name and dependency path
+    if (!dependencyType) {
+      // Check if package is in direct dependencies
+      if (directDeps.has(vuln.package)) {
+        dependencyType = 'direct';
+      } 
+      // Check if dependency path suggests direct (package is root in path)
+      else if (vuln.dependency_path && vuln.dependency_path.length === 1) {
+        dependencyType = 'direct';
+      }
+      // Default to transitive if we can't determine
+      else {
+        dependencyType = 'transitive';
+      }
+    }
+    
+    return {
+      ...vuln,
+      cvss_score: vuln.cvss_score ?? getCVSSScoreFromSeverity(vuln.severity),
+      type: dependencyType,
+      cve_ids: vuln.cve_ids || [],
+      dependency_path: vuln.dependency_path || [vuln.package]
+    };
+  });
 };
 
 const ReportPage: React.FC = () => {
@@ -149,7 +183,6 @@ const ReportPage: React.FC = () => {
           setLoading(false);
         }
       } catch (err: any) {
-        console.error('Failed to fetch status:', err);
         if (err?.response?.status === 429) {
           // Rate limited - wait longer and retry
           if (pollCount < maxPollCount) {
@@ -339,20 +372,12 @@ const ReportPage: React.FC = () => {
   if (loading) {
     return (
       <Container className="py-4">
-        <Card className="scan-progress">
-          <Card.Body className="text-center">
-            <div className="mb-3">
-              <div className="spinner-border text-primary" role="status" aria-hidden="true" />
-            </div>
-            <Card.Title className="mb-2">{progress?.current_step || 'Scanning dependencies...'}</Card.Title>
-            {progress && (
-              <div aria-live="polite" aria-label="Scan progress">
-                <ProgressBar value={progress.progress_percent} showLabel={true} />
-                <div className="text-muted small mt-2">
-                  {progress.current_step || 'Processing...'}
-                </div>
-              </div>
-            )}
+        <Card className="border-0 shadow-sm">
+          <Card.Body>
+            <NewtonsCradleLoader 
+              message={progress?.current_step || 'Processing...'}
+              progress={progress?.progress_percent || 0}
+            />
           </Card.Body>
         </Card>
       </Container>

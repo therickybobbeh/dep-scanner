@@ -3,6 +3,7 @@ import { Table, Form, InputGroup, Button, Badge } from 'react-bootstrap';
 import { ChevronDown, ChevronRight, Package, Search, ExternalLink } from 'lucide-react';
 import SeverityBadge from './SeverityBadge';
 import { SeverityLevel } from '../../types/common';
+import './table.css';
 
 interface Dependency {
   package: string;
@@ -32,7 +33,6 @@ interface DependencyTableProps {
 const DependencyTable: React.FC<DependencyTableProps> = ({ 
   dependencies, 
   title = "Dependencies",
-  showTransitive = true,
   additionalFilters 
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -182,7 +182,7 @@ const DependencyTable: React.FC<DependencyTableProps> = ({
 
       {/* Table */}
       <div className="table-responsive">
-        <Table hover striped className="align-middle vulnerability-table">
+        <Table hover className="align-middle modern-data-table">
           <thead>
             <tr>
               <th style={{ width: '40px' }}></th>
@@ -206,22 +206,10 @@ const DependencyTable: React.FC<DependencyTableProps> = ({
                 </Button>
               </th>
               <th>CVSS Score</th>
-              {showTransitive && (
-                <th>
-                  <Button 
-                    variant="link" 
-                    className="p-0 text-decoration-none text-dark"
-                    onClick={() => handleSort('parent')}
-                  >
-                    Parent {sortColumn === 'parent' && (sortDirection === 'asc' ? '↑' : '↓')}
-                  </Button>
-                </th>
-              )}
               <th>Type</th>
               <th>Vulnerability ID</th>
               <th>Published</th>
-              <th>References</th>
-              <th>Description & Fix</th>
+              <th>Quick Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -232,23 +220,36 @@ const DependencyTable: React.FC<DependencyTableProps> = ({
 
               return (
                 <React.Fragment key={key}>
-                  <tr>
+                  <tr 
+                    className={hasDetails ? 'expandable-row' : ''}
+                    tabIndex={hasDetails ? 0 : -1}
+                    role={hasDetails ? 'button' : undefined}
+                    aria-expanded={hasDetails ? isExpanded : undefined}
+                    aria-controls={hasDetails ? `details-${key}` : undefined}
+                    onKeyDown={(e) => {
+                      if (hasDetails && (e.key === 'Enter' || e.key === ' ')) {
+                        e.preventDefault();
+                        toggleExpanded(key);
+                      }
+                    }}
+                  >
                     <td>
                       {hasDetails && (
                         <Button
                           variant="link"
                           size="sm"
-                          className="p-0"
+                          className="p-0 expand-icon"
                           onClick={() => toggleExpanded(key)}
+                          aria-label={`${isExpanded ? 'Collapse' : 'Expand'} details for ${dep.package}`}
                         >
-                          {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                          {isExpanded ? <ChevronDown size={16} className="expand-icon" /> : <ChevronRight size={16} className="expand-icon" />}
                         </Button>
                       )}
                     </td>
                     <td>
                       <div className="d-flex align-items-center gap-2">
-                        <Package size={16} className="text-muted" />
-                        <strong>{dep.package}</strong>
+                        <Package size={16} className="package-icon" />
+                        <strong id={`package-${key}`}>{dep.package}</strong>
                       </div>
                     </td>
                     <td><code>{dep.version}</code></td>
@@ -283,17 +284,6 @@ const DependencyTable: React.FC<DependencyTableProps> = ({
                         <span className="text-muted">N/A</span>
                       )}
                     </td>
-                    {showTransitive && (
-                      <td>
-                        {dep.parent ? (
-                          <code className="small">{dep.parent}</code>
-                        ) : dep.is_direct ? (
-                          <Badge bg="primary" className="small">Root</Badge>
-                        ) : (
-                          <span className="text-muted">Unknown</span>
-                        )}
-                      </td>
-                    )}
                     <td>
                       {dep.is_direct !== undefined ? (
                         dep.is_direct ? (
@@ -324,15 +314,16 @@ const DependencyTable: React.FC<DependencyTableProps> = ({
                       )}
                     </td>
                     <td style={{ whiteSpace: 'nowrap' }}>
-                      <div className="d-flex flex-wrap gap-1">
+                      <div className="d-flex gap-1">
                         {dep.advisory_url && (
                           <a
                             href={dep.advisory_url}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="btn btn-sm btn-outline-primary"
+                            title="View Advisory"
                           >
-                            Advisory
+                            <ExternalLink size={14} />
                           </a>
                         )}
                         {dep.vulnerability_id && (
@@ -341,79 +332,107 @@ const DependencyTable: React.FC<DependencyTableProps> = ({
                             target="_blank"
                             rel="noopener noreferrer"
                             className="btn btn-sm btn-outline-success"
+                            title="OSV Database"
                           >
                             OSV
                           </a>
                         )}
-                        {dep.cve_ids && dep.cve_ids.length > 0 && (
-                          <a
-                            href={`https://nvd.nist.gov/vuln/detail/${dep.cve_ids[0]}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="btn btn-sm btn-outline-danger"
-                          >
-                            {dep.cve_ids[0]}
-                          </a>
-                        )}
                       </div>
-                    </td>
-                    <td>
-                      {dep.summary && (
-                        <div className="summary-text mb-1" style={{ maxWidth: '300px' }}>
-                          {dep.summary.length > 100 
-                            ? `${dep.summary.substring(0, 100)}...` 
-                            : dep.summary
-                          }
-                        </div>
-                      )}
-                      {dep.fixed_range && (
-                        <div>
-                          <Badge bg="success" className="small">
-                            Fixed in: {dep.fixed_range}
-                          </Badge>
-                        </div>
-                      )}
                     </td>
                   </tr>
                   {isExpanded && hasDetails && (
-                    <tr>
-                      <td colSpan={showTransitive ? 11 : 10} className="bg-light">
+                    <tr className="expanded-content" id={`details-${key}`} role="region" aria-labelledby={`package-${key}`}>
+                      <td colSpan={9} className="expanded-content">
                         <div className="p-3">
-                          {dep.summary && (
-                            <div className="mb-2">
-                              <strong>Summary:</strong> {dep.summary}
+                          <div className="row">
+                            <div className="col-md-8">
+                              {dep.summary && (
+                                <div className="mb-3">
+                                  <strong className="text-primary">📄 Description:</strong>
+                                  <div className="mt-1 text-muted">{dep.summary}</div>
+                                </div>
+                              )}
+                              
+                              {dep.fixed_range && (
+                                <div className="mb-3">
+                                  <strong className="text-success">🔧 Fix Available:</strong>
+                                  <div className="mt-1">
+                                    <Badge bg="success">
+                                      Update to {dep.fixed_range}
+                                    </Badge>
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {dep.cve_ids && dep.cve_ids.length > 0 && (
+                                <div className="mb-3">
+                                  <strong className="text-danger">🚨 CVE References:</strong>
+                                  <div className="mt-1">
+                                    {dep.cve_ids.map((cve, i) => (
+                                      <a
+                                        key={i}
+                                        href={`https://nvd.nist.gov/vuln/detail/${cve}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="me-2 text-decoration-none"
+                                      >
+                                        <Badge bg="danger">{cve}</Badge>
+                                      </a>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
                             </div>
-                          )}
-                          {dep.cve_ids && dep.cve_ids.length > 0 && (
-                            <div className="mb-2">
-                              <strong>CVE IDs:</strong>{' '}
-                              {dep.cve_ids.map((cve, i) => (
-                                <Badge key={i} bg="secondary" className="me-1">
-                                  {cve}
-                                </Badge>
-                              ))}
-                            </div>
-                          )}
-                                  {dep.path && dep.path.length > 1 && (
-                            <div className="mb-2">
-                              <strong>Dependency Path:</strong>
-                              <div className="mt-1">
-                                <code className="text-muted small">
-                                  {dep.path.join(' → ')}
-                                </code>
+                            
+                            <div className="col-md-4">
+                              {!dep.is_direct && dep.parent && (
+                                <div className="mb-3">
+                                  <strong className="text-warning">📦 Parent Dependency:</strong>
+                                  <div className="mt-1">
+                                    <code className="bg-secondary text-dark p-1 rounded">
+                                      {dep.parent}
+                                    </code>
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {dep.path && dep.path.length > 1 && (
+                                <div className="mb-3">
+                                  <strong className="text-info">🔗 Dependency Path:</strong>
+                                  <div className="mt-1">
+                                    <code className="text-muted small d-block">
+                                      {dep.path.join(' → ')}
+                                    </code>
+                                  </div>
+                                </div>
+                              )}
+                              
+                              <div className="d-flex flex-column gap-2">
+                                {dep.advisory_url && (
+                                  <a
+                                    href={dep.advisory_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="btn btn-sm btn-outline-primary"
+                                  >
+                                    <ExternalLink size={14} className="me-1" />
+                                    View Full Advisory
+                                  </a>
+                                )}
+                                
+                                {dep.vulnerability_id && (
+                                  <a
+                                    href={`https://osv.dev/vulnerability/${dep.vulnerability_id}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="btn btn-sm btn-outline-success"
+                                  >
+                                    View in OSV Database
+                                  </a>
+                                )}
                               </div>
                             </div>
-                          )}
-                          {dep.required_by && dep.required_by.length > 0 && (
-                            <div>
-                              <strong>Required by:</strong>{' '}
-                              {dep.required_by.map((pkg, i) => (
-                                <Badge key={i} bg="info" className="me-1">
-                                  {pkg}
-                                </Badge>
-                              ))}
-                            </div>
-                          )}
+                          </div>
                         </div>
                       </td>
                     </tr>

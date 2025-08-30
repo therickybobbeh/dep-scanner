@@ -89,8 +89,10 @@ class FileFormatDetector:
             return "poetry-lock"
         elif filename == "Pipfile.lock":
             return "pipfile-lock"
-        elif filename == "requirements.txt" or filename == "requirements.lock":
-            return "requirements"  # requirements.lock has same format as requirements.txt
+        elif (filename == "requirements.txt" or 
+              filename == "requirements.lock" or
+              "requirements" in filename.lower() and filename.endswith(".txt")):
+            return "requirements"  # requirements files (various names)
         elif filename == "pyproject.toml":
             return "pyproject"
         elif filename == "Pipfile":

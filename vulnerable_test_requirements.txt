@@ -1,0 +1,81 @@
+#
+# This file contains vulnerable packages for security scanner testing
+# INTENTIONALLY VULNERABLE - FOR SECURITY TESTING ONLY
+#
+# Critical vulnerability package (CVSS 9.8)
+pyyaml==5.3.1
+    # CVE-2020-14343: Arbitrary code execution via unsafe yaml.load()
+
+# High severity vulnerabilities
+asgiref==3.9.1
+    # via django
+bleach==3.3.1
+    # via -r requirements.in
+certifi==2025.8.3
+    # via requests
+cffi==1.17.1
+    # via cryptography
+chardet==4.0.0
+    # via requests
+click==8.0.1
+    # via
+    #   -r requirements.in
+    #   flask
+cryptography==3.4.8
+    # via -r requirements.in
+defusedxml==0.7.1
+    # via -r requirements.in
+django==3.2.13
+    # via -r requirements.in
+flask==2.0.1
+    # via -r requirements.in
+idna==2.10
+    # via requests
+itsdangerous==2.0.1
+    # via
+    #   -r requirements.in
+    #   flask
+jinja2==3.0.1
+    # via
+    #   -r requirements.in
+    #   flask
+lxml==4.6.3
+    # via -r requirements.in
+markupsafe==2.0.1
+    # via
+    #   -r requirements.in
+    #   jinja2
+mistune==0.8.4
+    # via -r requirements.in
+numpy==1.21.0
+    # via -r requirements.in
+paramiko==2.7.2
+    # via -r requirements.in
+pillow==8.3.2
+    # via -r requirements.in
+psycopg2-binary==2.8.6
+    # via -r requirements.in
+pycparser==2.22
+    # via cffi
+pycrypto==2.6.1
+    # via -r requirements.in
+pytz==2025.2
+    # via django
+requests==2.25.1
+    # via -r requirements.in
+setuptools==57.0.0
+    # via -r requirements.in
+simplejson==3.17.2
+    # via -r requirements.in
+sqlparse==0.5.3
+    # via django
+urllib3==1.26.5
+    # via
+    #   -r requirements.in
+    #   requests
+werkzeug==2.0.1
+    # via
+    #   -r requirements.in
+    #   flask
+xmltodict==0.12.0
+    # via -r requirements.in

@@ -46,7 +46,7 @@ class CLIService:
         
         try:
             if progress_callback:
-                await progress_callback("Initializing vulnerability scanner...", 5.0)
+                await progress_callback("🔧 Initializing security scanner...", 5.0)
             
             # Create scan options
             ignore_severities = []
@@ -72,7 +72,7 @@ class CLIService:
             # Handle path or manifest files
             if manifest_files:
                 if progress_callback:
-                    await progress_callback("Processing uploaded manifest files...", 10.0)
+                    await progress_callback("📄 Processing your manifest files...", 10.0)
                 
                 # Write manifest files to temporary files so DepScanner can process them
                 report = await CLIService._scan_manifest_files_with_depscanner(
@@ -92,13 +92,13 @@ class CLIService:
                 report = await scanner.scan_path(".", scan_options)
             
             if progress_callback:
-                await progress_callback("Generating scan report...", 95.0)
+                await progress_callback("📊 Generating your security report...", 95.0)
             
             # Convert core scanner report to CLI JSON format
             result = CLIService._convert_report_to_cli_format(report)
             
             if progress_callback:
-                await progress_callback("Scan completed", 100.0)
+                await progress_callback("✅ Security scan completed successfully!", 100.0)
             
             return result
             

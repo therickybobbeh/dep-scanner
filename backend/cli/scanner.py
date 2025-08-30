@@ -100,15 +100,25 @@ class DepScanner:
                     self.console.print(f"[dim]📁 Processing file: {filename}[/dim]")
                 
                 # Validate file format
-                supported_files = [
-                    # JavaScript
-                    "package.json", "package-lock.json", "yarn.lock",
-                    # Python  
-                    "requirements.txt", "requirements.lock", "pyproject.toml", 
-                    "poetry.lock", "Pipfile.lock", "Pipfile"
-                ]
+                def is_supported_file(filename: str) -> bool:
+                    # JavaScript files
+                    js_files = ["package.json", "package-lock.json", "yarn.lock"]
+                    if filename in js_files:
+                        return True
+                    
+                    # Python files
+                    python_files = ["requirements.txt", "requirements.lock", "pyproject.toml", 
+                                   "poetry.lock", "Pipfile.lock", "Pipfile"]
+                    if filename in python_files:
+                        return True
+                    
+                    # Additional Python requirements files (contains "requirements" and ends with .txt)
+                    if "requirements" in filename.lower() and filename.endswith(".txt"):
+                        return True
+                    
+                    return False
                 
-                if filename not in supported_files:
+                if not is_supported_file(filename):
                     raise ValueError(f"Unsupported file format: {filename}")
                 
                 self._update_progress_stage("init", 1.0)

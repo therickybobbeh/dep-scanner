@@ -1,9 +1,9 @@
-/* Enhanced Report Styling - CLI Report Inspired */
+/* Enhanced Report Styling - Following Design Token System */
 
-/* Modern gradient backgrounds */
+/* Modern gradient backgrounds using semantic tokens */
 .report-header {
-  background: linear-gradient(135deg, #1e3a8a 0%, #3730a3 100%);
-  color: white;
+  background: linear-gradient(135deg, var(--semantic-interactive-primary) 0%, var(--semantic-interactive-primaryHover) 100%);
+  color: var(--semantic-text-inverse);
   position: relative;
   overflow: hidden;
 }
@@ -24,61 +24,34 @@
   z-index: 1;
 }
 
-/* Summary section styling */
+/* Summary section styling using semantic tokens */
 .summary-section {
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  border-bottom: 1px solid #e2e8f0;
+  background: linear-gradient(135deg, var(--semantic-background-primary) 0%, var(--semantic-background-secondary) 100%);
+  border-bottom: 1px solid var(--semantic-border-primary);
 }
 
-/* Enhanced stats cards */
+/* Remove custom stats card styling to use Bootstrap + token system */
 .stats-card {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  border-left: 6px solid var(--bs-primary);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  position: relative;
-  overflow: hidden;
+  /* Let Bootstrap handle the styling with our token system */
 }
 
-.stats-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-}
-
-.stats-card.variant-danger { border-left-color: #dc2626; }
-.stats-card.variant-warning { border-left-color: #ea580c; }
-.stats-card.variant-info { border-left-color: #0ea5e9; }
-.stats-card.variant-success { border-left-color: #16a34a; }
-
-/* Severity distribution cards */
+/* Use Bootstrap + token system for card styling */
 .severity-breakdown-card {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  /* Bootstrap will handle base styling with our semantic tokens */
 }
 
-.severity-breakdown-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-}
-
-/* Enhanced table styling */
+/* Enhanced table styling using semantic tokens */
 .vulnerability-table {
-  background: white;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e5e7eb;
+  /* Bootstrap will handle base table styling with our tokens */
 }
 
+/* Table enhancements that work with token system */
 .vulnerability-table thead th {
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  border-bottom: 2px solid #e5e7eb;
-  font-weight: 600;
-  color: #374151;
-  font-size: 0.875rem;
+  background: var(--semantic-background-secondary);
+  border-bottom: 2px solid var(--semantic-border-primary);
+  font-weight: var(--font-weight-semibold, 600);
+  color: var(--semantic-text-primary);
+  font-size: var(--font-size-sm, 0.875rem);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   position: sticky;
@@ -87,53 +60,46 @@
 }
 
 .vulnerability-table tbody tr:hover {
-  background-color: #fafbfc;
+  background-color: var(--semantic-background-brand);
 }
 
 .vulnerability-table tbody tr:nth-child(even) {
-  background-color: rgba(248, 250, 252, 0.5);
+  background-color: var(--semantic-background-secondary);
 }
 
-/* CVSS Progress bars styling */
+/* CVSS Progress bars using semantic tokens */
 .cvss-progress-container {
   min-width: 120px;
 }
 
 .cvss-progress {
   height: 6px;
-  background: #e5e7eb;
-  border-radius: 3px;
+  background: var(--semantic-background-secondary);
+  border-radius: var(--border-radius-sm, 0.25rem);
   overflow: hidden;
 }
 
 .cvss-progress-bar {
   height: 100%;
   transition: width 0.3s ease;
-  border-radius: 3px;
+  border-radius: var(--border-radius-sm, 0.25rem);
 }
 
-.cvss-progress-bar.severity-critical { background: #dc2626; }
-.cvss-progress-bar.severity-high { background: #ea580c; }
-.cvss-progress-bar.severity-medium { background: #d97706; }
-.cvss-progress-bar.severity-low { background: #16a34a; }
+.cvss-progress-bar.severity-critical { background: var(--semantic-severity-critical); }
+.cvss-progress-bar.severity-high { background: var(--semantic-severity-high); }
+.cvss-progress-bar.severity-medium { background: var(--semantic-severity-medium); }
+.cvss-progress-bar.severity-low { background: var(--semantic-severity-low); }
 
-/* Severity badges enhanced */
+/* Let Bootstrap handle severity badges with semantic tokens */
 .severity-badge {
-  display: inline-block;
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: white;
+  /* Bootstrap badge styling with semantic color tokens */
 }
 
-.severity-badge.severity-critical { background: #dc2626; }
-.severity-badge.severity-high { background: #ea580c; }
-.severity-badge.severity-medium { background: #d97706; }
-.severity-badge.severity-low { background: #16a34a; }
-.severity-badge.severity-unknown { background: #6b7280; }
+.severity-badge.severity-critical { background: var(--semantic-severity-critical); }
+.severity-badge.severity-high { background: var(--semantic-severity-high); }
+.severity-badge.severity-medium { background: var(--semantic-severity-medium); }
+.severity-badge.severity-low { background: var(--semantic-severity-low); }
+.severity-badge.severity-unknown { background: var(--semantic-severity-unknown); }
 
 /* Enhanced reference links */
 .reference-links {

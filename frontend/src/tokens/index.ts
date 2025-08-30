@@ -136,7 +136,7 @@ export const semanticTokens = {
     // Background Colors
     background: {
       primary: baseTokens.colors.gray[50],
-      secondary: baseTokens.colors.gray[100],
+      secondary: baseTokens.colors.gray[200], // Changed from 100 to 200 for better visibility
       elevated: '#ffffff',
       brand: baseTokens.colors.purple[50],
     },

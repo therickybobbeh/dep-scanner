@@ -1,7 +1,8 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Container, Row, Col, Card, Form, Button, Alert, ListGroup, Badge, Spinner } from 'react-bootstrap';
+import { Container, Row, Col, Card, Form, Button, Alert, ListGroup, Badge } from 'react-bootstrap';
 import { Upload, FileText, X, CheckCircle, AlertTriangle } from 'lucide-react';
+import NewtonsCradleLoader from '../components/ui/NewtonsCradleLoader';
 import axios from 'axios';
 import type { ScanRequest } from '../types/api';
 import { SeverityLevel } from '../types/common';
@@ -54,16 +55,8 @@ const ScanPage: React.FC = () => {
       const manifest_files: Record<string, string> = {};
       
       if (Object.keys(files).length === 0) {
-        // Use test data when no files uploaded for debugging
-        manifest_files['package.json'] = JSON.stringify({
-          "name": "test-app",
-          "version": "1.0.0",
-          "dependencies": {
-            "lodash": "4.17.15",
-            "express": "4.17.1",
-            "axios": "0.19.0"
-          }
-        }, null, 2);
+        setError('Please upload at least one manifest file (package.json, requirements.txt, etc.)');
+        return;
       } else {
         // Read uploaded file contents with validation
         for (const [filename, file] of Object.entries(files)) {
@@ -93,18 +86,17 @@ const ScanPage: React.FC = () => {
                 // For package.json, verify it has expected structure
                 if (filename === 'package.json') {
                   if (!parsed.name && !parsed.dependencies && !parsed.devDependencies) {
-                    console.warn(`⚠️ ${filename} doesn't appear to be a proper package.json (missing name and dependencies)`);
+                    // Package.json validation - could show user warning in UI instead
                   }
                 }
               } catch (jsonError) {
-                throw new Error(`File ${filename} contains invalid JSON: ${jsonError.message}`);
+                throw new Error(`File ${filename} contains invalid JSON: ${jsonError instanceof Error ? jsonError.message : 'Unknown JSON error'}`);
               }
             }
             
             manifest_files[filename] = content;
           } catch (fileError) {
-            console.error(`Error reading file ${filename}:`, fileError);
-            setError(`Error reading file ${filename}: ${fileError.message}`);
+            setError(`Error reading file ${filename}: ${fileError instanceof Error ? fileError.message : 'Unknown error'}`);
             return;
           }
         }
@@ -120,15 +112,12 @@ const ScanPage: React.FC = () => {
         }
       };
 
-      console.log('Sending scan request with manifest_files:', manifest_files);
       const response = await axios.post('/api/scan', scanRequest);
       const { job_id } = response.data;
-      console.log('Scan started, job_id:', job_id);
 
       // Redirect to scan results page
       navigate(`/report/${job_id}`);
     } catch (err) {
-      console.error('Scan failed:', err);
       setError(err instanceof Error ? err.message : 'Failed to start scan');
     } finally {
       setIsUploading(false);
@@ -283,7 +272,7 @@ const ScanPage: React.FC = () => {
                 >
                   {isValidatingConsistency ? (
                     <>
-                      <Spinner as="span" animation="border" size="sm" className="me-2" />
+                      <div className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></div>
                       Validating...
                     </>
                   ) : (
@@ -439,25 +428,27 @@ const ScanPage: React.FC = () => {
         )}
 
 
-        {/* Submit Button */}
-        <div className="d-flex justify-content-end">
-          <Button
-            type="submit"
-            variant="light"
-            className="text-primary"
-            size="lg"
-            disabled={isUploading}
-          >
-            {isUploading ? (
-              <>
-                <Spinner as="span" animation="border" size="sm" className="me-2" />
-                Starting Scan...
-              </>
-            ) : (
-              'Start Vulnerability Scan'
-            )}
-          </Button>
-        </div>
+        {/* Submit Button or Loading State */}
+        {isUploading ? (
+          <div className="text-center">
+            <NewtonsCradleLoader 
+              message="Starting Scan..."
+              progress={25}
+              className="mb-3"
+            />
+          </div>
+        ) : (
+          <div className="d-flex justify-content-end">
+            <Button
+              type="submit"
+              variant="light"
+              className="text-primary"
+              size="lg"
+            >
+              Start Vulnerability Scan
+            </Button>
+          </div>
+        )}
       </Form>
     </Container>
   );

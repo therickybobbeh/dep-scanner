@@ -1,0 +1,30 @@
+# Test case for transitive dependency vulnerabilities
+# This file is designed to test proper detection of vulnerabilities in transitive dependencies
+
+# Direct dependencies with known vulnerable transitive dependencies
+django==3.2.13
+    # This version of Django depends on sqlparse>=0.2.2
+    # sqlparse==0.4.4 has CVE-2024-4340 (CVSS 7.5)
+    # asgiref>=3.2.10,<4 may have vulnerabilities
+
+requests==2.25.1
+    # Depends on urllib3~=1.26.0 which has multiple CVEs
+    # Depends on certifi>=2017.4.17
+    # Depends on chardet<5,>=3.0.2
+    # Depends on idna<3,>=2.5
+
+flask==2.0.1
+    # Depends on werkzeug>=2.0.0 
+    # Depends on jinja2>=3.0.0 which has template injection vulnerabilities
+    # Depends on markupsafe>=2.0
+    # Depends on itsdangerous>=2.0
+    # Depends on click>=7.1.2
+
+tensorflow==2.8.0
+    # Large dependency tree with many vulnerable transitive deps
+    # Depends on numpy which may have vulnerabilities
+    # Depends on protobuf which has had multiple CVEs
+
+# Test with older versions that definitely have vulnerabilities
+pyyaml==5.3.1
+    # CVE-2020-14343: Arbitrary code execution

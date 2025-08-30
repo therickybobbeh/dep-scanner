@@ -53,6 +53,17 @@ class PythonLockGenerator:
                 logger.info("Lock file found, using existing resolution")
             return result
         
+        # Check if any file looks like a pip-compile generated lockfile (has "# via" comments)
+        for filename, content in manifest_files.items():
+            if "requirements" in filename.lower() and filename.endswith(".txt") and "# via " in content:
+                # This appears to be a pip-compile generated lockfile, treat as requirements.lock
+                result["requirements.lock"] = content
+                if progress_callback:
+                    progress_callback("pip-compile lockfile detected, using as requirements.lock")
+                else:
+                    logger.info("pip-compile lockfile detected, using as requirements.lock")
+                return result
+        
         # For manifest files, generate requirements.lock
         try:
             dependencies = self._extract_dependencies_from_manifests(manifest_files)
@@ -82,17 +93,19 @@ class PythonLockGenerator:
     
     def _extract_dependencies_from_manifests(self, manifest_files: Dict[str, str]) -> list[str]:
         """
-        Extract dependency list from requirements.txt
+        Extract dependency list from requirements.txt or similar files
         
-        Simplified to only support requirements.txt as per Socket requirements.
+        Simplified to only support requirements-style files.
         Lock files (poetry.lock, Pipfile.lock) are handled separately as they
         already contain resolved dependencies.
         """
         dependencies = []
         
-        # Only support requirements.txt for manifest files
-        if "requirements.txt" in manifest_files:
-            dependencies.extend(self._parse_requirements_txt(manifest_files["requirements.txt"]))
+        # Support requirements.txt and similar files
+        for filename, content in manifest_files.items():
+            if (filename == "requirements.txt" or 
+                ("requirements" in filename.lower() and filename.endswith(".txt"))):
+                dependencies.extend(self._parse_requirements_txt(content))
         
         return list(dict.fromkeys(dependencies))  # Remove duplicates
     

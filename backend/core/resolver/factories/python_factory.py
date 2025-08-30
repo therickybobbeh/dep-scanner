@@ -86,17 +86,30 @@ class PythonParserFactory(BaseParserFactory):
         Returns:
             Tuple of (best_filename, format_name)
         """
-        # Priority order mapping filename to format name
-        priority_mapping = [
+        # Check exact filename matches first (highest priority)
+        exact_priority_mapping = [
             ("requirements.lock", "requirements"),
             ("poetry.lock", "poetry-lock"),
             ("Pipfile.lock", "pipfile-lock"),
             ("requirements.txt", "requirements")
         ]
         
-        for filename, format_name in priority_mapping:
+        for filename, format_name in exact_priority_mapping:
             if filename in available_files:
                 return filename, format_name
+        
+        # Check for flexible requirements file names
+        for filename in available_files:
+            if "requirements" in filename.lower() and filename.endswith(".txt"):
+                return filename, "requirements"
+        
+        # Check for other supported files
+        for filename in available_files:
+            try:
+                format_name = self._detect_format(filename, available_files[filename])
+                return filename, format_name
+            except ValueError:
+                continue
         
         raise ValueError("No supported Python dependency files found")
     

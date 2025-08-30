@@ -1,0 +1,205 @@
+/**
+ * Modern Data Table Styles - 2025 Best Practices
+ * Removes zebra stripes, enhances interactivity and accessibility
+ */
+
+/* Modern Data Table Base Styles */
+.modern-data-table {
+  /* Override Bootstrap's striped table variables */
+  --bs-table-striped-bg: transparent !important;
+  --bs-table-striped-color: var(--semantic-text-primary) !important;
+  
+  /* Enhanced hover state */
+  --bs-table-hover-bg: var(--color-purple-50, #faf5ff) !important;
+  --bs-table-hover-color: var(--semantic-text-primary) !important;
+  
+  /* Clean borders */
+  --bs-table-border-color: var(--semantic-border-primary, #e5e7eb) !important;
+  
+  /* Consistent row background */
+  background-color: white;
+  border-radius: var(--border-radius-lg, 0.5rem);
+  overflow: hidden;
+  box-shadow: var(--box-shadow-sm, 0 1px 2px 0 rgba(0, 0, 0, 0.05));
+}
+
+/* Table Header Styling */
+.modern-data-table thead th {
+  background-color: var(--semantic-background-secondary, #e5e7eb);
+  color: var(--semantic-text-primary, #1f2937);
+  font-weight: var(--font-weight-semibold, 600);
+  font-size: var(--font-size-sm, 0.875rem);
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  padding: var(--spacing-4, 1rem) var(--spacing-3, 0.75rem);
+  border-bottom: 2px solid var(--semantic-border-primary, #e5e7eb);
+  border-top: none;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+/* Clean Row Styling */
+.modern-data-table tbody tr {
+  background-color: white;
+  border-bottom: 1px solid var(--semantic-border-primary, #e5e7eb);
+  transition: all 0.15s ease;
+}
+
+/* Enhanced Hover State */
+.modern-data-table tbody tr:hover {
+  background-color: var(--color-purple-50, #faf5ff);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(124, 58, 237, 0.08);
+  border-color: var(--semantic-interactive-primary, #7c3aed);
+}
+
+/* Cell Styling */
+.modern-data-table tbody td {
+  padding: var(--spacing-4, 1rem) var(--spacing-3, 0.75rem);
+  vertical-align: middle;
+  border-top: none;
+  color: var(--semantic-text-primary, #1f2937);
+  font-size: var(--font-size-sm, 0.875rem);
+  line-height: var(--line-height-normal, 1.5);
+}
+
+/* Remove last row border */
+.modern-data-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+/* Expandable Row Styling */
+.modern-data-table .expandable-row {
+  cursor: pointer;
+}
+
+.modern-data-table .expandable-row:hover .expand-icon {
+  color: var(--semantic-interactive-primary, #7c3aed);
+  transform: scale(1.1);
+}
+
+.modern-data-table .expand-icon {
+  transition: all 0.15s ease;
+  color: var(--semantic-text-secondary, #6b7280);
+}
+
+/* Expanded Row Content */
+.modern-data-table .expanded-content {
+  background-color: var(--color-purple-25, #fefbff);
+  border-left: 3px solid var(--semantic-interactive-primary, #7c3aed);
+}
+
+.modern-data-table .expanded-content td {
+  padding: var(--spacing-5, 1.25rem) var(--spacing-4, 1rem);
+  border-bottom: 1px solid var(--semantic-border-secondary, #d1d5db);
+}
+
+/* Package Icon Styling */
+.modern-data-table .package-icon {
+  color: var(--semantic-text-muted, #9ca3af);
+  transition: color 0.15s ease;
+}
+
+.modern-data-table tr:hover .package-icon {
+  color: var(--semantic-interactive-primary, #7c3aed);
+}
+
+/* Badge and Button Enhancements */
+.modern-data-table .badge {
+  border-radius: var(--border-radius-md, 0.375rem);
+  font-weight: var(--font-weight-medium, 500);
+  font-size: var(--font-size-xs, 0.75rem);
+  padding: var(--spacing-1, 0.25rem) var(--spacing-2, 0.5rem);
+}
+
+.modern-data-table .btn-sm {
+  border-radius: var(--border-radius-md, 0.375rem);
+  font-size: var(--font-size-xs, 0.75rem);
+  font-weight: var(--font-weight-medium, 500);
+  transition: all 0.15s ease;
+}
+
+/* Focus States for Accessibility */
+.modern-data-table tbody tr:focus-within {
+  outline: 2px solid var(--semantic-interactive-primary, #7c3aed);
+  outline-offset: -2px;
+  background-color: var(--color-purple-50, #faf5ff);
+}
+
+.modern-data-table button:focus-visible,
+.modern-data-table a:focus-visible {
+  outline: 2px solid var(--semantic-interactive-primary, #7c3aed);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.1);
+}
+
+/* Empty State Styling */
+.modern-data-table .empty-state {
+  text-align: center;
+  padding: var(--spacing-16, 4rem) var(--spacing-4, 1rem);
+  color: var(--semantic-text-muted, #9ca3af);
+  font-size: var(--font-size-base, 1rem);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .modern-data-table {
+    font-size: var(--font-size-xs, 0.75rem);
+  }
+  
+  .modern-data-table thead th,
+  .modern-data-table tbody td {
+    padding: var(--spacing-3, 0.75rem) var(--spacing-2, 0.5rem);
+  }
+  
+  .modern-data-table tbody tr:hover {
+    transform: none; /* Disable lift effect on mobile */
+  }
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+  .modern-data-table {
+    border: 2px solid currentColor;
+  }
+  
+  .modern-data-table thead th {
+    border-bottom-width: 3px;
+  }
+  
+  .modern-data-table tbody tr {
+    border-bottom-width: 2px;
+  }
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  .modern-data-table tbody tr:hover {
+    transform: none;
+    transition: background-color 0.15s ease;
+  }
+  
+  .modern-data-table .expand-icon,
+  .modern-data-table .btn-sm {
+    transition: none;
+  }
+}
+
+/* Print Styles */
+@media print {
+  .modern-data-table {
+    box-shadow: none;
+    border: 1px solid #000;
+  }
+  
+  .modern-data-table tbody tr:hover {
+    background-color: transparent !important;
+    transform: none !important;
+    box-shadow: none !important;
+  }
+  
+  .modern-data-table .btn {
+    display: none;
+  }
+}

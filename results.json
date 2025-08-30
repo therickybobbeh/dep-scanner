@@ -1,0 +1,1906 @@
+{
+  "scan_info": {
+    "total_dependencies": 40,
+    "vulnerable_packages": 100,
+    "ecosystems": [
+      "PyPI"
+    ]
+  },
+  "vulnerabilities": [
+    {
+      "package": "cryptography",
+      "version": "3.4.8",
+      "vulnerability_id": "GHSA-3ww4-gg4f-jr7f",
+      "severity": "HIGH",
+      "summary": "Python Cryptography package vulnerable to Bleichenbacher timing oracle attack",
+      "cve_ids": [
+        "CVE-2023-50782"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2023-50782",
+      "type": "direct",
+      "dependency_path": [
+        "cryptography"
+      ],
+      "fixed_range": ">=42.0.0",
+      "details": "A flaw was found in the python-cryptography package. This issue may allow a remote attacker to decrypt captured messages in TLS servers that use RSA key exchanges, which may lead to exposure of confidential or sensitive data.",
+      "published": "2024-02-05T21:30:31+00:00",
+      "modified": "2024-10-22T05:29:04.269269+00:00"
+    },
+    {
+      "package": "cryptography",
+      "version": "3.4.8",
+      "vulnerability_id": "GHSA-5cpq-8wj7-hf2v",
+      "severity": "LOW",
+      "summary": "Vulnerable OpenSSL included in cryptography wheels",
+      "cve_ids": [],
+      "advisory_url": "https://github.com/pyca/cryptography/security/advisories/GHSA-5cpq-8wj7-hf2v",
+      "type": "direct",
+      "dependency_path": [
+        "cryptography"
+      ],
+      "fixed_range": ">=41.0.0",
+      "details": "pyca/cryptography's wheels include a statically linked copy of OpenSSL. The versions of OpenSSL included in cryptography 0.5-40.0.2 are vulnerable to a security issue. More details about the vulnerability itself can be found in https://www.openssl.org/news/secadv/20230530.txt.\n\nIf you are building cryptography source (\"sdist\") then you are responsible for upgrading your copy of OpenSSL. Only users installing from wheels built by the cryptography project (i.e., those distributed on PyPI) need to update their cryptography versions.",
+      "published": "2023-06-02T17:13:10+00:00",
+      "modified": "2024-11-28T05:35:51.956467+00:00"
+    },
+    {
+      "package": "cryptography",
+      "version": "3.4.8",
+      "vulnerability_id": "GHSA-9v9h-cgj8-h64p",
+      "severity": "HIGH",
+      "summary": "Null pointer dereference in PKCS12 parsing",
+      "cve_ids": [
+        "CVE-2024-0727"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2024-0727",
+      "type": "direct",
+      "dependency_path": [
+        "cryptography"
+      ],
+      "fixed_range": ">=42.0.2",
+      "details": "Issue summary: Processing a maliciously formatted PKCS12 file may lead OpenSSL\nto crash leading to a potential Denial of Service attack\n\nImpact summary: Applications loading files in the PKCS12 format from untrusted\nsources might terminate abruptly.\n\nA file in PKCS12 format can contain certificates and keys and may come from an\nuntrusted source. The PKCS12 specification allows certain fields to be NULL, but\nOpenSSL does not correctly check for this case. This can lead to a NULL pointer\ndereference that results in OpenSSL crashing. If an application processes PKCS12\nfiles from an untrusted source using the OpenSSL APIs then that application will\nbe vulnerable to this issue.\n\nOpenSSL APIs that are vulnerable to this are: PKCS12_parse(),\nPKCS12_unpack_p7data(), PKCS12_unpack_p7encdata(), PKCS12_unpack_authsafes()\nand PKCS12_newpass().\n\nWe have also fixed a similar issue in SMIME_write_PKCS7(). However since this\nfunction is related to writing data we do not consider it security significant.\n\nThe FIPS modules in 3.2, 3.1 and 3.0 are not affected by this issue.",
+      "published": "2024-01-26T09:30:23+00:00",
+      "modified": "2025-02-15T05:28:28.071637+00:00"
+    },
+    {
+      "package": "cryptography",
+      "version": "3.4.8",
+      "vulnerability_id": "GHSA-jfhm-5ghh-2f97",
+      "severity": "HIGH",
+      "summary": "cryptography vulnerable to NULL-dereference when loading PKCS7 certificates",
+      "cve_ids": [
+        "CVE-2023-49083"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2023-49083",
+      "type": "direct",
+      "dependency_path": [
+        "cryptography"
+      ],
+      "fixed_range": ">=41.0.6",
+      "details": "### Summary\n\nCalling `load_pem_pkcs7_certificates` or `load_der_pkcs7_certificates` could lead to a NULL-pointer dereference and segfault.\n\n### PoC\nHere is a Python code that triggers the issue:\n```python\nfrom cryptography.hazmat.primitives.serialization.pkcs7 import load_der_pkcs7_certificates, load_pem_pkcs7_certificates\n\npem_p7 = b\"\"\"\n-----BEGIN PKCS7-----\nMAsGCSqGSIb3DQEHAg==\n-----END PKCS7-----\n\"\"\"\n\nder_p7 = b\"\\x30\\x0B\\x06\\x09\\x2A\\x86\\x48\\x86\\xF7\\x0D\\x01\\x07\\x02\"\n\nload_pem_pkcs7_certificates(pem_p7)\nload_der_pkcs7_certificates(der_p7)\n```\n\n### Impact\nExploitation of this vulnerability poses a serious risk of Denial of Service (DoS) for any application attempting to deserialize a PKCS7 blob/certificate. The consequences extend to potential disruptions in system availability and stability.",
+      "published": "2023-11-28T20:46:46+00:00",
+      "modified": "2025-02-18T05:41:05.061219+00:00"
+    },
+    {
+      "package": "cryptography",
+      "version": "3.4.8",
+      "vulnerability_id": "GHSA-jm77-qphf-c4w8",
+      "severity": "LOW",
+      "summary": "pyca/cryptography's wheels include vulnerable OpenSSL",
+      "cve_ids": [],
+      "advisory_url": "https://github.com/pyca/cryptography/security/advisories/GHSA-jm77-qphf-c4w8",
+      "type": "direct",
+      "dependency_path": [
+        "cryptography"
+      ],
+      "fixed_range": ">=41.0.3",
+      "details": "pyca/cryptography's wheels include a statically linked copy of OpenSSL. The versions of OpenSSL included in cryptography 0.8-41.0.2 are vulnerable to several security issues. More details about the vulnerabilities themselves can be found in https://www.openssl.org/news/secadv/20230731.txt, https://www.openssl.org/news/secadv/20230719.txt, and https://www.openssl.org/news/secadv/20230714.txt.\n\nIf you are building cryptography source (\"sdist\") then you are responsible for upgrading your copy of OpenSSL. Only users installing from wheels built by the cryptography project (i.e., those distributed on PyPI) need to update their cryptography versions.",
+      "published": "2023-08-01T22:34:41+00:00",
+      "modified": "2024-12-03T06:10:50.110979+00:00"
+    },
+    {
+      "package": "cryptography",
+      "version": "3.4.8",
+      "vulnerability_id": "GHSA-v8gr-m533-ghj9",
+      "severity": "LOW",
+      "summary": "Vulnerable OpenSSL included in cryptography wheels",
+      "cve_ids": [],
+      "advisory_url": "https://github.com/pyca/cryptography/security/advisories/GHSA-v8gr-m533-ghj9",
+      "type": "direct",
+      "dependency_path": [
+        "cryptography"
+      ],
+      "fixed_range": ">=41.0.4",
+      "details": "pyca/cryptography's wheels include a statically linked copy of OpenSSL. The versions of OpenSSL included in cryptography 2.5-41.0.3 are vulnerable to several security issues. More details about the vulnerabilities themselves can be found in https://www.openssl.org/news/secadv/20230908.txt.\n\nIf you are building cryptography source (\"sdist\") then you are responsible for upgrading your copy of OpenSSL. Only users installing from wheels built by the cryptography project (i.e., those distributed on PyPI) need to update their cryptography versions.",
+      "published": "2023-09-21T17:07:01+00:00",
+      "modified": "2024-12-04T05:35:39.163640+00:00"
+    },
+    {
+      "package": "cryptography",
+      "version": "3.4.8",
+      "vulnerability_id": "GHSA-w7pp-m8wf-vj6r",
+      "severity": "MEDIUM",
+      "summary": "Cipher.update_into can corrupt memory if passed an immutable python object as the outbuf",
+      "cve_ids": [
+        "CVE-2023-23931"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2023-23931",
+      "type": "direct",
+      "dependency_path": [
+        "cryptography"
+      ],
+      "fixed_range": ">=39.0.1",
+      "details": "Previously, `Cipher.update_into` would accept Python objects which implement the buffer protocol, but provide only immutable buffers:\n\n```pycon\n>>> outbuf = b\"\\x00\" * 32\n>>> c = ciphers.Cipher(AES(b\"\\x00\" * 32), modes.ECB()).encryptor()\n>>> c.update_into(b\"\\x00\" * 16, outbuf)\n16\n>>> outbuf\nb'\\xdc\\x95\\xc0x\\xa2@\\x89\\x89\\xadH\\xa2\\x14\\x92\\x84 \\x87\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00'\n```\n\nThis would allow immutable objects (such as `bytes`) to be mutated, thus violating fundamental rules of Python. This is a soundness bug -- it allows programmers to misuse an API, it cannot be exploited by attacker controlled data alone.\n\nThis now correctly raises an exception.\n\nThis issue has been present since `update_into` was originally introduced in cryptography 1.8.",
+      "published": "2023-02-07T20:54:10+00:00",
+      "modified": "2025-02-16T05:27:57.650339+00:00"
+    },
+    {
+      "package": "cryptography",
+      "version": "3.4.8",
+      "vulnerability_id": "GHSA-x4qr-2fvf-3mr5",
+      "severity": "HIGH",
+      "summary": "Vulnerable OpenSSL included in cryptography wheels",
+      "cve_ids": [
+        "CVE-2023-0286"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2023-0286",
+      "type": "direct",
+      "dependency_path": [
+        "cryptography"
+      ],
+      "fixed_range": ">=39.0.1",
+      "details": "pyca/cryptography's wheels include a statically linked copy of OpenSSL. The versions of OpenSSL included in cryptography 0.8.1-39.0.0  are vulnerable to a security issue. More details about the vulnerabilities themselves can be found in https://www.openssl.org/news/secadv/20221213.txt and https://www.openssl.org/news/secadv/20230207.txt.\n\nIf you are building cryptography source (\"sdist\") then you are responsible for upgrading your copy of OpenSSL. Only users installing from wheels built by the cryptography project (i.e., those distributed on PyPI) need to update their cryptography versions.",
+      "published": "2023-02-08T22:17:06+00:00",
+      "modified": "2025-03-21T04:18:43.705766+00:00"
+    },
+    {
+      "package": "cryptography",
+      "version": "3.4.8",
+      "vulnerability_id": "PYSEC-2023-254",
+      "severity": "HIGH",
+      "summary": "",
+      "cve_ids": [
+        "CVE-2023-49083"
+      ],
+      "advisory_url": "https://github.com/pyca/cryptography/security/advisories/GHSA-jfhm-5ghh-2f97",
+      "type": "direct",
+      "dependency_path": [
+        "cryptography"
+      ],
+      "fixed_range": ">=f09c261ca10a31fe41b1262306db7f8f1da0e48a",
+      "details": "cryptography is a package designed to expose cryptographic primitives and recipes to Python developers. Calling `load_pem_pkcs7_certificates` or `load_der_pkcs7_certificates` could lead to a NULL-pointer dereference and segfault. Exploitation of this vulnerability poses a serious risk of Denial of Service (DoS) for any application attempting to deserialize a PKCS7 blob/certificate. The consequences extend to potential disruptions in system availability and stability. This vulnerability has been patched in version 41.0.6.",
+      "published": "2023-11-29T19:15:00+00:00",
+      "modified": "2024-02-17T07:41:40.326359+00:00"
+    },
+    {
+      "package": "django",
+      "version": "3.2.13",
+      "vulnerability_id": "GHSA-2hrw-hx67-34x6",
+      "severity": "HIGH",
+      "summary": "Resource exhaustion in Django",
+      "cve_ids": [
+        "CVE-2023-24580"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2023-24580",
+      "type": "direct",
+      "dependency_path": [
+        "django"
+      ],
+      "fixed_range": ">=3.2.18",
+      "details": "An issue was discovered in the Multipart Request Parser in Django 3.2 before 3.2.18, 4.0 before 4.0.10, and 4.1 before 4.1.7. Passing certain inputs (e.g., an excessive number of parts) to multipart forms could result in too many open files or memory exhaustion, and provided a potential vector for a denial-of-service attack.",
+      "published": "2023-02-15T03:30:47+00:00",
+      "modified": "2025-03-19T15:45:19.599334+00:00"
+    },
+    {
+      "package": "django",
+      "version": "3.2.13",
+      "vulnerability_id": "GHSA-7h4p-27mh-hmrw",
+      "severity": "MEDIUM",
+      "summary": "Django Denial of service vulnerability in django.utils.encoding.uri_to_iri",
+      "cve_ids": [
+        "CVE-2023-41164"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2023-41164",
+      "type": "direct",
+      "dependency_path": [
+        "django"
+      ],
+      "fixed_range": ">=3.2.21",
+      "details": "In Django 3.2 before 3.2.21, 4.1 before 4.1.11, and 4.2 before 4.2.5, django.utils.encoding.uri_to_iri() is subject to a potential DoS (denial of service) attack via certain inputs with a very large number of Unicode characters.",
+      "published": "2023-11-03T06:36:29+00:00",
+      "modified": "2025-02-21T05:29:07.772454+00:00"
+    },
+    {
+      "package": "django",
+      "version": "3.2.13",
+      "vulnerability_id": "GHSA-7xr5-9hcq-chf9",
+      "severity": "HIGH",
+      "summary": "Django Improper Output Neutralization for Logs vulnerability",
+      "cve_ids": [
+        "CVE-2025-48432"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2025-48432",
+      "type": "direct",
+      "dependency_path": [
+        "django"
+      ],
+      "fixed_range": ">=5.2.2",
+      "details": "An issue was discovered in Django 5.2 before 5.2.2, 5.1 before 5.1.10, and 4.2 before 4.2.22. Internal HTTP response logging does not escape request.path, which allows remote attackers to potentially manipulate log output via crafted URLs. This may lead to log injection or forgery when logs are viewed in terminals or processed by external systems.",
+      "published": "2025-06-05T03:30:58+00:00",
+      "modified": "2025-06-10T20:12:40.998043+00:00"
+    },
+    {
+      "package": "django",
+      "version": "3.2.13",
+      "vulnerability_id": "GHSA-8x94-hmjh-97hq",
+      "severity": "HIGH",
+      "summary": "Django vulnerable to Reflected File Download attack",
+      "cve_ids": [
+        "CVE-2022-36359"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2022-36359",
+      "type": "direct",
+      "dependency_path": [
+        "django"
+      ],
+      "fixed_range": ">=3.2.15",
+      "details": "An issue was discovered in the HTTP FileResponse class in Django 3.2 before 3.2.15 and 4.0 before 4.0.7. An application is vulnerable to a reflected file download (RFD) attack that sets the Content-Disposition header of a FileResponse when the filename is derived from user-supplied input.",
+      "published": "2022-08-11T14:49:12+00:00",
+      "modified": "2025-01-14T11:27:04.205746+00:00"
+    },
+    {
+      "package": "django",
+      "version": "3.2.13",
+      "vulnerability_id": "GHSA-h8gc-pgj2-vjm3",
+      "severity": "HIGH",
+      "summary": "Django Denial-of-service in django.utils.text.Truncator",
+      "cve_ids": [
+        "CVE-2023-43665"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2023-43665",
+      "type": "direct",
+      "dependency_path": [
+        "django"
+      ],
+      "fixed_range": ">=3.2.22",
+      "details": "In Django 3.2 before 3.2.22, 4.1 before 4.1.12, and 4.2 before 4.2.6, the django.utils.text.Truncator chars() and words() methods (when used with html=True) are subject to a potential DoS (denial of service) attack via certain inputs with very long, potentially malformed HTML text. The chars() and words() methods are used to implement the truncatechars_html and truncatewords_html template filters, which are thus also vulnerable. NOTE: this issue exists because of an incomplete fix for CVE-2019-14232.",
+      "published": "2023-11-03T06:36:30+00:00",
+      "modified": "2025-02-21T05:27:42.337362+00:00"
+    },
+    {
+      "package": "django",
+      "version": "3.2.13",
+      "vulnerability_id": "GHSA-jh3w-4vvf-mjgr",
+      "severity": "HIGH",
+      "summary": "Django has regular expression denial of service vulnerability in EmailValidator/URLValidator",
+      "cve_ids": [
+        "CVE-2023-36053"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2023-36053",
+      "type": "direct",
+      "dependency_path": [
+        "django"
+      ],
+      "fixed_range": ">=3.2.20",
+      "details": "In Django 3.2 before 3.2.20, 4 before 4.1.10, and 4.2 before 4.2.3, `EmailValidator` and `URLValidator` are subject to a potential ReDoS (regular expression denial of service) attack via a very large number of domain name labels of emails and URLs.",
+      "published": "2023-07-03T15:30:45+00:00",
+      "modified": "2025-02-21T05:30:27.914176+00:00"
+    },
+    {
+      "package": "django",
+      "version": "3.2.13",
+      "vulnerability_id": "GHSA-p64x-8rxx-wf6q",
+      "severity": "HIGH",
+      "summary": "Django `Trunc()` and `Extract()` database functions vulnerable to SQL Injection",
+      "cve_ids": [
+        "CVE-2022-34265"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2022-34265",
+      "type": "direct",
+      "dependency_path": [
+        "django"
+      ],
+      "fixed_range": ">=3.2.14",
+      "details": "An issue was discovered in Django 3.2 before 3.2.14 and 4.0 before 4.0.6. The `Trunc()` and `Extract()` database functions are subject to SQL injection if untrusted data is used as a kind/lookup_name value. Applications that constrain the lookup name and kind choice to a known safe list are unaffected.",
+      "published": "2022-07-05T00:00:53+00:00",
+      "modified": "2025-02-21T05:27:38.084922+00:00"
+    },
+    {
+      "package": "django",
+      "version": "3.2.13",
+      "vulnerability_id": "GHSA-q2jf-h9jm-m7p4",
+      "severity": "HIGH",
+      "summary": "Django contains Uncontrolled Resource Consumption via cached header",
+      "cve_ids": [
+        "CVE-2023-23969"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2023-23969",
+      "type": "direct",
+      "dependency_path": [
+        "django"
+      ],
+      "fixed_range": ">=3.2.17",
+      "details": "In Django 3.2 before 3.2.17, 4.0 before 4.0.9, and 4.1 before 4.1.6, the parsed values of Accept-Language headers are cached in order to avoid repetitive parsing. This leads to a potential denial-of-service vector via excessive memory usage if the raw value of Accept-Language headers is very large.",
+      "published": "2023-02-01T21:30:23+00:00",
+      "modified": "2024-09-20T15:47:43.845538+00:00"
+    },
+    {
+      "package": "django",
+      "version": "3.2.13",
+      "vulnerability_id": "GHSA-qmf9-6jqf-j8fq",
+      "severity": "HIGH",
+      "summary": "Django potential denial of service vulnerability in UsernameField on Windows",
+      "cve_ids": [
+        "CVE-2023-46695"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2023-46695",
+      "type": "direct",
+      "dependency_path": [
+        "django"
+      ],
+      "fixed_range": ">=3.2.23",
+      "details": "An issue was discovered in Django 3.2 before 3.2.23, 4.1 before 4.1.13, and 4.2 before 4.2.7. The NFKC normalization is slow on Windows. As a consequence, django.contrib.auth.forms.UsernameField is subject to a potential DoS (denial of service) attack via certain inputs with a very large number of Unicode characters.",
+      "published": "2023-11-02T06:30:25+00:00",
+      "modified": "2024-09-20T16:07:45.381236+00:00"
+    },
+    {
+      "package": "django",
+      "version": "3.2.13",
+      "vulnerability_id": "GHSA-qrw5-5h28-6cmg",
+      "severity": "HIGH",
+      "summary": "Django denial-of-service vulnerability in internationalized URLs",
+      "cve_ids": [
+        "CVE-2022-41323"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2022-41323",
+      "type": "direct",
+      "dependency_path": [
+        "django"
+      ],
+      "fixed_range": ">=3.2.16",
+      "details": "In Django 3.2 before 3.2.16, 4.0 before 4.0.8, and 4.1 before 4.1.2, internationalized URLs were subject to a potential denial of service attack via the locale parameter, which is treated as a regular expression. ",
+      "published": "2022-10-16T12:00:23+00:00",
+      "modified": "2024-09-20T15:48:03.376641+00:00"
+    },
+    {
+      "package": "django",
+      "version": "3.2.13",
+      "vulnerability_id": "GHSA-r3xc-prgr-mg9p",
+      "severity": "HIGH",
+      "summary": "Django bypasses validation when using one form field to upload multiple files",
+      "cve_ids": [
+        "CVE-2023-31047"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2023-31047",
+      "type": "direct",
+      "dependency_path": [
+        "django"
+      ],
+      "fixed_range": ">=3.2.19",
+      "details": "In Django 3.2 before 3.2.19, 4.x before 4.1.9, and 4.2 before 4.2.1, it was possible to bypass validation when using one form field to upload multiple files. This multiple upload has never been supported by forms.FileField or forms.ImageField (only the last uploaded file was validated). However, Django's \"Uploading multiple files\" documentation suggested otherwise.",
+      "published": "2023-05-07T03:30:17+00:00",
+      "modified": "2025-02-21T05:31:37.748535+00:00"
+    },
+    {
+      "package": "django",
+      "version": "3.2.13",
+      "vulnerability_id": "GHSA-rrqc-c2jx-6jgv",
+      "severity": "HIGH",
+      "summary": "Django allows enumeration of user e-mail addresses",
+      "cve_ids": [
+        "CVE-2024-45231"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2024-45231",
+      "type": "direct",
+      "dependency_path": [
+        "django"
+      ],
+      "fixed_range": ">=5.1.1",
+      "details": "An issue was discovered in Django v5.1.1, v5.0.9, and v4.2.16. The django.contrib.auth.forms.PasswordResetForm class, when used in a view implementing password reset flows, allows remote attackers to enumerate user e-mail addresses by sending password reset requests and observing the outcome (only when e-mail sending is consistently failing).",
+      "published": "2024-10-08T18:33:13+00:00",
+      "modified": "2024-10-30T19:23:59.139649+00:00"
+    },
+    {
+      "package": "django",
+      "version": "3.2.13",
+      "vulnerability_id": "GHSA-vm8q-m57g-pff3",
+      "severity": "HIGH",
+      "summary": "Regular expression denial-of-service in Django",
+      "cve_ids": [
+        "CVE-2024-27351"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2024-27351",
+      "type": "direct",
+      "dependency_path": [
+        "django"
+      ],
+      "fixed_range": ">=3.2.25",
+      "details": "In Django 3.2 before 3.2.25, 4.2 before 4.2.11, and 5.0 before 5.0.3, the django.utils.text.Truncator.words() method (with html=True) and the truncatewords_html template filter are subject to a potential regular expression denial-of-service attack via a crafted string. NOTE: this issue exists because of an incomplete fix for CVE-2019-14232 and CVE-2023-43665.",
+      "published": "2024-03-15T21:30:43+00:00",
+      "modified": "2025-02-12T05:35:29.498969+00:00"
+    },
+    {
+      "package": "django",
+      "version": "3.2.13",
+      "vulnerability_id": "GHSA-xxj9-f6rv-m3x4",
+      "severity": "HIGH",
+      "summary": "Django denial-of-service attack in the intcomma template filter",
+      "cve_ids": [
+        "CVE-2024-24680"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2024-24680",
+      "type": "direct",
+      "dependency_path": [
+        "django"
+      ],
+      "fixed_range": ">=3.2.24",
+      "details": "An issue was discovered in Django 3.2 before 3.2.24, 4.2 before 4.2.10, and Django 5.0 before 5.0.2. The intcomma template filter was subject to a potential denial-of-service attack when used with very long strings.",
+      "published": "2024-02-07T00:30:25+00:00",
+      "modified": "2024-11-20T05:25:05.722733+00:00"
+    },
+    {
+      "package": "django",
+      "version": "3.2.13",
+      "vulnerability_id": "PYSEC-2022-213",
+      "severity": "UNKNOWN",
+      "summary": "",
+      "cve_ids": [
+        "CVE-2022-34265"
+      ],
+      "advisory_url": "https://github.com/advisories/GHSA-p64x-8rxx-wf6q",
+      "type": "direct",
+      "dependency_path": [
+        "django"
+      ],
+      "fixed_range": ">=3.2.14",
+      "details": "An issue was discovered in Django 3.2 before 3.2.14 and 4.0 before 4.0.6. The Trunc() and Extract() database functions are subject to SQL injection if untrusted data is used as a kind/lookup_name value. Applications that constrain the lookup name and kind choice to a known safe list are unaffected.",
+      "published": "2022-07-04T16:15:00+00:00",
+      "modified": "2023-12-06T01:02:23.703337+00:00"
+    },
+    {
+      "package": "django",
+      "version": "3.2.13",
+      "vulnerability_id": "PYSEC-2022-245",
+      "severity": "UNKNOWN",
+      "summary": "",
+      "cve_ids": [
+        "CVE-2022-36359"
+      ],
+      "advisory_url": "https://github.com/advisories/GHSA-8x94-hmjh-97hq",
+      "type": "direct",
+      "dependency_path": [
+        "django"
+      ],
+      "fixed_range": ">=3.2.15",
+      "details": "An issue was discovered in the HTTP FileResponse class in Django 3.2 before 3.2.15 and 4.0 before 4.0.7. An application is vulnerable to a reflected file download (RFD) attack that sets the Content-Disposition header of a FileResponse when the filename is derived from user-supplied input.",
+      "published": "2022-08-03T14:15:00+00:00",
+      "modified": "2025-01-14T11:27:04.205746+00:00"
+    },
+    {
+      "package": "django",
+      "version": "3.2.13",
+      "vulnerability_id": "PYSEC-2022-304",
+      "severity": "UNKNOWN",
+      "summary": "",
+      "cve_ids": [
+        "CVE-2022-41323"
+      ],
+      "advisory_url": "https://docs.djangoproject.com/en/4.0/releases/security/",
+      "type": "direct",
+      "dependency_path": [
+        "django"
+      ],
+      "fixed_range": ">=5b6b257fa7ec37ff27965358800c67e2dd11c924",
+      "details": "In Django 3.2 before 3.2.16, 4.0 before 4.0.8, and 4.1 before 4.1.2, internationalized URLs were subject to a potential denial of service attack via the locale parameter, which is treated as a regular expression.",
+      "published": "2022-10-16T06:15:00+00:00",
+      "modified": "2023-12-06T01:02:36.260330+00:00"
+    },
+    {
+      "package": "django",
+      "version": "3.2.13",
+      "vulnerability_id": "PYSEC-2023-100",
+      "severity": "UNKNOWN",
+      "summary": "",
+      "cve_ids": [
+        "CVE-2023-36053"
+      ],
+      "advisory_url": "https://www.djangoproject.com/weblog/2023/jul/03/security-releases/",
+      "type": "direct",
+      "dependency_path": [
+        "django"
+      ],
+      "fixed_range": ">=4.2.3",
+      "details": "In Django 3.2 before 3.2.20, 4 before 4.1.10, and 4.2 before 4.2.3, EmailValidator and URLValidator are subject to a potential ReDoS (regular expression denial of service) attack via a very large number of domain name labels of emails and URLs.",
+      "published": "2023-07-03T13:15:00+00:00",
+      "modified": "2023-12-06T01:03:05.892778+00:00"
+    },
+    {
+      "package": "django",
+      "version": "3.2.13",
+      "vulnerability_id": "PYSEC-2023-12",
+      "severity": "UNKNOWN",
+      "summary": "",
+      "cve_ids": [
+        "CVE-2023-23969"
+      ],
+      "advisory_url": "https://docs.djangoproject.com/en/4.1/releases/security/",
+      "type": "direct",
+      "dependency_path": [
+        "django"
+      ],
+      "fixed_range": ">=3.2.17",
+      "details": "In Django 3.2 before 3.2.17, 4.0 before 4.0.9, and 4.1 before 4.1.6, the parsed values of Accept-Language headers are cached in order to avoid repetitive parsing. This leads to a potential denial-of-service vector via excessive memory usage if the raw value of Accept-Language headers is very large.",
+      "published": "2023-02-01T19:15:00+00:00",
+      "modified": "2023-12-06T01:02:51.759822+00:00"
+    },
+    {
+      "package": "django",
+      "version": "3.2.13",
+      "vulnerability_id": "PYSEC-2023-13",
+      "severity": "UNKNOWN",
+      "summary": "",
+      "cve_ids": [
+        "CVE-2023-24580"
+      ],
+      "advisory_url": "https://docs.djangoproject.com/en/4.1/releases/security/",
+      "type": "direct",
+      "dependency_path": [
+        "django"
+      ],
+      "fixed_range": ">=3.2.18",
+      "details": "An issue was discovered in the Multipart Request Parser in Django 3.2 before 3.2.18, 4.0 before 4.0.10, and 4.1 before 4.1.7. Passing certain inputs (e.g., an excessive number of parts) to multipart forms could result in too many open files or memory exhaustion, and provided a potential vector for a denial-of-service attack.",
+      "published": "2023-02-15T01:15:00+00:00",
+      "modified": "2023-12-06T01:02:52.536863+00:00"
+    },
+    {
+      "package": "django",
+      "version": "3.2.13",
+      "vulnerability_id": "PYSEC-2023-222",
+      "severity": "UNKNOWN",
+      "summary": "",
+      "cve_ids": [
+        "CVE-2023-46695"
+      ],
+      "advisory_url": "https://docs.djangoproject.com/en/4.2/releases/security/",
+      "type": "direct",
+      "dependency_path": [
+        "django"
+      ],
+      "fixed_range": ">=3.2.23",
+      "details": "An issue was discovered in Django 3.2 before 3.2.23, 4.1 before 4.1.13, and 4.2 before 4.2.7. The NFKC normalization is slow on Windows. As a consequence, django.contrib.auth.forms.UsernameField is subject to a potential DoS (denial of service) attack via certain inputs with a very large number of Unicode characters.",
+      "published": "2023-11-02T06:15:00+00:00",
+      "modified": "2024-03-06T12:28:05.462988+00:00"
+    },
+    {
+      "package": "django",
+      "version": "3.2.13",
+      "vulnerability_id": "PYSEC-2023-225",
+      "severity": "UNKNOWN",
+      "summary": "",
+      "cve_ids": [
+        "CVE-2023-41164"
+      ],
+      "advisory_url": "https://www.djangoproject.com/weblog/2023/sep/04/security-releases/",
+      "type": "direct",
+      "dependency_path": [
+        "django"
+      ],
+      "fixed_range": ">=3.2.21",
+      "details": "In Django 3.2 before 3.2.21, 4.1 before 4.1.11, and 4.2 before 4.2.5, django.utils.encoding.uri_to_iri() is subject to a potential DoS (denial of service) attack via certain inputs with a very large number of Unicode characters.",
+      "published": "2023-11-03T05:15:00+00:00",
+      "modified": "2023-11-14T07:57:00.822299+00:00"
+    },
+    {
+      "package": "django",
+      "version": "3.2.13",
+      "vulnerability_id": "PYSEC-2023-226",
+      "severity": "UNKNOWN",
+      "summary": "",
+      "cve_ids": [
+        "CVE-2023-43665"
+      ],
+      "advisory_url": "https://www.djangoproject.com/weblog/2023/oct/04/security-releases/",
+      "type": "direct",
+      "dependency_path": [
+        "django"
+      ],
+      "fixed_range": ">=3.2.22",
+      "details": "In Django 3.2 before 3.2.22, 4.1 before 4.1.12, and 4.2 before 4.2.6, the django.utils.text.Truncator chars() and words() methods (when used with html=True) are subject to a potential DoS (denial of service) attack via certain inputs with very long, potentially malformed HTML text. The chars() and words() methods are used to implement the truncatechars_html and truncatewords_html template filters, which are thus also vulnerable. NOTE: this issue exists because of an incomplete fix for CVE-2019-14232.",
+      "published": "2023-11-03T05:15:00+00:00",
+      "modified": "2023-11-14T07:56:55.351422+00:00"
+    },
+    {
+      "package": "django",
+      "version": "3.2.13",
+      "vulnerability_id": "PYSEC-2023-61",
+      "severity": "UNKNOWN",
+      "summary": "",
+      "cve_ids": [
+        "CVE-2023-31047"
+      ],
+      "advisory_url": "https://www.djangoproject.com/weblog/2023/may/03/security-releases/",
+      "type": "direct",
+      "dependency_path": [
+        "django"
+      ],
+      "fixed_range": ">=3.2.19",
+      "details": "In Django 3.2 before 3.2.19, 4.x before 4.1.9, and 4.2 before 4.2.1, it was possible to bypass validation when using one form field to upload multiple files. This multiple upload has never been supported by forms.FileField or forms.ImageField (only the last uploaded file was validated). However, Django's \"Uploading multiple files\" documentation suggested otherwise.",
+      "published": "2023-05-07T02:15:00+00:00",
+      "modified": "2023-12-06T01:03:00.283766+00:00"
+    },
+    {
+      "package": "django",
+      "version": "3.2.13",
+      "vulnerability_id": "PYSEC-2024-28",
+      "severity": "UNKNOWN",
+      "summary": "",
+      "cve_ids": [
+        "CVE-2024-24680"
+      ],
+      "advisory_url": "https://groups.google.com/forum/#%21forum/django-announce",
+      "type": "direct",
+      "dependency_path": [
+        "django"
+      ],
+      "fixed_range": ">=3.2.24",
+      "details": "An issue was discovered in Django 3.2 before 3.2.24, 4.2 before 4.2.10, and Django 5.0 before 5.0.2. The intcomma template filter was subject to a potential denial-of-service attack when used with very long strings.",
+      "published": "2024-02-06T22:16:00+00:00",
+      "modified": "2024-02-16T08:26:32.550177+00:00"
+    },
+    {
+      "package": "django",
+      "version": "3.2.13",
+      "vulnerability_id": "PYSEC-2024-47",
+      "severity": "UNKNOWN",
+      "summary": "",
+      "cve_ids": [
+        "CVE-2024-27351"
+      ],
+      "advisory_url": "https://groups.google.com/forum/#%21forum/django-announce",
+      "type": "direct",
+      "dependency_path": [
+        "django"
+      ],
+      "fixed_range": ">=3.2.25",
+      "details": "In Django 3.2 before 3.2.25, 4.2 before 4.2.11, and 5.0 before 5.0.3, the django.utils.text.Truncator.words() method (with html=True) and the truncatewords_html template filter are subject to a potential regular expression denial-of-service attack via a crafted string. NOTE: this issue exists because of an incomplete fix for CVE-2019-14232 and CVE-2023-43665.",
+      "published": "2024-03-15T20:15:00+00:00",
+      "modified": "2024-07-02T08:12:21.263863+00:00"
+    },
+    {
+      "package": "flask",
+      "version": "2.0.1",
+      "vulnerability_id": "GHSA-m2qf-hxjv-5gpq",
+      "severity": "HIGH",
+      "summary": "Flask vulnerable to possible disclosure of permanent session cookie due to missing Vary: Cookie header",
+      "cve_ids": [
+        "CVE-2023-30861"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2023-30861",
+      "type": "direct",
+      "dependency_path": [
+        "flask"
+      ],
+      "fixed_range": ">=2.3.2",
+      "details": "When all of the following conditions are met, a response containing data intended for one client may be cached and subsequently sent by a proxy to other clients. If the proxy also caches `Set-Cookie` headers, it may send one client's `session` cookie to other clients. The severity depends on the application's use of the session, and the proxy's behavior regarding cookies. The risk depends on _all_ these conditions being met.\n\n1. The application must be hosted behind a caching proxy that does not strip cookies or ignore responses with cookies.\n2. The application sets [`session.permanent = True`](https://flask.palletsprojects.com/en/2.3.x/api/#flask.session.permanent).\n2. The application does not access or modify the session at any point during a request.\n4. [`SESSION_REFRESH_EACH_REQUEST`](https://flask.palletsprojects.com/en/2.3.x/config/#SESSION_REFRESH_EACH_REQUEST) is enabled (the default).\n5. The application does not set a `Cache-Control` header to indicate that a page is private or should not be cached.\n\nThis happens because vulnerable versions of Flask only set the `Vary: Cookie` header when the session is accessed or modified, not when it is refreshed (re-sent to update the expiration) without being accessed or modified.",
+      "published": "2023-05-01T19:22:20+00:00",
+      "modified": "2025-02-21T05:42:17.337040+00:00"
+    },
+    {
+      "package": "flask",
+      "version": "2.0.1",
+      "vulnerability_id": "PYSEC-2023-62",
+      "severity": "UNKNOWN",
+      "summary": "",
+      "cve_ids": [
+        "CVE-2023-30861"
+      ],
+      "advisory_url": "https://github.com/pallets/flask/security/advisories/GHSA-m2qf-hxjv-5gpq",
+      "type": "direct",
+      "dependency_path": [
+        "flask"
+      ],
+      "fixed_range": ">=70f906c51ce49c485f1d355703e9cc3386b1cc2b",
+      "details": "Flask is a lightweight WSGI web application framework. When all of the following conditions are met, a response containing data intended for one client may be cached and subsequently sent by the proxy to other clients. If the proxy also caches `Set-Cookie` headers, it may send one client's `session` cookie to other clients. The severity depends on the application's use of the session and the proxy's behavior regarding cookies. The risk depends on all these conditions being met.\n\n1. The application must be hosted behind a caching proxy that does not strip cookies or ignore responses with cookies.\n2. The application sets `session.permanent = True`\n3. The application does not access or modify the session at any point during a request.\n4. `SESSION_REFRESH_EACH_REQUEST` enabled (the default).\n5. The application does not set a `Cache-Control` header to indicate that a page is private or should not be cached.\n\nThis happens because vulnerable versions of Flask only set the `Vary: Cookie` header when the session is accessed or modified, not when it is refreshed (re-sent to update the expiration) without being accessed or modified. This issue has been fixed in versions 2.3.2 and 2.2.5.",
+      "published": "2023-05-02T18:15:00+00:00",
+      "modified": "2023-11-08T04:12:28.231927+00:00"
+    },
+    {
+      "package": "idna",
+      "version": "2.10",
+      "vulnerability_id": "GHSA-jjg7-2v4v-x38h",
+      "severity": "HIGH",
+      "summary": "Internationalized Domain Names in Applications (IDNA) vulnerable to denial of service from specially crafted inputs to idna.encode",
+      "cve_ids": [
+        "CVE-2024-3651"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2024-3651",
+      "type": "direct",
+      "dependency_path": [
+        "idna"
+      ],
+      "fixed_range": ">=3.7",
+      "details": "### Impact\nA specially crafted argument to the `idna.encode()` function could consume significant resources. This may lead to a denial-of-service.\n\n### Patches\nThe function has been refined to reject such strings without the associated resource consumption in version 3.7.\n\n### Workarounds\nDomain names cannot exceed 253 characters in length, if this length limit is enforced prior to passing the domain to the `idna.encode()` function it should no longer consume significant resources. This is triggered by arbitrarily large inputs that would not occur in normal usage, but may be passed to the library assuming there is no preliminary input validation by the higher-level application.\n\n### References\n* https://huntr.com/bounties/93d78d07-d791-4b39-a845-cbfabc44aadb",
+      "published": "2024-04-11T21:32:40+00:00",
+      "modified": "2024-07-11T18:46:06.992846+00:00"
+    },
+    {
+      "package": "idna",
+      "version": "2.10",
+      "vulnerability_id": "PYSEC-2024-60",
+      "severity": "HIGH",
+      "summary": "",
+      "cve_ids": [
+        "CVE-2024-3651"
+      ],
+      "advisory_url": "https://huntr.com/bounties/93d78d07-d791-4b39-a845-cbfabc44aadb",
+      "type": "direct",
+      "dependency_path": [
+        "idna"
+      ],
+      "fixed_range": ">=1d365e17e10d72d0b7876316fc7b9ca0eebdd38d",
+      "details": "A vulnerability was identified in the kjd/idna library, specifically within the `idna.encode()` function, affecting version 3.6. The issue arises from the function's handling of crafted input strings, which can lead to quadratic complexity and consequently, a denial of service condition. This vulnerability is triggered by a crafted input that causes the `idna.encode()` function to process the input with considerable computational load, significantly increasing the processing time in a quadratic manner relative to the input size.",
+      "published": "2024-07-07T18:15:00+00:00",
+      "modified": "2024-07-11T17:42:33.704488+00:00"
+    },
+    {
+      "package": "jinja2",
+      "version": "3.0.1",
+      "vulnerability_id": "GHSA-cpwx-vrp4-4pq7",
+      "severity": "HIGH",
+      "summary": "Jinja2 vulnerable to sandbox breakout through attr filter selecting format method",
+      "cve_ids": [
+        "CVE-2025-27516"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2025-27516",
+      "type": "direct",
+      "dependency_path": [
+        "jinja2"
+      ],
+      "fixed_range": ">=3.1.6",
+      "details": "An oversight in how the Jinja sandboxed environment interacts with the `|attr` filter allows an attacker that controls the content of a template to execute arbitrary Python code.\n\nTo exploit the vulnerability, an attacker needs to control the content of a template. Whether that is the case depends on the type of application using Jinja. This vulnerability impacts users of applications which execute untrusted templates.\n\nJinja's sandbox does catch calls to `str.format` and ensures they don't escape the sandbox. However, it's possible to use the `|attr` filter to get a reference to a string's plain format method, bypassing the sandbox. After the fix, the `|attr` filter no longer bypasses the environment's attribute lookup.",
+      "published": "2025-03-05T20:40:14+00:00",
+      "modified": "2025-05-01T04:08:20.224875+00:00"
+    },
+    {
+      "package": "jinja2",
+      "version": "3.0.1",
+      "vulnerability_id": "GHSA-gmj6-6f8f-6699",
+      "severity": "HIGH",
+      "summary": "Jinja has a sandbox breakout through malicious filenames",
+      "cve_ids": [
+        "CVE-2024-56201"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2024-56201",
+      "type": "direct",
+      "dependency_path": [
+        "jinja2"
+      ],
+      "fixed_range": ">=3.1.5",
+      "details": "A bug in the Jinja compiler allows an attacker that controls both the content and filename of a template to execute arbitrary Python code, regardless of if Jinja's sandbox is used.\n\nTo exploit the vulnerability, an attacker needs to control both the filename and the contents of a template. Whether that is the case depends on the type of application using Jinja. This vulnerability impacts users of applications which execute untrusted templates where the template author can also choose the template filename.",
+      "published": "2024-12-23T17:54:12+00:00",
+      "modified": "2025-01-08T16:26:10.957556+00:00"
+    },
+    {
+      "package": "jinja2",
+      "version": "3.0.1",
+      "vulnerability_id": "GHSA-h5c8-rqwp-cp95",
+      "severity": "MEDIUM",
+      "summary": "Jinja vulnerable to HTML attribute injection when passing user input as keys to xmlattr filter",
+      "cve_ids": [
+        "CVE-2024-22195"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2024-22195",
+      "type": "direct",
+      "dependency_path": [
+        "jinja2"
+      ],
+      "fixed_range": ">=3.1.3",
+      "details": "The `xmlattr` filter in affected versions of Jinja accepts keys containing spaces. XML/HTML attributes cannot contain spaces, as each would then be interpreted as a separate attribute. If an application accepts keys (as opposed to only values) as user input, and renders these in pages that other users see as well, an attacker could use this to inject other attributes and perform XSS. Note that accepting keys as user input is not common or a particularly intended use case of the `xmlattr` filter, and an application doing so should already be verifying what keys are provided regardless of this fix.",
+      "published": "2024-01-11T15:20:48+00:00",
+      "modified": "2025-02-13T19:36:34.298590+00:00"
+    },
+    {
+      "package": "jinja2",
+      "version": "3.0.1",
+      "vulnerability_id": "GHSA-h75v-3vvj-5mfj",
+      "severity": "MEDIUM",
+      "summary": "Jinja vulnerable to HTML attribute injection when passing user input as keys to xmlattr filter",
+      "cve_ids": [
+        "CVE-2024-34064"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2024-34064",
+      "type": "direct",
+      "dependency_path": [
+        "jinja2"
+      ],
+      "fixed_range": ">=3.1.4",
+      "details": "The `xmlattr` filter in affected versions of Jinja accepts keys containing non-attribute characters. XML/HTML attributes cannot contain spaces, `/`, `>`, or `=`, as each would then be interpreted as starting a separate attribute. If an application accepts keys (as opposed to only values) as user input, and renders these in pages that other users see as well, an attacker could use this to inject other attributes and perform XSS. The fix for the previous GHSA-h5c8-rqwp-cp95 CVE-2024-22195 only addressed spaces but not other characters.\n\nAccepting keys as user input is now explicitly considered an unintended use case of the `xmlattr` filter, and code that does so without otherwise validating the input should be flagged as insecure, regardless of Jinja version. Accepting _values_ as user input continues to be safe.",
+      "published": "2024-05-06T14:20:59+00:00",
+      "modified": "2024-10-22T05:28:58.900249+00:00"
+    },
+    {
+      "package": "jinja2",
+      "version": "3.0.1",
+      "vulnerability_id": "GHSA-q2x7-8rv6-6q7h",
+      "severity": "HIGH",
+      "summary": "Jinja has a sandbox breakout through indirect reference to format method",
+      "cve_ids": [
+        "CVE-2024-56326"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2024-56326",
+      "type": "direct",
+      "dependency_path": [
+        "jinja2"
+      ],
+      "fixed_range": ">=3.1.5",
+      "details": "An oversight in how the Jinja sandboxed environment detects calls to `str.format` allows an attacker that controls the content of a template to execute arbitrary Python code.\n\nTo exploit the vulnerability, an attacker needs to control the content of a template. Whether that is the case depends on the type of application using Jinja. This vulnerability impacts users of applications which execute untrusted templates.\n\nJinja's sandbox does catch calls to `str.format` and ensures they don't escape the sandbox. However, it's possible to store a reference to a malicious string's `format` method, then pass that to a filter that calls it. No such filters are built-in to Jinja, but could be present through custom filters in an application. After the fix, such indirect calls are also handled by the sandbox.",
+      "published": "2024-12-23T17:56:08+00:00",
+      "modified": "2024-12-27T19:24:19.224818+00:00"
+    },
+    {
+      "package": "lxml",
+      "version": "4.6.3",
+      "vulnerability_id": "GHSA-55x5-fj6c-h6m8",
+      "severity": "HIGH",
+      "summary": "lxml's HTML Cleaner allows crafted and SVG embedded scripts to pass through",
+      "cve_ids": [
+        "CVE-2021-43818"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2021-43818",
+      "type": "direct",
+      "dependency_path": [
+        "lxml"
+      ],
+      "fixed_range": ">=4.6.5",
+      "details": "### Impact\nThe HTML Cleaner in lxml.html lets certain crafted script content pass through, as well as script content in SVG files embedded using data URIs.\n\nUsers that employ the HTML cleaner in a security relevant context should upgrade to lxml 4.6.5.\n\n### Patches\nThe issue has been resolved in lxml 4.6.5.\n\n### Workarounds\nNone.\n\n### References\nThe issues are tracked under the report IDs GHSL-2021-1037 and GHSL-2021-1038.\n",
+      "published": "2021-12-13T18:14:36+00:00",
+      "modified": "2024-09-30T17:01:21.382660+00:00"
+    },
+    {
+      "package": "lxml",
+      "version": "4.6.3",
+      "vulnerability_id": "GHSA-wrxv-2j5q-m38w",
+      "severity": "MEDIUM",
+      "summary": "lxml NULL Pointer Dereference allows attackers to cause a denial of service",
+      "cve_ids": [
+        "CVE-2022-2309"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2022-2309",
+      "type": "direct",
+      "dependency_path": [
+        "lxml"
+      ],
+      "fixed_range": ">=4.9.1",
+      "details": "NULL Pointer Dereference allows attackers to cause a denial of service (or application crash). This only applies when lxml is used together with libxml2 2.9.10 through 2.9.14. libxml2 2.9.9 and earlier are not affected. It allows triggering crashes through forged input data, given a vulnerable code sequence in the application. The vulnerability is caused by the iterwalk function (also used by the canonicalize function). Such code shouldn't be in wide-spread use, given that parsing + iterwalk would usually be replaced with the more efficient iterparse function. However, an XML converter that serialises to C14N would also be vulnerable, for example, and there are legitimate use cases for this code sequence. If untrusted input is received (also remotely) and processed via iterwalk function, a crash can be triggered.",
+      "published": "2022-07-06T00:00:30+00:00",
+      "modified": "2024-09-30T20:25:53.619764+00:00"
+    },
+    {
+      "package": "lxml",
+      "version": "4.6.3",
+      "vulnerability_id": "PYSEC-2022-230",
+      "severity": "UNKNOWN",
+      "summary": "",
+      "cve_ids": [
+        "CVE-2022-2309"
+      ],
+      "advisory_url": "https://github.com/advisories/GHSA-wrxv-2j5q-m38w",
+      "type": "direct",
+      "dependency_path": [
+        "lxml"
+      ],
+      "fixed_range": ">=86368e9cf70a0ad23cccd5ee32de847149af0c6f",
+      "details": "NULL Pointer Dereference allows attackers to cause a denial of service (or application crash). This only applies when lxml is used together with libxml2 2.9.10 through 2.9.14. libxml2 2.9.9 and earlier are not affected. It allows triggering crashes through forged input data, given a vulnerable code sequence in the application. The vulnerability is caused by the iterwalk function (also used by the canonicalize function). Such code shouldn't be in wide-spread use, given that parsing + iterwalk would usually be replaced with the more efficient iterparse function. However, an XML converter that serialises to C14N would also be vulnerable, for example, and there are legitimate use cases for this code sequence. If untrusted input is received (also remotely) and processed via iterwalk function, a crash can be triggered.",
+      "published": "2022-07-05T10:15:00+00:00",
+      "modified": "2023-11-08T04:08:16.338038+00:00"
+    },
+    {
+      "package": "numpy",
+      "version": "1.21.0",
+      "vulnerability_id": "GHSA-fpfv-jqm9-f5jm",
+      "severity": "MEDIUM",
+      "summary": "Incorrect Comparison in NumPy",
+      "cve_ids": [
+        "CVE-2021-34141"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2021-34141",
+      "type": "direct",
+      "dependency_path": [
+        "numpy"
+      ],
+      "fixed_range": ">=1.22",
+      "details": "Incomplete string comparison in the numpy.core component in NumPy1.9.x, which allows attackers to fail the APIs via constructing specific string objects.",
+      "published": "2021-12-18T00:00:41+00:00",
+      "modified": "2023-11-08T04:06:07.388275+00:00"
+    },
+    {
+      "package": "paramiko",
+      "version": "2.7.2",
+      "vulnerability_id": "GHSA-45x7-px36-x8w8",
+      "severity": "HIGH",
+      "summary": "Prefix Truncation Attack against ChaCha20-Poly1305 and Encrypt-then-MAC aka Terrapin",
+      "cve_ids": [
+        "CVE-2023-48795"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2023-48795",
+      "type": "direct",
+      "dependency_path": [
+        "paramiko"
+      ],
+      "fixed_range": ">=3.4.0",
+      "details": "### Summary\n\nTerrapin is a prefix truncation attack targeting the SSH protocol. More precisely, Terrapin breaks the integrity of SSH's secure channel. By carefully adjusting the sequence numbers during the handshake, an attacker can remove an arbitrary amount of messages sent by the client or server at the beginning of the secure channel without the client or server noticing it.\n\n### Mitigations\n\nTo mitigate this protocol vulnerability, OpenSSH suggested a so-called \"strict kex\" which alters the SSH handshake to ensure a Man-in-the-Middle attacker cannot introduce unauthenticated messages as well as convey sequence number manipulation across handshakes.\n\n**Warning: To take effect, both the client and server must support this countermeasure.** \n\nAs a stop-gap measure, peers may also (temporarily) disable the affected algorithms and use unaffected alternatives like AES-GCM instead until patches are available.\n\n### Details\n\nThe SSH specifications of ChaCha20-Poly1305 (chacha20-poly1305@openssh.com) and Encrypt-then-MAC (*-etm@openssh.com MACs) are vulnerable against an arbitrary prefix truncation attack (a.k.a. Terrapin attack). This allows for an extension negotiation downgrade by stripping the SSH_MSG_EXT_INFO sent after the first message after SSH_MSG_NEWKEYS, downgrading security, and disabling attack countermeasures in some versions of OpenSSH. When targeting Encrypt-then-MAC, this attack requires the use of a CBC cipher to be practically exploitable due to the internal workings of the cipher mode. Additionally, this novel attack technique can be used to exploit previously unexploitable implementation flaws in a Man-in-the-Middle scenario.\n\nThe attack works by an attacker injecting an arbitrary number of SSH_MSG_IGNORE messages during the initial key exchange and consequently removing the same number of messages just after the initial key exchange has concluded. This is possible due to missing authentication of the excess SSH_MSG_IGNORE messages and the fact that the implicit sequence numbers used within the SSH protocol are only checked after the initial key exchange.\n\nIn the case of ChaCha20-Poly1305, the attack is guaranteed to work on every connection as this cipher does not maintain an internal state other than the message's sequence number. In the case of Encrypt-Then-MAC, practical exploitation requires the use of a CBC cipher; while theoretical integrity is broken for all ciphers when using this mode, message processing will fail at the application layer for CTR and stream ciphers.\n\nFor more details see [https://terrapin-attack.com](https://terrapin-attack.com). \n\n### Impact\n\nThis attack targets the specification of ChaCha20-Poly1305 (chacha20-poly1305@openssh.com) and Encrypt-then-MAC (*-etm@openssh.com), which are widely adopted by well-known SSH implementations and can be considered de-facto standard. These algorithms can be practically exploited; however, in the case of Encrypt-Then-MAC, we additionally require the use of a CBC cipher. As a consequence, this attack works against all well-behaving SSH implementations supporting either of those algorithms and can be used to downgrade (but not fully strip) connection security in case SSH extension negotiation (RFC8308) is supported. The attack may also enable attackers to exploit certain implementation flaws in a man-in-the-middle (MitM) scenario.",
+      "published": "2023-12-18T19:22:09+00:00",
+      "modified": "2025-06-24T18:26:07.713978+00:00"
+    },
+    {
+      "package": "paramiko",
+      "version": "2.7.2",
+      "vulnerability_id": "PYSEC-2022-166",
+      "severity": "UNKNOWN",
+      "summary": "",
+      "cve_ids": [
+        "CVE-2022-24302"
+      ],
+      "advisory_url": "https://github.com/advisories/GHSA-f8q4-jwww-x3wv",
+      "type": "direct",
+      "dependency_path": [
+        "paramiko"
+      ],
+      "fixed_range": ">=2.9.3",
+      "details": "In Paramiko before 2.10.1, a race condition (between creation and chmod) in the write_private_key_file function could allow unauthorized information disclosure.",
+      "published": "2022-03-17T22:15:00+00:00",
+      "modified": "2023-11-08T04:08:30.555889+00:00"
+    },
+    {
+      "package": "pillow",
+      "version": "8.3.2",
+      "vulnerability_id": "GHSA-3f63-hfp8-52jq",
+      "severity": "HIGH",
+      "summary": "Arbitrary Code Execution in Pillow",
+      "cve_ids": [
+        "CVE-2023-50447"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2023-50447",
+      "type": "direct",
+      "dependency_path": [
+        "pillow"
+      ],
+      "fixed_range": ">=10.2.0",
+      "details": "Pillow through 10.1.0 allows PIL.ImageMath.eval Arbitrary Code Execution via the environment parameter, a different vulnerability than CVE-2022-22817 (which was about the expression parameter).",
+      "published": "2024-01-19T21:30:35+00:00",
+      "modified": "2025-02-13T05:40:44.483586+00:00"
+    },
+    {
+      "package": "pillow",
+      "version": "8.3.2",
+      "vulnerability_id": "GHSA-44wm-f244-xhp3",
+      "severity": "HIGH",
+      "summary": "Pillow buffer overflow vulnerability",
+      "cve_ids": [
+        "CVE-2024-28219"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2024-28219",
+      "type": "direct",
+      "dependency_path": [
+        "pillow"
+      ],
+      "fixed_range": ">=10.3.0",
+      "details": "In _imagingcms.c in Pillow before 10.3.0, a buffer overflow exists because strcpy is used instead of strncpy.",
+      "published": "2024-04-03T03:30:30+00:00",
+      "modified": "2024-11-21T05:23:57.682143+00:00"
+    },
+    {
+      "package": "pillow",
+      "version": "8.3.2",
+      "vulnerability_id": "GHSA-4fx9-vc88-q2xc",
+      "severity": "LOW",
+      "summary": "Infinite loop in Pillow",
+      "cve_ids": [],
+      "advisory_url": "https://github.com/python-pillow/Pillow/commit/baae9ec4b67c68e3adaf1208cf54e8de5e38a6fd",
+      "type": "direct",
+      "dependency_path": [
+        "pillow"
+      ],
+      "fixed_range": ">=9.0.0",
+      "details": "JpegImagePlugin may append an EOF marker to the end of a truncated file, so that the last segment of the data will still be processed by the decoder.\n\nIf the EOF marker is not detected as such however, this could lead to an infinite loop where JpegImagePlugin keeps trying to end the file.",
+      "published": "2022-03-11T23:39:27+00:00",
+      "modified": "2024-12-05T05:35:12.297192+00:00"
+    },
+    {
+      "package": "pillow",
+      "version": "8.3.2",
+      "vulnerability_id": "GHSA-8ghj-p4vj-mr35",
+      "severity": "HIGH",
+      "summary": "Pillow Denial of Service vulnerability",
+      "cve_ids": [
+        "CVE-2023-44271"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2023-44271",
+      "type": "direct",
+      "dependency_path": [
+        "pillow"
+      ],
+      "fixed_range": ">=10.0.0",
+      "details": "An issue was discovered in Pillow before 10.0.0. It is a Denial of Service that uncontrollably allocates memory to process a given task, potentially causing a service to crash by having it run out of memory. This occurs for truetype in ImageFont when textlength in an ImageDraw instance operates on a long text argument.",
+      "published": "2023-11-03T06:36:30+00:00",
+      "modified": "2024-10-14T21:23:45.339098+00:00"
+    },
+    {
+      "package": "pillow",
+      "version": "8.3.2",
+      "vulnerability_id": "GHSA-8vj2-vxx3-667w",
+      "severity": "HIGH",
+      "summary": "Arbitrary expression injection in Pillow",
+      "cve_ids": [
+        "CVE-2022-22817"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2022-22817",
+      "type": "direct",
+      "dependency_path": [
+        "pillow"
+      ],
+      "fixed_range": ">=9.0.1",
+      "details": "`PIL.ImageMath.eval` in Pillow before 9.0.0 allows evaluation of arbitrary expressions, such as ones that use the Python exec method `ImageMath.eval(\"exec(exit())\")`.\n\nWhile Pillow 9.0.0 restricted top-level builtins available to PIL.ImageMath.eval(), it did not prevent builtins available to lambda expressions. These are now also restricted in 9.0.1.",
+      "published": "2022-01-12T20:07:33+00:00",
+      "modified": "2024-10-14T18:26:08.636369+00:00"
+    },
+    {
+      "package": "pillow",
+      "version": "8.3.2",
+      "vulnerability_id": "GHSA-9j59-75qj-795w",
+      "severity": "HIGH",
+      "summary": "Path traversal in Pillow",
+      "cve_ids": [
+        "CVE-2022-24303"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2022-24303",
+      "type": "direct",
+      "dependency_path": [
+        "pillow"
+      ],
+      "fixed_range": ">=9.0.1",
+      "details": "Pillow before 9.0.1 allows attackers to delete files because spaces in temporary pathnames are mishandled.",
+      "published": "2022-03-11T23:10:32+00:00",
+      "modified": "2024-10-14T18:43:28.549080+00:00"
+    },
+    {
+      "package": "pillow",
+      "version": "8.3.2",
+      "vulnerability_id": "GHSA-j7hp-h8jx-5ppr",
+      "severity": "HIGH",
+      "summary": "libwebp: OOB write in BuildHuffmanTable",
+      "cve_ids": [
+        "CVE-2023-4863",
+        "CVE-2023-5129"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2023-4863",
+      "type": "direct",
+      "dependency_path": [
+        "pillow"
+      ],
+      "fixed_range": ">=10.0.1",
+      "details": "Heap buffer overflow in libwebp allow a remote attacker to perform an out of bounds memory write via a crafted HTML page.",
+      "published": "2023-09-12T15:30:20+00:00",
+      "modified": "2025-07-09T16:28:48.316502+00:00"
+    },
+    {
+      "package": "pillow",
+      "version": "8.3.2",
+      "vulnerability_id": "GHSA-m2vv-5vj5-2hm7",
+      "severity": "HIGH",
+      "summary": "Pillow vulnerable to Data Amplification attack.",
+      "cve_ids": [
+        "CVE-2022-45198"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2022-45198",
+      "type": "direct",
+      "dependency_path": [
+        "pillow"
+      ],
+      "fixed_range": ">=9.2.0",
+      "details": "Pillow before 9.2.0 performs Improper Handling of Highly Compressed GIF Data (Data Amplification).",
+      "published": "2022-11-14T12:00:15+00:00",
+      "modified": "2024-10-14T18:39:06.000592+00:00"
+    },
+    {
+      "package": "pillow",
+      "version": "8.3.2",
+      "vulnerability_id": "GHSA-pw3c-h7wp-cvhx",
+      "severity": "MEDIUM",
+      "summary": "Improper Initialization in Pillow",
+      "cve_ids": [
+        "CVE-2022-22815"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2022-22815",
+      "type": "direct",
+      "dependency_path": [
+        "pillow"
+      ],
+      "fixed_range": ">=9.0.0",
+      "details": "Pillow is the friendly PIL (Python Imaging Library) fork. `path_getbbox` in `path.c` in Pillow before 9.0.0 improperly initializes `ImagePath.Path`.",
+      "published": "2022-01-12T20:07:43+00:00",
+      "modified": "2024-10-14T18:38:03.414350+00:00"
+    },
+    {
+      "package": "pillow",
+      "version": "8.3.2",
+      "vulnerability_id": "GHSA-xrcv-f9gm-v42c",
+      "severity": "MEDIUM",
+      "summary": "Out-of-bounds Read in Pillow",
+      "cve_ids": [
+        "CVE-2022-22816"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2022-22816",
+      "type": "direct",
+      "dependency_path": [
+        "pillow"
+      ],
+      "fixed_range": ">=9.0.0",
+      "details": "path_getbbox in path.c in Pillow before 9.0.0 has a buffer over-read during initialization of ImagePath.Path.",
+      "published": "2022-01-12T20:07:41+00:00",
+      "modified": "2024-10-14T18:38:42.596412+00:00"
+    },
+    {
+      "package": "pillow",
+      "version": "8.3.2",
+      "vulnerability_id": "PYSEC-2022-10",
+      "severity": "UNKNOWN",
+      "summary": "",
+      "cve_ids": [
+        "CVE-2022-22817"
+      ],
+      "advisory_url": "https://github.com/advisories/GHSA-8vj2-vxx3-667w",
+      "type": "direct",
+      "dependency_path": [
+        "pillow"
+      ],
+      "fixed_range": ">=9.0.0",
+      "details": "PIL.ImageMath.eval in Pillow before 9.0.0 allows evaluation of arbitrary expressions, such as ones that use the Python exec method.",
+      "published": "2022-01-10T14:12:00+00:00",
+      "modified": "2023-12-06T01:01:58.166055+00:00"
+    },
+    {
+      "package": "pillow",
+      "version": "8.3.2",
+      "vulnerability_id": "PYSEC-2022-168",
+      "severity": "UNKNOWN",
+      "summary": "",
+      "cve_ids": [
+        "CVE-2022-24303"
+      ],
+      "advisory_url": "https://github.com/advisories/GHSA-9j59-75qj-795w",
+      "type": "direct",
+      "dependency_path": [
+        "pillow"
+      ],
+      "fixed_range": ">=9.0.1",
+      "details": "Pillow before 9.0.1 allows attackers to delete files because spaces in temporary pathnames are mishandled.",
+      "published": "2022-03-28T02:15:00+00:00",
+      "modified": "2023-12-06T01:02:03.848876+00:00"
+    },
+    {
+      "package": "pillow",
+      "version": "8.3.2",
+      "vulnerability_id": "PYSEC-2022-42979",
+      "severity": "UNKNOWN",
+      "summary": "",
+      "cve_ids": [
+        "CVE-2022-45198"
+      ],
+      "advisory_url": "https://bugs.gentoo.org/855683",
+      "type": "direct",
+      "dependency_path": [
+        "pillow"
+      ],
+      "fixed_range": ">=11918eac0628ec8ac0812670d9838361ead2d6a4",
+      "details": "Pillow before 9.2.0 performs Improper Handling of Highly Compressed GIF Data (Data Amplification).",
+      "published": "2022-11-14T07:15:00+00:00",
+      "modified": "2023-12-06T01:02:42.586226+00:00"
+    },
+    {
+      "package": "pillow",
+      "version": "8.3.2",
+      "vulnerability_id": "PYSEC-2022-8",
+      "severity": "UNKNOWN",
+      "summary": "",
+      "cve_ids": [
+        "CVE-2022-22815"
+      ],
+      "advisory_url": "https://github.com/advisories/GHSA-pw3c-h7wp-cvhx",
+      "type": "direct",
+      "dependency_path": [
+        "pillow"
+      ],
+      "fixed_range": ">=9.0.0",
+      "details": "path_getbbox in path.c in Pillow before 9.0.0 improperly initializes ImagePath.Path.",
+      "published": "2022-01-10T14:12:00+00:00",
+      "modified": "2023-12-06T01:01:58.043772+00:00"
+    },
+    {
+      "package": "pillow",
+      "version": "8.3.2",
+      "vulnerability_id": "PYSEC-2022-9",
+      "severity": "UNKNOWN",
+      "summary": "",
+      "cve_ids": [
+        "CVE-2022-22816"
+      ],
+      "advisory_url": "https://github.com/advisories/GHSA-xrcv-f9gm-v42c",
+      "type": "direct",
+      "dependency_path": [
+        "pillow"
+      ],
+      "fixed_range": ">=9.0.0",
+      "details": "path_getbbox in path.c in Pillow before 9.0.0 has a buffer over-read during initialization of ImagePath.Path.",
+      "published": "2022-01-10T14:12:00+00:00",
+      "modified": "2023-12-06T01:01:58.105368+00:00"
+    },
+    {
+      "package": "pillow",
+      "version": "8.3.2",
+      "vulnerability_id": "PYSEC-2023-175",
+      "severity": "UNKNOWN",
+      "summary": "",
+      "cve_ids": [],
+      "advisory_url": "https://github.com/python-pillow/Pillow/blob/main/CHANGES.rst#1001-2023-09-15",
+      "type": "direct",
+      "dependency_path": [
+        "pillow"
+      ],
+      "fixed_range": ">=10.0.1",
+      "details": "Pillow versions before v10.0.1 bundled libwebp binaries in wheels that are vulnerable to CVE-2023-5129 (previously CVE-2023-4863). Pillow v10.0.1 upgrades the bundled libwebp binary to v1.3.2.",
+      "published": "2023-09-20T05:46:53.608652+00:00",
+      "modified": "2023-09-25T17:25:13.946374+00:00"
+    },
+    {
+      "package": "pillow",
+      "version": "8.3.2",
+      "vulnerability_id": "PYSEC-2023-227",
+      "severity": "UNKNOWN",
+      "summary": "",
+      "cve_ids": [
+        "CVE-2023-44271"
+      ],
+      "advisory_url": "https://devhub.checkmarx.com/cve-details/CVE-2023-44271/",
+      "type": "direct",
+      "dependency_path": [
+        "pillow"
+      ],
+      "fixed_range": ">=1fe1bb49c452b0318cad12ea9d97c3bef188e9a7",
+      "details": "An issue was discovered in Pillow before 10.0.0. It is a Denial of Service that uncontrollably allocates memory to process a given task, potentially causing a service to crash by having it run out of memory. This occurs for truetype in ImageFont when textlength in an ImageDraw instance operates on a long text argument.",
+      "published": "2023-11-03T05:15:00+00:00",
+      "modified": "2023-11-10T08:11:29.510057+00:00"
+    },
+    {
+      "package": "pycrypto",
+      "version": "2.6.1",
+      "vulnerability_id": "GHSA-6528-wvf6-f6qg",
+      "severity": "HIGH",
+      "summary": "Pycrypto generates weak key parameters",
+      "cve_ids": [
+        "CVE-2018-6594"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2018-6594",
+      "type": "direct",
+      "dependency_path": [
+        "pycrypto"
+      ],
+      "details": "lib/Crypto/PublicKey/ElGamal.py in PyCrypto through 2.6.1 generates weak ElGamal key parameters, which allows attackers to obtain sensitive information by reading ciphertext data (i.e., it does not have semantic security in face of a ciphertext-only attack). The Decisional Diffie-Hellman (DDH) assumption does not hold for PyCrypto's ElGamal implementation.",
+      "published": "2018-07-12T20:29:26+00:00",
+      "modified": "2024-10-18T22:22:56.958480+00:00"
+    },
+    {
+      "package": "pycrypto",
+      "version": "2.6.1",
+      "vulnerability_id": "GHSA-cq27-v7xp-c356",
+      "severity": "HIGH",
+      "summary": "Buffer Overflow in pycrypto",
+      "cve_ids": [
+        "CVE-2013-7459"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2013-7459",
+      "type": "direct",
+      "dependency_path": [
+        "pycrypto"
+      ],
+      "details": "Heap-based buffer overflow in the ALGnew function in block_templace.c in Python Cryptography Toolkit (aka pycrypto) allows remote attackers to execute arbitrary code as demonstrated by a crafted iv parameter to cryptmsg.py.",
+      "published": "2018-12-14T18:51:38+00:00",
+      "modified": "2024-10-18T22:23:12.251504+00:00"
+    },
+    {
+      "package": "pycrypto",
+      "version": "2.6.1",
+      "vulnerability_id": "PYSEC-2017-94",
+      "severity": "UNKNOWN",
+      "summary": "",
+      "cve_ids": [
+        "CVE-2013-7459"
+      ],
+      "advisory_url": "https://security.gentoo.org/glsa/201702-14",
+      "type": "direct",
+      "dependency_path": [
+        "pycrypto"
+      ],
+      "fixed_range": ">=8dbe0dc3eea5c689d4f76b37b93fe216cf1f00d4",
+      "details": "Heap-based buffer overflow in the ALGnew function in block_templace.c in Python Cryptography Toolkit (aka pycrypto) allows remote attackers to execute arbitrary code as demonstrated by a crafted iv parameter to cryptmsg.py.",
+      "published": "2017-02-15T15:59:00+00:00",
+      "modified": "2023-11-08T03:57:29.606861+00:00"
+    },
+    {
+      "package": "pycrypto",
+      "version": "2.6.1",
+      "vulnerability_id": "PYSEC-2018-97",
+      "severity": "UNKNOWN",
+      "summary": "",
+      "cve_ids": [
+        "CVE-2018-6594"
+      ],
+      "advisory_url": "https://security.gentoo.org/glsa/202007-62",
+      "type": "direct",
+      "dependency_path": [
+        "pycrypto"
+      ],
+      "details": "lib/Crypto/PublicKey/ElGamal.py in PyCrypto through 2.6.1 generates weak ElGamal key parameters, which allows attackers to obtain sensitive information by reading ciphertext data (i.e., it does not have semantic security in face of a ciphertext-only attack). The Decisional Diffie-Hellman (DDH) assumption does not hold for PyCrypto's ElGamal implementation.",
+      "published": "2018-02-03T15:29:00+00:00",
+      "modified": "2023-11-08T04:00:21.756085+00:00"
+    },
+    {
+      "package": "pyjwt",
+      "version": "1.7.1",
+      "vulnerability_id": "GHSA-ffqj-6fqr-9h24",
+      "severity": "HIGH",
+      "summary": "Key confusion through non-blocklisted public key formats",
+      "cve_ids": [
+        "CVE-2022-29217"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2022-29217",
+      "type": "direct",
+      "dependency_path": [
+        "pyjwt"
+      ],
+      "fixed_range": ">=2.4.0",
+      "details": "### Impact\n_What kind of vulnerability is it? Who is impacted?_\n\nDisclosed by Aapo Oksman (Senior Security Specialist, Nixu Corporation).\n\n> PyJWT supports multiple different JWT signing algorithms. With JWT, an \n> attacker submitting the JWT token can choose the used signing algorithm.\n> \n> The PyJWT library requires that the application chooses what algorithms \n> are supported. The application can specify \n> \"jwt.algorithms.get_default_algorithms()\" to get support for all \n> algorithms. They can also specify a single one of them (which is the \n> usual use case if calling jwt.decode directly. However, if calling \n> jwt.decode in a helper function, all algorithms might be enabled.)\n> \n> For example, if the user chooses \"none\" algorithm and the JWT checker \n> supports that, there will be no signature checking. This is a common \n> security issue with some JWT implementations.\n> \n> PyJWT combats this by requiring that the if the \"none\" algorithm is \n> used, the key has to be empty. As the key is given by the application \n> running the checker, attacker cannot force \"none\" cipher to be used.\n> \n> Similarly with HMAC (symmetric) algorithm, PyJWT checks that the key is \n> not a public key meant for asymmetric algorithm i.e. HMAC cannot be used \n> if the key begins with \"ssh-rsa\". If HMAC is used with a public key, the \n> attacker can just use the publicly known public key to sign the token \n> and the checker would use the same key to verify.\n> \n>  From PyJWT 2.0.0 onwards, PyJWT supports ed25519 asymmetric algorithm. \n> With ed25519, PyJWT supports public keys that start with \"ssh-\", for \n> example \"ssh-ed25519\".\n\n```python\nimport jwt\nfrom cryptography.hazmat.primitives import serialization\nfrom cryptography.hazmat.primitives.asymmetric import ed25519\n\n# Generate ed25519 private key\nprivate_key = ed25519.Ed25519PrivateKey.generate()\n\n# Get private key bytes as they would be stored in a file\npriv_key_bytes = \nprivate_key.private_bytes(encoding=serialization.Encoding.PEM,format=serialization.PrivateFormat.PKCS8, \nencryption_algorithm=serialization.NoEncryption())\n\n# Get public key bytes as they would be stored in a file\npub_key_bytes = \nprivate_key.public_key().public_bytes(encoding=serialization.Encoding.OpenSSH,format=serialization.PublicFormat.OpenSSH)\n\n# Making a good jwt token that should work by signing it with the \nprivate key\nencoded_good = jwt.encode({\"test\": 1234}, priv_key_bytes, algorithm=\"EdDSA\")\n\n# Using HMAC with the public key to trick the receiver to think that the \npublic key is a HMAC secret\nencoded_bad = jwt.encode({\"test\": 1234}, pub_key_bytes, algorithm=\"HS256\")\n\n# Both of the jwt tokens are validated as valid\ndecoded_good = jwt.decode(encoded_good, pub_key_bytes, \nalgorithms=jwt.algorithms.get_default_algorithms())\ndecoded_bad = jwt.decode(encoded_bad, pub_key_bytes, \nalgorithms=jwt.algorithms.get_default_algorithms())\n\nif decoded_good == decoded_bad:\n \u00a0\u00a0\u00a0 print(\"POC Successfull\")\n\n# Of course the receiver should specify ed25519 algorithm to be used if \nthey specify ed25519 public key. However, if other algorithms are used, \nthe POC does not work\n# HMAC specifies illegal strings for the HMAC secret in jwt/algorithms.py\n#\n#\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0 invalid_strings = [\n#\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0 b\"-----BEGIN PUBLIC KEY-----\",\n#\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0 b\"-----BEGIN CERTIFICATE-----\",\n#\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0 b\"-----BEGIN RSA PUBLIC KEY-----\",\n#\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0 b\"ssh-rsa\",\n#\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0 ]\n#\n# However, OKPAlgorithm (ed25519) accepts the following in \njwt/algorithms.py:\n#\n#\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0 if \"-----BEGIN PUBLIC\" in str_key:\n#\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0 return load_pem_public_key(key)\n#\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0 if \"-----BEGIN PRIVATE\" in str_key:\n#\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0 return load_pem_private_key(key, password=None)\n#\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0 if str_key[0:4] == \"ssh-\":\n#\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0 return load_ssh_public_key(key)\n#\n# These should most likely made to match each other to prevent this behavior\n```\n\n\n```python\nimport jwt\n\n#openssl ecparam -genkey -name prime256v1 -noout -out ec256-key-priv.pem\n#openssl ec -in ec256-key-priv.pem -pubout > ec256-key-pub.pem\n#ssh-keygen -y -f ec256-key-priv.pem > ec256-key-ssh.pub\n\npriv_key_bytes = b\"\"\"-----BEGIN EC PRIVATE KEY-----\nMHcCAQEEIOWc7RbaNswMtNtc+n6WZDlUblMr2FBPo79fcGXsJlGQoAoGCCqGSM49\nAwEHoUQDQgAElcy2RSSSgn2RA/xCGko79N+7FwoLZr3Z0ij/ENjow2XpUDwwKEKk\nAk3TDXC9U8nipMlGcY7sDpXp2XyhHEM+Rw==\n-----END EC PRIVATE KEY-----\"\"\"\n\npub_key_bytes = b\"\"\"-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAElcy2RSSSgn2RA/xCGko79N+7FwoL\nZr3Z0ij/ENjow2XpUDwwKEKkAk3TDXC9U8nipMlGcY7sDpXp2XyhHEM+Rw==\n-----END PUBLIC KEY-----\"\"\"\n\nssh_key_bytes = b\"\"\"ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBJXMtkUkkoJ9kQP8QhpKO/TfuxcKC2a92dIo/xDY6MNl6VA8MChCpAJN0w1wvVPJ4qTJRnGO7A6V6dl8oRxDPkc=\"\"\"\n\n# Making a good jwt token that should work by signing it with the private key\nencoded_good = jwt.encode({\"test\": 1234}, priv_key_bytes, algorithm=\"ES256\")\n\n# Using HMAC with the ssh public key to trick the receiver to think that the public key is a HMAC secret\nencoded_bad = jwt.encode({\"test\": 1234}, ssh_key_bytes, algorithm=\"HS256\")\n\n# Both of the jwt tokens are validated as valid\ndecoded_good = jwt.decode(encoded_good, ssh_key_bytes, algorithms=jwt.algorithms.get_default_algorithms())\ndecoded_bad = jwt.decode(encoded_bad, ssh_key_bytes, algorithms=jwt.algorithms.get_default_algorithms())\n\nif decoded_good == decoded_bad:\n    print(\"POC Successfull\")\nelse:\n    print(\"POC Failed\")\n```\n\n> The issue is not that big as \n> algorithms=jwt.algorithms.get_default_algorithms() has to be used. \n> However, with quick googling, this seems to be used in some cases at \n> least in some minor projects.\n\n### Patches\n\nUsers should upgrade to v2.4.0.\n\n### Workarounds\n\nAlways be explicit with the algorithms that are accepted and expected when decoding.\n\n### References\n_Are there any links users can visit to find out more?_\n\n### For more information\nIf you have any questions or comments about this advisory:\n* Open an issue in https://github.com/jpadilla/pyjwt\n* Email Jos\u00e9 Padilla: pyjwt at jpadilla dot com\n",
+      "published": "2022-05-24T22:17:27+00:00",
+      "modified": "2024-10-15T16:27:42.751871+00:00"
+    },
+    {
+      "package": "pyjwt",
+      "version": "1.7.1",
+      "vulnerability_id": "PYSEC-2022-202",
+      "severity": "UNKNOWN",
+      "summary": "",
+      "cve_ids": [
+        "CVE-2022-29217"
+      ],
+      "advisory_url": "https://github.com/jpadilla/pyjwt/security/advisories/GHSA-ffqj-6fqr-9h24",
+      "type": "direct",
+      "dependency_path": [
+        "pyjwt"
+      ],
+      "fixed_range": ">=9c528670c455b8d948aff95ed50e22940d1ad3fc",
+      "details": "PyJWT is a Python implementation of RFC 7519. PyJWT supports multiple different JWT signing algorithms. With JWT, an attacker submitting the JWT token can choose the used signing algorithm. The PyJWT library requires that the application chooses what algorithms are supported. The application can specify `jwt.algorithms.get_default_algorithms()` to get support for all algorithms, or specify a single algorithm. The issue is not that big as `algorithms=jwt.algorithms.get_default_algorithms()` has to be used. Users should upgrade to v2.4.0 to receive a patch for this issue. As a workaround, always be explicit with the algorithms that are accepted and expected when decoding.",
+      "published": "2022-05-24T15:15:00+00:00",
+      "modified": "2023-11-08T04:09:10.999573+00:00"
+    },
+    {
+      "package": "pyyaml",
+      "version": "5.3.1",
+      "vulnerability_id": "GHSA-8q59-q68h-6hv4",
+      "severity": "HIGH",
+      "summary": "Improper Input Validation in PyYAML",
+      "cve_ids": [
+        "CVE-2020-14343"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2020-14343",
+      "type": "direct",
+      "dependency_path": [
+        "pyyaml"
+      ],
+      "fixed_range": ">=5.4",
+      "details": "A vulnerability was discovered in the PyYAML library in versions before 5.4, where it is susceptible to arbitrary code execution when it processes untrusted YAML files through the full_load method or with the FullLoader loader. Applications that use the library to process untrusted input may be vulnerable to this flaw. This flaw allows an attacker to execute arbitrary code on the system by abusing the python/object/new constructor. This flaw is due to an incomplete fix for CVE-2020-1747.",
+      "published": "2021-03-25T21:26:26+00:00",
+      "modified": "2024-10-25T21:40:41.950343+00:00"
+    },
+    {
+      "package": "pyyaml",
+      "version": "5.3.1",
+      "vulnerability_id": "PYSEC-2021-142",
+      "severity": "UNKNOWN",
+      "summary": "",
+      "cve_ids": [
+        "CVE-2020-14343"
+      ],
+      "advisory_url": "https://github.com/advisories/GHSA-8q59-q68h-6hv4",
+      "type": "direct",
+      "dependency_path": [
+        "pyyaml"
+      ],
+      "fixed_range": ">=5.4",
+      "details": "A vulnerability was discovered in the PyYAML library in versions before 5.4, where it is susceptible to arbitrary code execution when it processes untrusted YAML files through the full_load method or with the FullLoader loader. Applications that use the library to process untrusted input may be vulnerable to this flaw. This flaw allows an attacker to execute arbitrary code on the system by abusing the python/object/new constructor. This flaw is due to an incomplete fix for CVE-2020-1747.",
+      "published": "2021-02-09T21:15:00+00:00",
+      "modified": "2023-11-08T04:02:26.414885+00:00"
+    },
+    {
+      "package": "requests",
+      "version": "2.25.1",
+      "vulnerability_id": "GHSA-9hjg-9r4m-mvj7",
+      "severity": "HIGH",
+      "summary": "Requests vulnerable to .netrc credentials leak via malicious URLs",
+      "cve_ids": [
+        "CVE-2024-47081"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2024-47081",
+      "type": "direct",
+      "dependency_path": [
+        "requests"
+      ],
+      "fixed_range": ">=2.32.4",
+      "details": "### Impact\n\nDue to a URL parsing issue, Requests releases prior to 2.32.4 may leak .netrc credentials to third parties for specific maliciously-crafted URLs.\n\n### Workarounds\nFor older versions of Requests, use of the .netrc file can be disabled with `trust_env=False` on your Requests Session ([docs](https://requests.readthedocs.io/en/latest/api/#requests.Session.trust_env)).\n\n### References\nhttps://github.com/psf/requests/pull/6965\nhttps://seclists.org/fulldisclosure/2025/Jun/2",
+      "published": "2025-06-09T19:06:08+00:00",
+      "modified": "2025-06-09T19:27:13.389930+00:00"
+    },
+    {
+      "package": "requests",
+      "version": "2.25.1",
+      "vulnerability_id": "GHSA-9wx4-h78v-vm56",
+      "severity": "HIGH",
+      "summary": "Requests `Session` object does not verify requests after making first request with verify=False",
+      "cve_ids": [
+        "CVE-2024-35195"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2024-35195",
+      "type": "direct",
+      "dependency_path": [
+        "requests"
+      ],
+      "fixed_range": ">=2.32.0",
+      "details": "When making requests through a Requests `Session`, if the first request is made with `verify=False` to disable cert verification, all subsequent requests to the same origin will continue to ignore cert verification regardless of changes to the value of `verify`. This behavior will continue for the lifecycle of the connection in the connection pool.\n\n### Remediation\nAny of these options can be used to remediate the current issue, we highly recommend upgrading as the preferred mitigation.\n\n* Upgrade to `requests>=2.32.0`.\n* For `requests<2.32.0`, avoid setting `verify=False` for the first request to a host while using a Requests Session.\n* For `requests<2.32.0`, call `close()` on `Session` objects to clear existing connections if `verify=False` is used.\n\n### Related Links\n* https://github.com/psf/requests/pull/6655",
+      "published": "2024-05-20T20:15:00+00:00",
+      "modified": "2024-07-15T22:12:27.987373+00:00"
+    },
+    {
+      "package": "requests",
+      "version": "2.25.1",
+      "vulnerability_id": "GHSA-j8r2-6x86-q33q",
+      "severity": "HIGH",
+      "summary": "Unintended leak of Proxy-Authorization header in requests",
+      "cve_ids": [
+        "CVE-2023-32681"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2023-32681",
+      "type": "direct",
+      "dependency_path": [
+        "requests"
+      ],
+      "fixed_range": ">=2.31.0",
+      "details": "### Impact\n\nSince Requests v2.3.0, Requests has been vulnerable to potentially leaking `Proxy-Authorization` headers to destination servers, specifically during redirects to an HTTPS origin. This is a product of how `rebuild_proxies` is used to recompute and [reattach the `Proxy-Authorization` header](https://github.com/psf/requests/blob/f2629e9e3c7ce3c3c8c025bcd8db551101cbc773/requests/sessions.py#L319-L328) to requests when redirected. Note this behavior has _only_ been observed to affect proxied requests when credentials are supplied in the URL user information component (e.g. `https://username:password@proxy:8080`).\n\n**Current vulnerable behavior(s):**\n\n1. HTTP \u2192 HTTPS: **leak**\n2. HTTPS \u2192 HTTP: **no leak**\n3. HTTPS \u2192 HTTPS: **leak**\n4. HTTP \u2192 HTTP: **no leak**\n\nFor HTTP connections sent through the proxy, the proxy will identify the header in the request itself and remove it prior to forwarding to the destination server. However when sent over HTTPS, the `Proxy-Authorization` header must be sent in the CONNECT request as the proxy has no visibility into further tunneled requests. This results in Requests forwarding the header to the destination server unintentionally, allowing a malicious actor to potentially exfiltrate those credentials.\n\nThe reason this currently works for HTTPS connections in Requests is the `Proxy-Authorization` header is also handled by urllib3 with our usage of the ProxyManager in adapters.py with [`proxy_manager_for`](https://github.com/psf/requests/blob/f2629e9e3c7ce3c3c8c025bcd8db551101cbc773/requests/adapters.py#L199-L235). This will compute the required proxy headers in `proxy_headers` and pass them to the Proxy Manager, avoiding attaching them directly to the Request object. This will be our preferred option going forward for default usage.\n\n### Patches\nStarting in Requests v2.31.0, Requests will no longer attach this header to redirects with an HTTPS destination. This should have no negative impacts on the default behavior of the library as the proxy credentials are already properly being handled by urllib3's ProxyManager.\n\nFor users with custom adapters, this _may_ be potentially breaking if you were already working around this behavior. The previous functionality of `rebuild_proxies` doesn't make sense in any case, so we would encourage any users impacted to migrate any handling of Proxy-Authorization directly into their custom adapter.\n\n### Workarounds\nFor users who are not able to update Requests immediately, there is one potential workaround.\n\nYou may disable redirects by setting `allow_redirects` to `False` on all calls through Requests top-level APIs. Note that if you're currently relying on redirect behaviors, you will need to capture the 3xx response codes and ensure a new request is made to the redirect destination.\n```\nimport requests\nr = requests.get('http://github.com/', allow_redirects=False)\n```\n\n### Credits\n\nThis vulnerability was discovered and disclosed by the following individuals.\n\nDennis Brinkrolf, Haxolot (https://haxolot.com/)\nTobias Funke, (tobiasfunke93@gmail.com)",
+      "published": "2023-05-22T20:36:32+00:00",
+      "modified": "2025-02-13T19:20:45.182158+00:00"
+    },
+    {
+      "package": "requests",
+      "version": "2.25.1",
+      "vulnerability_id": "PYSEC-2023-74",
+      "severity": "UNKNOWN",
+      "summary": "",
+      "cve_ids": [
+        "CVE-2023-32681"
+      ],
+      "advisory_url": "https://github.com/psf/requests/security/advisories/GHSA-j8r2-6x86-q33q",
+      "type": "direct",
+      "dependency_path": [
+        "requests"
+      ],
+      "fixed_range": ">=74ea7cf7a6a27a4eeb2ae24e162bcc942a6706d5",
+      "details": "Requests is a HTTP library. Since Requests 2.3.0, Requests has been leaking Proxy-Authorization headers to destination servers when redirected to an HTTPS endpoint. This is a product of how we use `rebuild_proxies` to reattach the `Proxy-Authorization` header to requests. For HTTP connections sent through the tunnel, the proxy will identify the header in the request itself and remove it prior to forwarding to the destination server. However when sent over HTTPS, the `Proxy-Authorization` header must be sent in the CONNECT request as the proxy has no visibility into the tunneled request. This results in Requests forwarding proxy credentials to the destination server unintentionally, allowing a malicious actor to potentially exfiltrate sensitive information. This issue has been patched in version 2.31.0.\n\n",
+      "published": "2023-05-26T18:15:00+00:00",
+      "modified": "2023-11-08T04:12:35.436175+00:00"
+    },
+    {
+      "package": "setuptools",
+      "version": "57.0.0",
+      "vulnerability_id": "GHSA-5rjg-fvgr-3xxf",
+      "severity": "HIGH",
+      "summary": "setuptools has a path traversal vulnerability in PackageIndex.download that leads to Arbitrary File Write",
+      "cve_ids": [
+        "CVE-2025-47273"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2025-47273",
+      "type": "direct",
+      "dependency_path": [
+        "setuptools"
+      ],
+      "fixed_range": ">=78.1.1",
+      "details": "### Summary \nA path traversal vulnerability in `PackageIndex` was fixed in setuptools version 78.1.1\n\n### Details\n```\n    def _download_url(self, url, tmpdir):\n        # Determine download filename\n        #\n        name, _fragment = egg_info_for_url(url)\n        if name:\n            while '..' in name:\n                name = name.replace('..', '.').replace('\\\\', '_')\n        else:\n            name = \"__downloaded__\"  # default if URL has no path contents\n\n        if name.endswith('.[egg.zip](http://egg.zip/)'):\n            name = name[:-4]  # strip the extra .zip before download\n\n -->       filename = os.path.join(tmpdir, name)\n```\n\nHere: https://github.com/pypa/setuptools/blob/6ead555c5fb29bc57fe6105b1bffc163f56fd558/setuptools/package_index.py#L810C1-L825C88\n\n`os.path.join()` discards the first argument `tmpdir` if the second begins with a slash or drive letter.\n`name` is derived from a URL without sufficient sanitization. While there is some attempt to sanitize by replacing instances of '..' with '.', it is insufficient.\n\n### Risk Assessment\nAs easy_install and package_index are deprecated, the exploitation surface is reduced.\nHowever, it seems this could be exploited in a similar fashion like https://github.com/advisories/GHSA-r9hx-vwmv-q579, and as described by POC 4 in https://github.com/advisories/GHSA-cx63-2mw6-8hw5 report: via malicious URLs present on the pages of a package index.\n\n### Impact\nAn attacker would be allowed to write files to arbitrary locations on the filesystem with the permissions of the process running the Python code, which could escalate to RCE depending on the context.\n\n### References\nhttps://huntr.com/bounties/d6362117-ad57-4e83-951f-b8141c6e7ca5\nhttps://github.com/pypa/setuptools/issues/4946",
+      "published": "2025-05-19T16:52:43+00:00",
+      "modified": "2025-06-13T06:59:23.470501+00:00"
+    },
+    {
+      "package": "setuptools",
+      "version": "57.0.0",
+      "vulnerability_id": "GHSA-cx63-2mw6-8hw5",
+      "severity": "HIGH",
+      "summary": "setuptools vulnerable to Command Injection via package URL",
+      "cve_ids": [
+        "CVE-2024-6345"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2024-6345",
+      "type": "direct",
+      "dependency_path": [
+        "setuptools"
+      ],
+      "fixed_range": ">=70.0.0",
+      "details": "A vulnerability in the `package_index` module of pypa/setuptools versions up to 69.1.1 allows for remote code execution via its download functions. These functions, which are used to download packages from URLs provided by users or retrieved from package index servers, are susceptible to code injection. If these functions are exposed to user-controlled inputs, such as package URLs, they can execute arbitrary commands on the system. The issue is fixed in version 70.0.",
+      "published": "2024-07-15T03:30:57+00:00",
+      "modified": "2024-08-03T08:11:47.407018+00:00"
+    },
+    {
+      "package": "setuptools",
+      "version": "57.0.0",
+      "vulnerability_id": "GHSA-r9hx-vwmv-q579",
+      "severity": "HIGH",
+      "summary": "pypa/setuptools vulnerable to Regular Expression Denial of Service (ReDoS)",
+      "cve_ids": [
+        "CVE-2022-40897"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2022-40897",
+      "type": "direct",
+      "dependency_path": [
+        "setuptools"
+      ],
+      "fixed_range": ">=65.5.1",
+      "details": "Python Packaging Authority (PyPA)'s setuptools is a library designed to facilitate packaging Python projects. Setuptools version 65.5.0 and earlier could allow remote attackers to cause a denial of service by fetching malicious HTML from a PyPI package or custom PackageIndex page due to a vulnerable Regular Expression in `package_index`. This has been patched in version 65.5.1.",
+      "published": "2022-12-23T00:30:23+00:00",
+      "modified": "2024-11-19T19:46:32.540446+00:00"
+    },
+    {
+      "package": "setuptools",
+      "version": "57.0.0",
+      "vulnerability_id": "PYSEC-2022-43012",
+      "severity": "UNKNOWN",
+      "summary": "",
+      "cve_ids": [
+        "CVE-2022-40897"
+      ],
+      "advisory_url": "https://github.com/pypa/setuptools/blob/fe8a98e696241487ba6ac9f91faa38ade939ec5d/setuptools/package_index.py#L200",
+      "type": "direct",
+      "dependency_path": [
+        "setuptools"
+      ],
+      "fixed_range": ">=43a9c9bfa6aa626ec2a22540bea28d2ca77964be",
+      "details": "Python Packaging Authority (PyPA) setuptools before 65.5.1 allows remote attackers to cause a denial of service via HTML in a crafted package or custom PackageIndex page. There is a Regular Expression Denial of Service (ReDoS) in package_index.py.",
+      "published": "2022-12-23T00:15:00+00:00",
+      "modified": "2023-12-06T01:02:35.662444+00:00"
+    },
+    {
+      "package": "setuptools",
+      "version": "57.0.0",
+      "vulnerability_id": "PYSEC-2025-49",
+      "severity": "HIGH",
+      "summary": "",
+      "cve_ids": [
+        "CVE-2025-47273"
+      ],
+      "advisory_url": "https://github.com/pypa/setuptools/security/advisories/GHSA-5rjg-fvgr-3xxf",
+      "type": "direct",
+      "dependency_path": [
+        "setuptools"
+      ],
+      "fixed_range": ">=250a6d17978f9f6ac3ac887091f2d32886fbbb0b",
+      "details": "setuptools is a package that allows users to download, build, install, upgrade, and uninstall Python packages. A path traversal vulnerability in `PackageIndex` is present in setuptools prior to version 78.1.1. An attacker would be allowed to write files to arbitrary locations on the filesystem with the permissions of the process running the Python code, which could escalate to remote code execution depending on the context. Version 78.1.1 fixes the issue.",
+      "published": "2025-05-17T16:15:19+00:00",
+      "modified": "2025-06-13T06:59:23.470501+00:00"
+    },
+    {
+      "package": "urllib3",
+      "version": "1.26.5",
+      "vulnerability_id": "GHSA-34jh-p97f-mpxf",
+      "severity": "HIGH",
+      "summary": "urllib3's Proxy-Authorization request header isn't stripped during cross-origin redirects",
+      "cve_ids": [
+        "CVE-2024-37891"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2024-37891",
+      "type": "direct",
+      "dependency_path": [
+        "urllib3"
+      ],
+      "fixed_range": ">=1.26.19",
+      "details": "When using urllib3's proxy support with `ProxyManager`, the `Proxy-Authorization` header is only sent to the configured proxy, as expected.\n\nHowever, when sending HTTP requests *without* using urllib3's proxy support, it's possible to accidentally configure the `Proxy-Authorization` header even though it won't have any effect as the request is not using a forwarding proxy or a tunneling proxy. In those cases, urllib3 doesn't treat the `Proxy-Authorization` HTTP header as one carrying authentication material and thus doesn't strip the header on cross-origin redirects.\n\nBecause this is a highly unlikely scenario, we believe the severity of this vulnerability is low for almost all users. Out of an abundance of caution urllib3 will automatically strip the `Proxy-Authorization` header during cross-origin redirects to avoid the small chance that users are doing this on accident.\n\nUsers should use urllib3's proxy support or disable automatic redirects to achieve safe processing of the `Proxy-Authorization` header, but we still decided to strip the header by default in order to further protect users who aren't using the correct approach.\n\n## Affected usages\n\nWe believe the number of usages affected by this advisory is low. It requires all of the following to be true to be exploited:\n\n* Setting the `Proxy-Authorization` header without using urllib3's built-in proxy support.\n* Not disabling HTTP redirects.\n* Either not using an HTTPS origin server or for the proxy or target origin to redirect to a malicious origin.\n\n## Remediation\n\n* Using the `Proxy-Authorization` header with urllib3's `ProxyManager`.\n* Disabling HTTP redirects using `redirects=False` when sending requests.\n* Not using the `Proxy-Authorization` header.",
+      "published": "2024-06-17T21:37:20+00:00",
+      "modified": "2024-12-18T22:24:07.021304+00:00"
+    },
+    {
+      "package": "urllib3",
+      "version": "1.26.5",
+      "vulnerability_id": "GHSA-g4mx-q9vg-27p4",
+      "severity": "HIGH",
+      "summary": "urllib3's request body not stripped after redirect from 303 status changes request method to GET",
+      "cve_ids": [
+        "CVE-2023-45803"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2023-45803",
+      "type": "direct",
+      "dependency_path": [
+        "urllib3"
+      ],
+      "fixed_range": ">=2.0.7",
+      "details": "urllib3 previously wouldn't remove the HTTP request body when an HTTP redirect response using status 303 \"See Other\" after the request had its method changed from one that could accept a request body (like `POST`) to `GET` as is required by HTTP RFCs. Although the behavior of removing the request body is not specified in the section for redirects, it can be inferred by piecing together information from different sections and we have observed the behavior in other major HTTP client implementations like curl and web browsers.\n\nFrom [RFC 9110 Section 9.3.1](https://www.rfc-editor.org/rfc/rfc9110.html#name-get):\n\n> A client SHOULD NOT generate content in a GET request unless it is made directly to an origin server that has previously indicated, in or out of band, that such a request has a purpose and will be adequately supported.\n\n## Affected usages\n\nBecause the vulnerability requires a previously trusted service to become compromised in order to have an impact on confidentiality we believe the exploitability of this vulnerability is low. Additionally, many users aren't putting sensitive data in HTTP request bodies, if this is the case then this vulnerability isn't exploitable.\n\nBoth of the following conditions must be true to be affected by this vulnerability:\n\n* If you're using urllib3 and submitting sensitive information in the HTTP request body (such as form data or JSON)\n* The origin service is compromised and starts redirecting using 303 to a malicious peer or the redirected-to service becomes compromised.\n\n## Remediation\n\nYou can remediate this vulnerability with any of the following steps:\n\n* Upgrade to a patched version of urllib3 (v1.26.18 or v2.0.7)\n* Disable redirects for services that you aren't expecting to respond with redirects with `redirects=False`.\n* Disable automatic redirects with `redirects=False` and handle 303 redirects manually by stripping the HTTP request body.",
+      "published": "2023-10-17T20:15:25+00:00",
+      "modified": "2025-02-13T19:37:22.196603+00:00"
+    },
+    {
+      "package": "urllib3",
+      "version": "1.26.5",
+      "vulnerability_id": "GHSA-pq67-6m6q-mj2v",
+      "severity": "HIGH",
+      "summary": "urllib3 redirects are not disabled when retries are disabled on PoolManager instantiation",
+      "cve_ids": [
+        "CVE-2025-50181"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2025-50181",
+      "type": "direct",
+      "dependency_path": [
+        "urllib3"
+      ],
+      "fixed_range": ">=2.5.0",
+      "details": "urllib3 handles redirects and retries using the same mechanism, which is controlled by the `Retry` object. The most common way to disable redirects is at the request level, as follows:\n\n```python\nresp = urllib3.request(\"GET\", \"https://httpbin.org/redirect/1\", redirect=False)\nprint(resp.status)\n# 302\n```\n\nHowever, it is also possible to disable redirects, for all requests, by instantiating a `PoolManager` and specifying `retries` in a way that disable redirects:\n\n```python\nimport urllib3\n\nhttp = urllib3.PoolManager(retries=0)  # should raise MaxRetryError on redirect\nhttp = urllib3.PoolManager(retries=urllib3.Retry(redirect=0))  # equivalent to the above\nhttp = urllib3.PoolManager(retries=False)  # should return the first response\n\nresp = http.request(\"GET\", \"https://httpbin.org/redirect/1\")\n```\n\nHowever, the `retries` parameter is currently ignored, which means all the above examples don't disable redirects.\n\n## Affected usages\n\nPassing `retries` on `PoolManager` instantiation to disable redirects or restrict their number.\n\nBy default, requests and botocore users are not affected.\n\n## Impact\n\nRedirects are often used to exploit SSRF vulnerabilities. An application attempting to mitigate SSRF or open redirect vulnerabilities by disabling redirects at the PoolManager level will remain vulnerable.\n\n## Remediation\n\nYou can remediate this vulnerability with the following steps:\n\n * Upgrade to a patched version of urllib3. If your organization would benefit from the continued support of urllib3 1.x, please contact [sethmichaellarson@gmail.com](mailto:sethmichaellarson@gmail.com) to discuss sponsorship or contribution opportunities.\n * Disable redirects at the `request()` level instead of the `PoolManager()` level.",
+      "published": "2025-06-18T17:50:00+00:00",
+      "modified": "2025-06-19T16:15:11.736637+00:00"
+    },
+    {
+      "package": "urllib3",
+      "version": "1.26.5",
+      "vulnerability_id": "GHSA-v845-jxx5-vc9f",
+      "severity": "HIGH",
+      "summary": "`Cookie` HTTP header isn't stripped on cross-origin redirects",
+      "cve_ids": [
+        "CVE-2023-43804"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2023-43804",
+      "type": "direct",
+      "dependency_path": [
+        "urllib3"
+      ],
+      "fixed_range": ">=2.0.6",
+      "details": "urllib3 doesn't treat the `Cookie` HTTP header special or provide any helpers for managing cookies over HTTP, that is the responsibility of the user. However, it is possible for a user to specify a `Cookie` header and unknowingly leak information via HTTP redirects to a different origin if that user doesn't disable redirects explicitly.\n\nUsers **must** handle redirects themselves instead of relying on urllib3's automatic redirects to achieve safe processing of the `Cookie` header, thus we decided to strip the header by default in order to further protect users who aren't using the correct approach.\n\n## Affected usages\n\nWe believe the number of usages affected by this advisory is low. It requires all of the following to be true to be exploited:\n\n* Using an affected version of urllib3 (patched in v1.26.17 and v2.0.6)\n* Using the `Cookie` header on requests, which is mostly typical for impersonating a browser.\n* Not disabling HTTP redirects\n* Either not using HTTPS or for the origin server to redirect to a malicious origin.\n\n## Remediation\n\n* Upgrading to at least urllib3 v1.26.17 or v2.0.6\n* Disabling HTTP redirects using `redirects=False` when sending requests.\n* Not using the `Cookie` header.",
+      "published": "2023-10-02T23:27:05+00:00",
+      "modified": "2024-12-13T16:37:46.297254+00:00"
+    },
+    {
+      "package": "urllib3",
+      "version": "1.26.5",
+      "vulnerability_id": "PYSEC-2023-192",
+      "severity": "HIGH",
+      "summary": "",
+      "cve_ids": [
+        "CVE-2023-43804"
+      ],
+      "advisory_url": "https://github.com/urllib3/urllib3/security/advisories/GHSA-v845-jxx5-vc9f",
+      "type": "direct",
+      "dependency_path": [
+        "urllib3"
+      ],
+      "fixed_range": ">=644124ecd0b6e417c527191f866daa05a5a2056d",
+      "details": "urllib3 is a user-friendly HTTP client library for Python. urllib3 doesn't treat the `Cookie` HTTP header special or provide any helpers for managing cookies over HTTP, that is the responsibility of the user. However, it is possible for a user to specify a `Cookie` header and unknowingly leak information via HTTP redirects to a different origin if that user doesn't disable redirects explicitly. This issue has been patched in urllib3 version 1.26.17 or 2.0.5.",
+      "published": "2023-10-04T17:15:00+00:00",
+      "modified": "2023-11-08T04:13:33.452167+00:00"
+    },
+    {
+      "package": "urllib3",
+      "version": "1.26.5",
+      "vulnerability_id": "PYSEC-2023-212",
+      "severity": "HIGH",
+      "summary": "",
+      "cve_ids": [
+        "CVE-2023-45803"
+      ],
+      "advisory_url": "https://github.com/urllib3/urllib3/security/advisories/GHSA-g4mx-q9vg-27p4",
+      "type": "direct",
+      "dependency_path": [
+        "urllib3"
+      ],
+      "fixed_range": ">=4e98d57809dacab1cbe625fddeec1a290c478ea9",
+      "details": "urllib3 is a user-friendly HTTP client library for Python. urllib3 previously wouldn't remove the HTTP request body when an HTTP redirect response using status 301, 302, or 303 after the request had its method changed from one that could accept a request body (like `POST`) to `GET` as is required by HTTP RFCs. Although this behavior is not specified in the section for redirects, it can be inferred by piecing together information from different sections and we have observed the behavior in other major HTTP client implementations like curl and web browsers. Because the vulnerability requires a previously trusted service to become compromised in order to have an impact on confidentiality we believe the exploitability of this vulnerability is low. Additionally, many users aren't putting sensitive data in HTTP request bodies, if this is the case then this vulnerability isn't exploitable. Both of the following conditions must be true to be affected by this vulnerability: 1. Using urllib3 and submitting sensitive information in the HTTP request body (such as form data or JSON) and 2. The origin service is compromised and starts redirecting using 301, 302, or 303 to a malicious peer or the redirected-to service becomes compromised. This issue has been addressed in versions 1.26.18 and 2.0.7 and users are advised to update to resolve this issue. Users unable to update should disable redirects for services that aren't expecting to respond with redirects with `redirects=False` and disable automatic redirects with `redirects=False` and handle 301, 302, and 303 redirects manually by stripping the HTTP request body.\n",
+      "published": "2023-10-17T20:15:00+00:00",
+      "modified": "2023-11-08T04:13:39.165450+00:00"
+    },
+    {
+      "package": "werkzeug",
+      "version": "2.0.1",
+      "vulnerability_id": "GHSA-2g68-c3qc-8985",
+      "severity": "HIGH",
+      "summary": "Werkzeug debugger vulnerable to remote execution when interacting with attacker controlled domain",
+      "cve_ids": [
+        "CVE-2024-34069"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2024-34069",
+      "type": "direct",
+      "dependency_path": [
+        "werkzeug"
+      ],
+      "fixed_range": ">=3.0.3",
+      "details": "The debugger in affected versions of Werkzeug can allow an attacker to execute code on a developer's machine under some circumstances. This requires the attacker to get the developer to interact with a domain and subdomain they control, and enter the debugger PIN, but if they are successful it allows access to the debugger even if it is only running on localhost. This also requires the attacker to guess a URL in the developer's application that will trigger the debugger.",
+      "published": "2024-05-06T14:21:27+00:00",
+      "modified": "2025-02-21T21:22:53.816375+00:00"
+    },
+    {
+      "package": "werkzeug",
+      "version": "2.0.1",
+      "vulnerability_id": "GHSA-f9vj-2wh5-fj8j",
+      "severity": "HIGH",
+      "summary": "Werkzeug safe_join not safe on Windows",
+      "cve_ids": [
+        "CVE-2024-49766"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2024-49766",
+      "type": "direct",
+      "dependency_path": [
+        "werkzeug"
+      ],
+      "fixed_range": ">=3.0.6",
+      "details": "On Python < 3.11 on Windows, `os.path.isabs()` does not catch UNC paths like `//server/share`. Werkzeug's `safe_join()` relies on this check, and so can produce a path that is not safe, potentially allowing unintended access to data. Applications using Python >= 3.11, or not using Windows, are not vulnerable.",
+      "published": "2024-10-25T19:43:41+00:00",
+      "modified": "2025-01-31T15:37:27.094508+00:00"
+    },
+    {
+      "package": "werkzeug",
+      "version": "2.0.1",
+      "vulnerability_id": "GHSA-hrfv-mqp8-q5rw",
+      "severity": "HIGH",
+      "summary": "Werkzeug DoS: High resource usage when parsing multipart/form-data containing a large part with CR/LF character at the beginning",
+      "cve_ids": [
+        "CVE-2023-46136"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2023-46136",
+      "type": "direct",
+      "dependency_path": [
+        "werkzeug"
+      ],
+      "fixed_range": ">=3.0.1",
+      "details": "Werkzeug multipart data parser needs to find a boundary that may be between consecutive chunks. That's why parsing is based on looking for newline characters. Unfortunately, code looking for partial boundary in the buffer is written inefficiently, so if we upload a file that starts with CR or LF and then is followed by megabytes of data without these characters: all of these bytes are appended chunk by chunk into internal bytearray and lookup for boundary is performed on growing buffer.\n\nThis allows an attacker to cause a denial of service by sending crafted multipart data to an endpoint that will parse it. The amount of CPU time required can block worker processes from handling legitimate requests. The amount of RAM required can trigger an out of memory kill of the process. If many concurrent requests are sent continuously, this can exhaust or kill all available workers.\n",
+      "published": "2023-10-25T14:22:59+00:00",
+      "modified": "2024-11-19T19:24:36.348087+00:00"
+    },
+    {
+      "package": "werkzeug",
+      "version": "2.0.1",
+      "vulnerability_id": "GHSA-px8h-6qxv-m22q",
+      "severity": "HIGH",
+      "summary": "Incorrect parsing of nameless cookies leads to __Host- cookies bypass",
+      "cve_ids": [
+        "CVE-2023-23934"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2023-23934",
+      "type": "direct",
+      "dependency_path": [
+        "werkzeug"
+      ],
+      "fixed_range": ">=2.2.3",
+      "details": "Browsers may allow \"nameless\" cookies that look like `=value` instead of `key=value`. A vulnerable browser may allow a compromised application on an adjacent subdomain to exploit this to set a cookie like `=__Host-test=bad` for another subdomain.\n\nWerkzeug <= 2.2.2 will parse the cookie `=__Host-test=bad` as `__Host-test=bad`. If a Werkzeug application is running next to a vulnerable or malicious subdomain which sets such a cookie using a vulnerable browser, the Werkzeug application will see the bad cookie value but the valid cookie key.",
+      "published": "2023-02-15T15:37:03+00:00",
+      "modified": "2024-11-19T19:25:03.371996+00:00"
+    },
+    {
+      "package": "werkzeug",
+      "version": "2.0.1",
+      "vulnerability_id": "GHSA-q34m-jh98-gwm2",
+      "severity": "HIGH",
+      "summary": "Werkzeug possible resource exhaustion when parsing file data in forms",
+      "cve_ids": [
+        "CVE-2024-49767"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2024-49767",
+      "type": "direct",
+      "dependency_path": [
+        "werkzeug"
+      ],
+      "fixed_range": ">=3.0.6",
+      "details": "Applications using Werkzeug to parse `multipart/form-data` requests are vulnerable to resource exhaustion. A specially crafted form body can bypass the `Request.max_form_memory_size` setting.\n\n\nThe `Request.max_content_length` setting, as well as resource limits provided by deployment software and platforms, are also available to limit the resources used during a request. This vulnerability does not affect those settings. All three types of limits should be considered and set appropriately when deploying an application.",
+      "published": "2024-10-25T19:44:43+00:00",
+      "modified": "2025-01-03T12:35:07.368029+00:00"
+    },
+    {
+      "package": "werkzeug",
+      "version": "2.0.1",
+      "vulnerability_id": "GHSA-xg9f-g7g7-2323",
+      "severity": "HIGH",
+      "summary": "High resource usage when parsing multipart form data with many fields",
+      "cve_ids": [
+        "CVE-2023-25577"
+      ],
+      "advisory_url": "https://nvd.nist.gov/vuln/detail/CVE-2023-25577",
+      "type": "direct",
+      "dependency_path": [
+        "werkzeug"
+      ],
+      "fixed_range": ">=2.2.3",
+      "details": "Werkzeug's multipart form data parser will parse an unlimited number of parts, including file parts. Parts can be a small amount of bytes, but each requires CPU time to parse and may use more memory as Python data. If a request can be made to an endpoint that accesses `request.data`, `request.form`, `request.files`, or `request.get_data(parse_form_data=False)`, it can cause unexpectedly high resource usage.\n\nThis allows an attacker to cause a denial of service by sending crafted multipart data to an endpoint that will parse it. The amount of CPU time required can block worker processes from handling legitimate requests. The amount of RAM required can trigger an out of memory kill of the process. Unlimited file parts can use up memory and file handles. If many concurrent requests are sent continuously, this can exhaust or kill all available workers.",
+      "published": "2023-02-15T15:36:26+00:00",
+      "modified": "2024-11-19T19:25:02.390319+00:00"
+    },
+    {
+      "package": "werkzeug",
+      "version": "2.0.1",
+      "vulnerability_id": "PYSEC-2022-203",
+      "severity": "UNKNOWN",
+      "summary": "",
+      "cve_ids": [
+        "CVE-2022-29361"
+      ],
+      "advisory_url": "https://github.com/pallets/werkzeug/commit/9a3a981d70d2e9ec3344b5192f86fcaf3210cd85",
+      "type": "direct",
+      "dependency_path": [
+        "werkzeug"
+      ],
+      "fixed_range": ">=9a3a981d70d2e9ec3344b5192f86fcaf3210cd85",
+      "details": "** DISPUTED ** Improper parsing of HTTP requests in Pallets Werkzeug v2.1.0 and below allows attackers to perform HTTP Request Smuggling using a crafted HTTP request with multiple requests included inside the body. NOTE: the vendor's position is that this behavior can only occur in unsupported configurations involving development mode and an HTTP server from outside the Werkzeug project.",
+      "published": "2022-05-25T01:15:00+00:00",
+      "modified": "2023-11-08T04:09:13.275498+00:00"
+    },
+    {
+      "package": "werkzeug",
+      "version": "2.0.1",
+      "vulnerability_id": "PYSEC-2023-221",
+      "severity": "HIGH",
+      "summary": "",
+      "cve_ids": [
+        "CVE-2023-46136"
+      ],
+      "advisory_url": "https://github.com/pallets/werkzeug/security/advisories/GHSA-hrfv-mqp8-q5rw",
+      "type": "direct",
+      "dependency_path": [
+        "werkzeug"
+      ],
+      "fixed_range": ">=f3c803b3ade485a45f12b6d6617595350c0f03e2",
+      "details": "Werkzeug is a comprehensive WSGI web application library. If an upload of a file that starts with CR or LF and then is followed by megabytes of data without these characters: all of these bytes are appended chunk by chunk into internal bytearray and lookup for boundary is performed on growing buffer. This allows an attacker to cause a denial of service by sending crafted multipart data to an endpoint that will parse it. The amount of CPU time required can block worker processes from handling legitimate requests. This vulnerability has been patched in version 3.0.1.",
+      "published": "2023-10-25T18:17:00+00:00",
+      "modified": "2023-11-08T18:38:34.170214+00:00"
+    },
+    {
+      "package": "werkzeug",
+      "version": "2.0.1",
+      "vulnerability_id": "PYSEC-2023-57",
+      "severity": "UNKNOWN",
+      "summary": "",
+      "cve_ids": [
+        "CVE-2023-23934"
+      ],
+      "advisory_url": "https://github.com/pallets/werkzeug/security/advisories/GHSA-px8h-6qxv-m22q",
+      "type": "direct",
+      "dependency_path": [
+        "werkzeug"
+      ],
+      "fixed_range": ">=cf275f42acad1b5950c50ffe8ef58fe62cdce028",
+      "details": "Werkzeug is a comprehensive WSGI web application library. Browsers may allow \"nameless\" cookies that look like `=value` instead of `key=value`. A vulnerable browser may allow a compromised application on an adjacent subdomain to exploit this to set a cookie like `=__Host-test=bad` for another subdomain. Werkzeug prior to 2.2.3 will parse the cookie `=__Host-test=bad` as __Host-test=bad`. If a Werkzeug application is running next to a vulnerable or malicious subdomain which sets such a cookie using a vulnerable browser, the Werkzeug application will see the bad cookie value but the valid cookie key. The issue is fixed in Werkzeug 2.2.3.",
+      "published": "2023-02-14T20:15:00+00:00",
+      "modified": "2023-11-08T04:11:43.091670+00:00"
+    },
+    {
+      "package": "werkzeug",
+      "version": "2.0.1",
+      "vulnerability_id": "PYSEC-2023-58",
+      "severity": "UNKNOWN",
+      "summary": "",
+      "cve_ids": [
+        "CVE-2023-25577"
+      ],
+      "advisory_url": "https://github.com/pallets/werkzeug/security/advisories/GHSA-xg9f-g7g7-2323",
+      "type": "direct",
+      "dependency_path": [
+        "werkzeug"
+      ],
+      "fixed_range": ">=517cac5a804e8c4dc4ed038bb20dacd038e7a9f1",
+      "details": "Werkzeug is a comprehensive WSGI web application library. Prior to version 2.2.3, Werkzeug's multipart form data parser will parse an unlimited number of parts, including file parts. Parts can be a small amount of bytes, but each requires CPU time to parse and may use more memory as Python data. If a request can be made to an endpoint that accesses `request.data`, `request.form`, `request.files`, or `request.get_data(parse_form_data=False)`, it can cause unexpectedly high resource usage. This allows an attacker to cause a denial of service by sending crafted multipart data to an endpoint that will parse it. The amount of CPU time required can block worker processes from handling legitimate requests. The amount of RAM required can trigger an out of memory kill of the process. Unlimited file parts can use up memory and file handles. If many concurrent requests are sent continuously, this can exhaust or kill all available workers. Version 2.2.3 contains a patch for this issue.",
+      "published": "2023-02-14T20:15:00+00:00",
+      "modified": "2023-11-08T04:11:52.539843+00:00"
+    }
+  ],
+  "meta": {
+    "generated_at": "",
+    "scan_options": {
+      "include_dev_dependencies": true,
+      "ignore_severities": []
+    }
+  }
+}

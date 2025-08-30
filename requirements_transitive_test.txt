@@ -1,0 +1,8 @@
+# Simple test case for transitive dependency resolution
+# Should generate transitive dependencies
+
+# Direct dependencies that have vulnerable transitive deps
+django==3.2.13
+requests==2.25.1
+flask==2.0.1
+pyyaml==5.3.1
