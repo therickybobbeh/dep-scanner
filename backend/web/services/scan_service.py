@@ -63,7 +63,8 @@ class ScanService:
                 progress_callback=progress_callback
             )
             
-            # Store CLI JSON result directly
+            # Set job_id in the result and store
+            cli_result["job_id"] = job_id
             self.state.scan_reports[job_id] = cli_result
             
             # Update final progress
@@ -72,10 +73,9 @@ class ScanService:
             progress.progress_percent = 100.0
             progress.completed_at = datetime.now()
             
-            # Set counts from CLI result
-            scan_info = cli_result.get('scan_info', {})
-            progress.total_dependencies = scan_info.get('total_dependencies', 0)
-            progress.vulnerabilities_found = scan_info.get('vulnerable_packages', 0)
+            # Set counts from CLI result (new frontend format)
+            progress.total_dependencies = cli_result.get('total_dependencies', 0)
+            progress.vulnerabilities_found = cli_result.get('vulnerable_count', 0)
             
             # Clean up task reference
             if job_id in self.state.scan_tasks:

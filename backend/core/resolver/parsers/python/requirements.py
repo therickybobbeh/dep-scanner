@@ -8,7 +8,7 @@ from ....models import Dep
 
 class RequirementsParser(BaseDependencyParser):
     """
-    Parser for requirements.txt files
+    Parser for requirements.txt files and pip-compile generated lockfiles
     
     Requirements.txt format supports various specifications:
     - package==1.0.0
@@ -18,8 +18,12 @@ class RequirementsParser(BaseDependencyParser):
     - -e git+https://github.com/user/repo
     - -r other-requirements.txt
     
-    Note: This only extracts DIRECT dependencies since requirements.txt
-    doesn't contain transitive dependency information.
+    Additionally supports pip-compile generated files with comments:
+    - package==1.0.0    # via parent-package (transitive)
+    - package==1.0.0    # direct
+    
+    This parser can extract both direct AND transitive dependencies when
+    dependency provenance information is available in comments.
     """
     
     def __init__(self):
@@ -90,18 +94,29 @@ class RequirementsParser(BaseDependencyParser):
             Dep object or None if line should be skipped
         """
         try:
-            # Check for dependency type comments (# direct, # transitive)
+            # Check for dependency type comments (# direct, # transitive, # via package-name)
             is_direct = True  # Default assumption
+            path = []
             
             if '#' in line:
                 parts = line.split('#', 1)
                 requirement_part = parts[0].strip()
-                comment_part = parts[1].strip().lower() if len(parts) > 1 else ""
+                comment_part = parts[1].strip() if len(parts) > 1 else ""
                 
-                # Check for direct/transitive markers
-                if 'transitive' in comment_part:
+                # Check for pip-compile format: "# via package-name"
+                if comment_part.lower().startswith('via '):
                     is_direct = False
-                elif 'direct' in comment_part:
+                    # Extract the parent package name(s)
+                    via_packages = comment_part[4:].strip()  # Remove "via "
+                    # Handle multiple parents: "via package1, package2"
+                    parent_packages = [p.strip() for p in via_packages.split(',')]
+                    if parent_packages:
+                        path = parent_packages + [requirement_part.split('==')[0].split('>=')[0].split('<=')[0].split('>')[0].split('<')[0].split('~')[0].split('!')[0].strip()]
+                
+                # Check for explicit direct/transitive markers
+                elif 'transitive' in comment_part.lower():
+                    is_direct = False
+                elif 'direct' in comment_part.lower():
                     is_direct = True
                 
                 line = requirement_part
@@ -118,10 +133,17 @@ class RequirementsParser(BaseDependencyParser):
             if not name:
                 return None
             
+            # Use extracted path if available, otherwise default to just the package name
+            if not path:
+                path = [name]
+            elif name not in path:
+                # Ensure the current package is at the end of the path
+                path = path + [name]
+            
             return self._create_dependency(
                 name=name,
                 version=version,
-                path=[name],
+                path=path,
                 is_direct=is_direct,
                 is_dev=False  # requirements.txt doesn't distinguish dev deps
             )

@@ -1,0 +1,286 @@
+/* Enhanced Report Styling - CLI Report Inspired */
+
+/* Modern gradient backgrounds */
+.report-header {
+  background: linear-gradient(135deg, #1e3a8a 0%, #3730a3 100%);
+  color: white;
+  position: relative;
+  overflow: hidden;
+}
+
+.report-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="white" opacity="0.1"/><circle cx="75" cy="75" r="1" fill="white" opacity="0.1"/><circle cx="50" cy="10" r="1" fill="white" opacity="0.1"/><circle cx="10" cy="90" r="1" fill="white" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>') repeat;
+  opacity: 0.1;
+}
+
+.report-header-content {
+  position: relative;
+  z-index: 1;
+}
+
+/* Summary section styling */
+.summary-section {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-bottom: 1px solid #e2e8f0;
+}
+
+/* Enhanced stats cards */
+.stats-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  border-left: 6px solid var(--bs-primary);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.stats-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+.stats-card.variant-danger { border-left-color: #dc2626; }
+.stats-card.variant-warning { border-left-color: #ea580c; }
+.stats-card.variant-info { border-left-color: #0ea5e9; }
+.stats-card.variant-success { border-left-color: #16a34a; }
+
+/* Severity distribution cards */
+.severity-breakdown-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.severity-breakdown-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+/* Enhanced table styling */
+.vulnerability-table {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
+}
+
+.vulnerability-table thead th {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-bottom: 2px solid #e5e7eb;
+  font-weight: 600;
+  color: #374151;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.vulnerability-table tbody tr:hover {
+  background-color: #fafbfc;
+}
+
+.vulnerability-table tbody tr:nth-child(even) {
+  background-color: rgba(248, 250, 252, 0.5);
+}
+
+/* CVSS Progress bars styling */
+.cvss-progress-container {
+  min-width: 120px;
+}
+
+.cvss-progress {
+  height: 6px;
+  background: #e5e7eb;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.cvss-progress-bar {
+  height: 100%;
+  transition: width 0.3s ease;
+  border-radius: 3px;
+}
+
+.cvss-progress-bar.severity-critical { background: #dc2626; }
+.cvss-progress-bar.severity-high { background: #ea580c; }
+.cvss-progress-bar.severity-medium { background: #d97706; }
+.cvss-progress-bar.severity-low { background: #16a34a; }
+
+/* Severity badges enhanced */
+.severity-badge {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: white;
+}
+
+.severity-badge.severity-critical { background: #dc2626; }
+.severity-badge.severity-high { background: #ea580c; }
+.severity-badge.severity-medium { background: #d97706; }
+.severity-badge.severity-low { background: #16a34a; }
+.severity-badge.severity-unknown { background: #6b7280; }
+
+/* Enhanced reference links */
+.reference-links {
+  white-space: nowrap;
+}
+
+.reference-link {
+  display: inline-block;
+  padding: 4px 8px;
+  margin: 2px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.reference-link:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.reference-link.advisory {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.reference-link.osv {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.reference-link.cve {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+/* Package info styling */
+.package-info .package-name {
+  font-size: 1rem;
+  color: #1e293b;
+  font-weight: 600;
+}
+
+.package-info .version {
+  font-size: 0.875rem;
+  background: #f1f5f9;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #475569;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+/* Dependency type badges */
+.dep-type {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.dep-direct {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.dep-transitive {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+/* Vulnerability ID styling */
+.vuln-id {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  background: #f8fafc;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  color: #475569;
+}
+
+/* Fixed version badge */
+.fixed-version {
+  margin-top: 8px;
+  padding: 4px 8px;
+  background: #ecfdf5;
+  color: #047857;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* Card view enhancements */
+.vulnerability-card {
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border: 1px solid #e5e7eb;
+}
+
+.vulnerability-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 12px -2px rgba(0, 0, 0, 0.1);
+}
+
+.vulnerability-card-header {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-bottom: 1px solid #e5e7eb;
+}
+
+/* Responsive design improvements */
+@media (max-width: 768px) {
+  .reference-links {
+    white-space: normal;
+  }
+  
+  .reference-link {
+    margin-bottom: 4px;
+    display: block;
+    text-align: center;
+  }
+  
+  .stats-card {
+    margin-bottom: 1rem;
+  }
+  
+  .severity-breakdown-card {
+    margin-bottom: 1rem;
+  }
+}
+
+/* Print styles */
+@media print {
+  .report-header {
+    background: #1e3a8a !important;
+    -webkit-print-color-adjust: exact;
+  }
+  
+  .vulnerability-card,
+  .stats-card,
+  .severity-breakdown-card {
+    box-shadow: none;
+    border: 1px solid #dee2e6;
+  }
+  
+  .vulnerability-table tbody tr {
+    break-inside: avoid;
+  }
+}

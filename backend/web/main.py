@@ -213,6 +213,13 @@ async def start_scan(
 ):
     """Start a new vulnerability scan"""
     try:
+        # Debug logging to see what the frontend is sending
+        logging.info(f"Received scan request - repo_path: {scan_request.repo_path}")
+        logging.info(f"Manifest files keys: {list(scan_request.manifest_files.keys()) if scan_request.manifest_files else 'None'}")
+        if scan_request.manifest_files:
+            for filename, content in scan_request.manifest_files.items():
+                logging.info(f"File {filename}: {len(content)} characters, preview: {content[:100]}...")
+        
         job_id = await scan_service.start_scan(scan_request)
         return {"job_id": job_id}
     except ValueError as e:
@@ -431,7 +438,6 @@ async def health_check():
     """Health check endpoint"""
     from datetime import datetime
     return {"status": "healthy", "timestamp": datetime.now().isoformat()}
-
 
 
 @app.get("/")

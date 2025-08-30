@@ -90,7 +90,7 @@ def setup_logging(settings: Settings) -> None:
     )
     
     simple_formatter = logging.Formatter(
-        fmt='%(levelname)s: %(message)s'
+        fmt='\n%(levelname)s: %(message)s'
     )
     
     # Configure root logger

@@ -4,6 +4,7 @@ CLI Scanner orchestrator - handles progress display and user interaction
 from __future__ import annotations
 
 import logging
+import sys
 from pathlib import Path
 from typing import Optional
 from contextlib import contextmanager
@@ -42,20 +43,25 @@ class DepScanner:
     
     @contextmanager
     def _suppress_logging(self):
-        """Temporarily suppress INFO level logging to prevent interference with progress bar"""
-        # Get root logger and current level
+        """Temporarily suppress console logging to prevent interference with progress bar"""
+        # Get root logger
         root_logger = logging.getLogger()
-        original_level = root_logger.level
         
-        # Temporarily raise level to WARNING to hide INFO messages
-        if original_level <= logging.INFO:
-            root_logger.setLevel(logging.WARNING)
+        # Store original handlers
+        original_handlers = root_logger.handlers[:]
+        
+        # Remove console handlers temporarily (keep file handlers)
+        for handler in original_handlers:
+            if isinstance(handler, logging.StreamHandler) and handler.stream in (sys.stdout, sys.stderr):
+                root_logger.removeHandler(handler)
         
         try:
             yield
         finally:
-            # Restore original level
-            root_logger.setLevel(original_level)
+            # Restore original handlers
+            for handler in original_handlers:
+                if handler not in root_logger.handlers:
+                    root_logger.addHandler(handler)
     
     async def scan_path(self, path: str, options: ScanOptions) -> Report:
         """Scan either a directory or individual dependency file"""
@@ -239,6 +245,16 @@ class DepScanner:
     
     def _update_progress_from_callback(self, message: str):
         """Handle progress updates from core scanner with stage mapping"""
+        # Handle warnings specially - print them on new lines
+        if message.startswith("Warning:") or "WARNING:" in message or "Failed to generate" in message:
+            # Temporarily stop progress to print warning
+            if self.current_progress:
+                self.current_progress.stop()
+            self.console.print(f"\n[yellow]⚠️  {message}[/yellow]")
+            if self.current_progress:
+                self.current_progress.start()
+            return
+        
         if self.current_progress and self.current_task is not None:
             
             # Map callback messages to progress stages
@@ -290,9 +306,7 @@ class DepScanner:
             else:
                 # General progress messages
                 if self.verbose:
-                    if message.startswith("Warning"):
-                        self.console.print(f"[yellow]⚠️  {message}[/yellow]")
-                    elif message.startswith("Found") and ("Python" in message or "JavaScript" in message):
+                    if message.startswith("Found") and ("Python" in message or "JavaScript" in message):
                         self.console.print(f"[cyan]📦 {message}[/cyan]")
                     else:
                         self.console.print(f"[dim]{message}[/dim]")

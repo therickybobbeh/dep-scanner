@@ -1,0 +1,42 @@
+# Multi-stage Dockerfile for DepScan Frontend Staging
+FROM node:18-bullseye-slim AS builder
+
+# Set production environment for build
+ENV NODE_ENV=production
+
+# Create app directory
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install all dependencies for build process
+RUN npm ci
+
+# Copy source code
+COPY . .
+
+# Build the frontend
+RUN npm run build
+
+# Production stage
+FROM nginx:alpine AS production
+
+# Install wget for health checks
+RUN apk add --no-cache wget
+
+# Copy built frontend from builder stage
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# Copy nginx configuration for single-page app
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Expose port
+EXPOSE 80
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
+  CMD wget --quiet --tries=1 --spider http://localhost/ || exit 1
+
+# Start nginx
+CMD ["nginx", "-g", "daemon off;"]
