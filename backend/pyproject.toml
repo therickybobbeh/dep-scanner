@@ -9,13 +9,11 @@ description = "Dependency scanner backend for vulnerability analysis"
 authors = [
     {name = "DepScan Team", email = "team@depscan.com"}
 ]
-readme = "README.md"
-license = {text = "MIT"}
+license = "MIT"
 requires-python = ">=3.11"
 classifiers = [
     "Development Status :: 4 - Beta",
-    "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
+    "Intended Audience :: Developers", 
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -57,7 +55,7 @@ test = [
 depscan = "backend.cli.scanner:main"
 
 [tool.setuptools]
-packages = ["backend"]
+packages = {find = {}}
 
 [tool.setuptools.package-dir]
 "" = "."
