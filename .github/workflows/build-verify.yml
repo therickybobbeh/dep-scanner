@@ -2,16 +2,18 @@ name: Build Verification
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, develop, master ]
     paths:
       - 'backend/**'
       - 'pyproject.toml'
+      - 'MANIFEST.in'
       - '.github/workflows/build-verify.yml'
   pull_request:
-    branches: [ main ]
+    branches: [ main, develop, master ]
     paths:
       - 'backend/**'
       - 'pyproject.toml'
+      - 'MANIFEST.in'
       - '.github/workflows/build-verify.yml'
 
 jobs:

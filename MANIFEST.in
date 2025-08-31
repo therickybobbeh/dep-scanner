@@ -1,0 +1,8 @@
+# Include important package files
+include README.md
+include LICENSE
+recursive-include backend *.py
+recursive-exclude backend *.pyc
+recursive-exclude backend __pycache__
+recursive-exclude * *.egg-info
+recursive-exclude * .DS_Store
