@@ -1,8 +1,8 @@
-# 🛡️ Multi-Vuln-Scanner (DepScan Pro) - Professional Dependency Vulnerability Scanner
+# 🛡️ DepScan - Professional Dependency Vulnerability Scanner
 
 > **Fast, accurate, and comprehensive vulnerability scanning for Python and JavaScript projects**
 
-[![CI/CD Pipeline](https://github.com/yourusername/socketTest/actions/workflows/ci.yml/badge.svg)](https://github.com/yourusername/socketTest/actions/workflows/ci.yml)
+DepScan is a professional-grade security tool that identifies known vulnerabilities in your project dependencies across multiple ecosystems. Get detailed security reports with actionable recommendations through both CLI and web interfaces.
 [![Package Tests](https://github.com/yourusername/socketTest/actions/workflows/test-package.yml/badge.svg)](https://github.com/yourusername/socketTest/actions/workflows/test-package.yml)
 [![Build Verification](https://github.com/yourusername/socketTest/actions/workflows/build-verify.yml/badge.svg)](https://github.com/yourusername/socketTest/actions/workflows/build-verify.yml)
 [![TestPyPI](https://img.shields.io/badge/TestPyPI-v1.0.0-blue)](https://test.pypi.org/project/multi-vuln-scanner/)
@@ -10,8 +10,19 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![Node.js 18+](https://img.shields.io/badge/node.js-18+-green.svg)](https://nodejs.org/)
 
-Multi-Vuln-Scanner (formerly DepScan Pro) is a professional-grade security tool that identifies known vulnerabilities in your project dependencies across multiple ecosystems. Get detailed security reports with actionable recommendations through both CLI and web interfaces.
- 
+## 📦 Installation
+
+### Install from TestPyPI (Current Release)
+```bash
+pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ multi-vuln-scanner
+```
+
+### Install from Source
+```bash
+git clone https://github.com/yourusername/socketTest.git
+cd socketTest
+pip install -e .
+```
 
 ## 🌐 Live Demo
 - **Web Interface**: Available on request
@@ -19,14 +30,31 @@ Multi-Vuln-Scanner (formerly DepScan Pro) is a professional-grade security tool 
 
 ## 🚀 Quick Start
 
-### For Developers (CLI)
+### Install the CLI Tool
+
 ```bash
-# Install from TestPyPI (current)
+# Install from TestPyPI (recommended)
 pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ multi-vuln-scanner
 
-# Scan your project
+# Or install from source
+git clone https://github.com/yourusername/socketTest.git
+cd socketTest
+pip install -e .
+```
+
+### Use the Scanner
+
+```bash
+# Scan JavaScript projects
 multi-vuln-scanner scan ./package.json
-multi-vuln-scanner scan ./requirements.txt --output html
+dep-scan scan ./package.json  # Backward compatible
+
+# Scan Python projects
+multi-vuln-scanner scan ./requirements.txt
+dep-scan scan ./requirements.txt --output html
+
+# Scan entire directory
+multi-vuln-scanner scan . --verbose
 ```
 
 ### For Teams (Web Interface)

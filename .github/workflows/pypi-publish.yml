@@ -33,6 +33,10 @@ jobs:
       with:
         python-version: ${{ env.PYTHON_VERSION }}
         cache: 'pip'
+        cache-dependency-path: |
+          pyproject.toml
+          requirements.txt
+          backend/requirements.txt
     
     - name: Install build dependencies
       run: |
