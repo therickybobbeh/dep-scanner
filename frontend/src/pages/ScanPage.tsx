@@ -1,18 +1,16 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Container, Row, Col, Card, Form, Button, Alert, ListGroup, Badge } from 'react-bootstrap';
-import { Upload, FileText, X, CheckCircle, AlertTriangle } from 'lucide-react';
-import NewtonsCradleLoader from '../components/ui/NewtonsCradleLoader';
-import axios from 'axios';
+import { Upload, FileText, X } from 'lucide-react';
+import { ScanLoadingModal } from '../components/ui';
 import type { ScanRequest } from '../types/api';
 import { SeverityLevel } from '../types/common';
 
 const ScanPage: React.FC = () => {
-  const [files, setFiles] = useState<Record<string, File>>({});
-  const [isUploading, setIsUploading] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [consistencyResult, setConsistencyResult] = useState<any>(null);
-  const [isValidatingConsistency, setIsValidatingConsistency] = useState(false);
+  const [showLoadingModal, setShowLoadingModal] = useState(false);
+  const [scanRequest, setScanRequest] = useState<ScanRequest | null>(null);
   const [options, setOptions] = useState({
     include_dev_dependencies: true,
     ignore_severities: [] as SeverityLevel[],
@@ -20,91 +18,74 @@ const ScanPage: React.FC = () => {
   
   const navigate = useNavigate();
 
-  // Check if both package.json and package-lock.json are uploaded
-  const hasBothPackageFiles = useMemo(() => {
-    const fileNames = Object.keys(files);
-    return fileNames.includes('package.json') && fileNames.includes('package-lock.json');
-  }, [files]);
-
   const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const uploadedFiles = event.target.files;
-    if (!uploadedFiles) return;
+    if (!uploadedFiles || uploadedFiles.length === 0) return;
 
-    const newFiles: Record<string, File> = {};
-    Array.from(uploadedFiles).forEach(file => {
-      newFiles[file.name] = file;
-    });
-    
-    setFiles(prev => ({ ...prev, ...newFiles }));
+    // Take only the first file since we only allow single file upload
+    const selectedFile = uploadedFiles[0];
+    setFile(selectedFile);
+    setError(null); // Clear any previous errors
   }, []);
 
-  const removeFile = useCallback((filename: string) => {
-    setFiles(prev => {
-      const updated = { ...prev };
-      delete updated[filename];
-      return updated;
-    });
+  const removeFile = useCallback(() => {
+    setFile(null);
+    setError(null);
   }, []);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError(null);
-    setIsUploading(true);
 
     try {
-      const manifest_files: Record<string, string> = {};
-      
-      if (Object.keys(files).length === 0) {
-        setError('Please upload at least one manifest file (package.json, requirements.txt, etc.)');
+      // Validate file upload
+      if (!file) {
+        setError('Please upload a manifest file (package.json, requirements.txt, etc.)');
         return;
-      } else {
-        // Read uploaded file contents with validation
-        for (const [filename, file] of Object.entries(files)) {
-          try {
-            if (file.size === 0) {
-              throw new Error(`File ${filename} is empty`);
+      }
+
+      // Validate file size
+      if (file.size === 0) {
+        setError(`File ${file.name} is empty`);
+        return;
+      }
+
+      // Read and validate file content
+      const content = await file.text();
+      
+      if (!content.trim()) {
+        setError(`File ${file.name} is empty`);
+        return;
+      }
+
+      // Check for obviously invalid content
+      if (content.trim() === '{}') {
+        setError(`File ${file.name} contains only empty JSON object`);
+        return;
+      }
+
+      // Validate JSON files
+      if (file.name.endsWith('.json')) {
+        try {
+          const parsed = JSON.parse(content);
+          
+          // For package.json, verify it has expected structure
+          if (file.name === 'package.json') {
+            if (!parsed.name && !parsed.dependencies && !parsed.devDependencies) {
+              console.warn('package.json appears to be missing standard fields');
             }
-            
-            const content = await file.text();
-            
-            // Basic validation that we got actual content
-            if (!content.trim()) {
-              throw new Error(`File ${filename} is empty`);
-            }
-            
-            // Check for obviously invalid content (but allow valid JSON objects)
-            if (content.trim() === '{}') {
-              // Only reject if it's literally just empty braces
-              throw new Error(`File ${filename} contains only empty JSON object`);
-            }
-            
-            // Try to parse JSON files to validate them
-            if (filename.endsWith('.json')) {
-              try {
-                const parsed = JSON.parse(content);
-                
-                // For package.json, verify it has expected structure
-                if (filename === 'package.json') {
-                  if (!parsed.name && !parsed.dependencies && !parsed.devDependencies) {
-                    // Package.json validation - could show user warning in UI instead
-                  }
-                }
-              } catch (jsonError) {
-                throw new Error(`File ${filename} contains invalid JSON: ${jsonError instanceof Error ? jsonError.message : 'Unknown JSON error'}`);
-              }
-            }
-            
-            manifest_files[filename] = content;
-          } catch (fileError) {
-            setError(`Error reading file ${filename}: ${fileError instanceof Error ? fileError.message : 'Unknown error'}`);
-            return;
           }
+        } catch (jsonError) {
+          setError(`File ${file.name} contains invalid JSON: ${jsonError instanceof Error ? jsonError.message : 'Unknown JSON error'}`);
+          return;
         }
       }
 
-
-      const scanRequest: ScanRequest = {
-        manifest_files,
+      // Create scan request
+      const newScanRequest: ScanRequest = {
+        manifest_files: {
+          [file.name]: content
+        },
         options: {
           include_dev_dependencies: options.include_dev_dependencies,
           ignore_severities: options.ignore_severities,
@@ -112,54 +93,26 @@ const ScanPage: React.FC = () => {
         }
       };
 
-      const response = await axios.post('/api/scan', scanRequest);
-      const { job_id } = response.data;
+      // Store scan request and show loading modal
+      setScanRequest(newScanRequest);
+      setShowLoadingModal(true);
 
-      // Redirect to scan results page
-      navigate(`/report/${job_id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to start scan');
-    } finally {
-      setIsUploading(false);
+      setError(err instanceof Error ? err.message : 'Failed to prepare scan');
     }
   };
 
 
-  const validateConsistency = async () => {
-    if (!hasBothPackageFiles) return;
-    
-    setConsistencyResult(null);
-    setIsValidatingConsistency(true);
-    setError(null);
-    
-    try {
-      // Read file contents
-      const manifest_files: Record<string, string> = {};
-      
-      for (const [filename, file] of Object.entries(files)) {
-        if (filename === 'package.json' || filename === 'package-lock.json') {
-          const content = await file.text();
-          manifest_files[filename] = content;
-        }
-      }
+  // Modal handlers
+  const handleModalSuccess = (jobId: string) => {
+    setShowLoadingModal(false);
+    setScanRequest(null);
+    navigate(`/report/${jobId}`);
+  };
 
-      const consistencyRequest = {
-        manifest_files,
-        options: {
-          include_dev_dependencies: options.include_dev_dependencies,
-          ignore_severities: options.ignore_severities,
-          ignore_rules: []
-        }
-      };
-
-      const response = await axios.post('/api/validate-consistency', consistencyRequest);
-      setConsistencyResult(response.data);
-    } catch (err) {
-      console.error('Consistency validation failed:', err);
-      setError(err instanceof Error ? err.message : 'Failed to validate consistency');
-    } finally {
-      setIsValidatingConsistency(false);
-    }
+  const handleModalClose = () => {
+    setShowLoadingModal(false);
+    setScanRequest(null);
   };
 
 
@@ -175,8 +128,13 @@ const ScanPage: React.FC = () => {
           <Card className="border-0 shadow-sm">
             <Card.Body>
               <h1 className="display-6 fw-bold mb-2">Start New Scan</h1>
-              <p className="lead mb-0">
-                Upload your dependency files to scan for vulnerabilities
+              <p className="lead">
+                Upload a dependency file to scan for vulnerabilities
+              </p>
+              <p className="text-muted mb-0">
+                <small>
+                  ⏱️ Note: Security scans query the OSV database and may take a few minutes depending on the number of dependencies
+                </small>
               </p>
             </Card.Body>
           </Card>
@@ -187,20 +145,19 @@ const ScanPage: React.FC = () => {
         {/* File Upload */}
         <Card className="mb-4">
           <Card.Header>
-            <Card.Title className="mb-0">Upload Dependency Files</Card.Title>
+            <Card.Title className="mb-0">Upload Dependency File</Card.Title>
           </Card.Header>
           <Card.Body>
             <div className="border border-2 border-dashed rounded p-4 text-center" style={{ borderColor: 'var(--bs-border-color)', backgroundColor: 'var(--bs-tertiary-bg)' }}>
               <Upload size={48} className="mx-auto mb-3 text-muted" />
               <Form.Group>
                 <Form.Label htmlFor="file-upload" className="btn btn-outline-primary mb-2">
-                  Drop files here or click to upload
+                  Drop file here or click to upload
                 </Form.Label>
                 <Form.Control
                   id="file-upload"
                   name="file-upload"
                   type="file"
-                  multiple
                   hidden
                   accept=".json,.txt,.lock,.toml"
                   onChange={handleFileUpload}
@@ -211,168 +168,33 @@ const ScanPage: React.FC = () => {
               </small>
             </div>
 
-            {/* Uploaded Files */}
-            {Object.keys(files).length > 0 && (
+            {/* Uploaded File */}
+            {file && (
               <div className="mt-4">
-                <h6 className="fw-semibold mb-2">Uploaded Files</h6>
+                <h6 className="fw-semibold mb-2">Uploaded File</h6>
                 <ListGroup>
-                  {Object.entries(files).map(([filename, file]) => (
-                    <ListGroup.Item
-                      key={filename}
-                      className="d-flex justify-content-between align-items-center"
+                  <ListGroup.Item className="d-flex justify-content-between align-items-center">
+                    <div className="d-flex align-items-center">
+                      <FileText size={16} className="me-2 text-muted" />
+                      <span className="fw-medium">{file.name}</span>
+                      <Badge bg="light" text="muted" className="ms-2">
+                        {Math.round(file.size / 1024)}KB
+                      </Badge>
+                    </div>
+                    <Button
+                      variant="outline-danger"
+                      size="sm"
+                      onClick={removeFile}
                     >
-                      <div className="d-flex align-items-center">
-                        <FileText size={16} className="me-2 text-muted" />
-                        <span className="fw-medium">{filename}</span>
-                        <Badge bg="light" text="muted" className="ms-2">
-                          {Math.round(file.size / 1024)}KB
-                        </Badge>
-                      </div>
-                      <Button
-                        variant="outline-danger"
-                        size="sm"
-                        onClick={() => removeFile(filename)}
-                      >
-                        <X size={14} />
-                      </Button>
-                    </ListGroup.Item>
-                  ))}
+                      <X size={14} />
+                    </Button>
+                  </ListGroup.Item>
                 </ListGroup>
               </div>
             )}
           </Card.Body>
         </Card>
 
-        {/* Consistency Validation */}
-        {hasBothPackageFiles && (
-          <Card className="mb-4">
-            <Card.Header className="bg-info-subtle">
-              <Card.Title className="mb-0 d-flex align-items-center">
-                <CheckCircle size={18} className="me-2 text-info" />
-                Package Consistency Validation
-              </Card.Title>
-            </Card.Header>
-            <Card.Body>
-              <div className="d-flex align-items-start">
-                <div className="flex-grow-1">
-                  <p className="mb-2">
-                    Both <code>package.json</code> and <code>package-lock.json</code> detected. 
-                    Validate that they produce consistent vulnerability scan results.
-                  </p>
-                  <small className="text-muted">
-                    This checks for differences in version resolution that might cause inconsistent results.
-                  </small>
-                </div>
-                <Button
-                  variant="info"
-                  size="sm"
-                  onClick={validateConsistency}
-                  disabled={isValidatingConsistency}
-                  className="ms-3"
-                >
-                  {isValidatingConsistency ? (
-                    <>
-                      <div className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></div>
-                      Validating...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle size={16} className="me-2" />
-                      Validate Consistency
-                    </>
-                  )}
-                </Button>
-              </div>
-              
-              {/* Consistency Results */}
-              {consistencyResult && (
-                <div className="mt-3">
-                  <Alert 
-                    variant={consistencyResult.is_consistent ? 'success' : 'warning'}
-                    className="mb-3"
-                  >
-                    <div className="d-flex align-items-center">
-                      {consistencyResult.is_consistent ? (
-                        <CheckCircle size={18} className="me-2" />
-                      ) : (
-                        <AlertTriangle size={18} className="me-2" />
-                      )}
-                      <strong>
-                        {consistencyResult.is_consistent 
-                          ? 'Files are consistent' 
-                          : 'Inconsistencies detected'}
-                      </strong>
-                    </div>
-                  </Alert>
-                  
-                  {/* Metrics Comparison */}
-                  {consistencyResult.analysis?.metrics && (
-                    <div className="row mb-3">
-                      <div className="col-md-6">
-                        <Card className="border-primary">
-                          <Card.Header className="bg-primary-subtle">
-                            <small className="fw-semibold">package.json</small>
-                          </Card.Header>
-                          <Card.Body className="py-2">
-                            <div className="d-flex justify-content-between">
-                              <span>Vulnerabilities:</span>
-                              <Badge bg="danger">{consistencyResult.analysis.metrics.package_json.vulnerabilities}</Badge>
-                            </div>
-                            <div className="d-flex justify-content-between">
-                              <span>Dependencies:</span>
-                              <Badge bg="info">{consistencyResult.analysis.metrics.package_json.dependencies}</Badge>
-                            </div>
-                          </Card.Body>
-                        </Card>
-                      </div>
-                      <div className="col-md-6">
-                        <Card className="border-success">
-                          <Card.Header className="bg-success-subtle">
-                            <small className="fw-semibold">package-lock.json</small>
-                          </Card.Header>
-                          <Card.Body className="py-2">
-                            <div className="d-flex justify-content-between">
-                              <span>Vulnerabilities:</span>
-                              <Badge bg="danger">{consistencyResult.analysis.metrics.package_lock.vulnerabilities}</Badge>
-                            </div>
-                            <div className="d-flex justify-content-between">
-                              <span>Dependencies:</span>
-                              <Badge bg="info">{consistencyResult.analysis.metrics.package_lock.dependencies}</Badge>
-                            </div>
-                          </Card.Body>
-                        </Card>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Recommendations */}
-                  {consistencyResult.recommendations && consistencyResult.recommendations.length > 0 && (
-                    <div className="mb-2">
-                      <h6 className="fw-semibold mb-2">Recommendations:</h6>
-                      <ul className="mb-0 small">
-                        {consistencyResult.recommendations.slice(0, 3).map((rec: string, index: number) => (
-                          <li key={index}>{rec}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  
-                  {/* Warnings */}
-                  {consistencyResult.warnings && consistencyResult.warnings.length > 0 && (
-                    <div>
-                      <h6 className="fw-semibold mb-2 text-warning">Warnings:</h6>
-                      <ul className="mb-0 small text-muted">
-                        {consistencyResult.warnings.slice(0, 3).map((warning: string, index: number) => (
-                          <li key={index}>{warning}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              )}
-            </Card.Body>
-          </Card>
-        )}
 
         {/* Scan Options */}
         <Card className="mb-4">
@@ -428,28 +250,32 @@ const ScanPage: React.FC = () => {
         )}
 
 
-        {/* Submit Button or Loading State */}
-        {isUploading ? (
-          <div className="text-center">
-            <NewtonsCradleLoader 
-              message="Starting Scan..."
-              progress={25}
-              className="mb-3"
-            />
-          </div>
-        ) : (
-          <div className="d-flex justify-content-end">
-            <Button
-              type="submit"
-              variant="light"
-              className="text-primary"
-              size="lg"
-            >
-              Start Vulnerability Scan
-            </Button>
-          </div>
-        )}
+        {/* Submit Button */}
+        <div className="d-flex flex-column align-items-end">
+          <small className="text-muted mb-2">
+            🔍 Scanning may take 2-5 minutes depending on project size
+          </small>
+          <Button
+            type="submit"
+            variant="light"
+            className="text-primary"
+            size="lg"
+            disabled={!file}
+          >
+            Start Vulnerability Scan
+          </Button>
+        </div>
       </Form>
+      
+      {/* Loading Modal */}
+      {showLoadingModal && scanRequest && (
+        <ScanLoadingModal
+          show={showLoadingModal}
+          onHide={handleModalClose}
+          onSuccess={handleModalSuccess}
+          scanRequest={scanRequest}
+        />
+      )}
     </Container>
   );
 };

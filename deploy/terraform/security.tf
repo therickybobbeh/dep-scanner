@@ -84,11 +84,14 @@ resource "aws_iam_role_policy" "github_actions" {
           "ecs:UpdateService",
           "ecs:DescribeServices",
           "ecs:DescribeTaskDefinition",
-          "ecs:RegisterTaskDefinition"
+          "ecs:RegisterTaskDefinition",
+          "ecs:ListTaskDefinitions"
         ]
         Resource = [
           "arn:aws:ecs:${local.region}:${local.account_id}:service/${aws_ecs_cluster.main.name}/${aws_ecs_service.backend.name}",
           "arn:aws:ecs:${local.region}:${local.account_id}:service/${aws_ecs_cluster.main.name}/${aws_ecs_service.frontend.name}",
+          "arn:aws:ecs:${local.region}:${local.account_id}:task-definition/${local.name_prefix}-backend:*",
+          "arn:aws:ecs:${local.region}:${local.account_id}:task-definition/${local.name_prefix}-frontend:*",
           "*"
         ]
       },

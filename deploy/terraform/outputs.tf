@@ -12,9 +12,9 @@ output "access_instructions" {
     5. In the Network section, find the Public IP
     
     Access URLs (replace [PUBLIC_IP] with actual IP):
-    - Frontend: http://[PUBLIC_IP]:${var.frontend_port}
-    - Backend API: http://[PUBLIC_IP]:${var.backend_port}/health
-    - API Docs: http://[PUBLIC_IP]:${var.backend_port}/docs
+    - Frontend: http://[PUBLIC_IP]:8080
+    - Backend API: http://[PUBLIC_IP]:8000/health
+    - API Docs: http://[PUBLIC_IP]:8000/docs
   EOT
 }
 
