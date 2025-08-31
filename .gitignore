@@ -99,10 +99,26 @@ backend/dist/
 backend/build/
 
 # Cache and databases
-osv_cache.db
-*.sqlite3
-*.sqlite
-*.db
+
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfvars
+!terraform.tfvars.example
+*.tfplan
+.terraform.lock.hcl
+crash.log
+crash.*.log
+
+# AWS
+.aws/
+.aws-sam/
+samconfig.toml
+*_output.json
+*.pem
+*aws-credentials*
+*.aws-config*
 
 # Logs
 *.log
