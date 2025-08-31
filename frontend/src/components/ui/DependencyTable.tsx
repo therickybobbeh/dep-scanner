@@ -16,7 +16,8 @@ interface Dependency {
   cve_ids?: string[];
   advisory_url?: string;
   fixed_range?: string;
-  parent?: string;
+  immediate_parent?: string; // Direct dependency that introduced this transitive vulnerability
+  parent?: string; // Backward compatibility
   path?: string[];
   is_direct?: boolean;
   required_by?: string[];
@@ -206,7 +207,7 @@ const DependencyTable: React.FC<DependencyTableProps> = ({
                 </Button>
               </th>
               <th>CVSS Score</th>
-              <th>Type</th>
+              <th>Via</th>
               <th>Vulnerability ID</th>
               <th>Published</th>
               <th>Quick Actions</th>
@@ -285,14 +286,14 @@ const DependencyTable: React.FC<DependencyTableProps> = ({
                       )}
                     </td>
                     <td>
-                      {dep.is_direct !== undefined ? (
-                        dep.is_direct ? (
-                          <Badge bg="primary">Direct</Badge>
-                        ) : (
-                          <Badge bg="secondary">Transitive</Badge>
-                        )
+                      {dep.immediate_parent ? (
+                        <span className="text-muted small">
+                          {dep.immediate_parent}
+                        </span>
+                      ) : dep.is_direct ? (
+                        <Badge bg="primary" className="small">direct</Badge>
                       ) : (
-                        <Badge bg="light" text="dark">Unknown</Badge>
+                        <Badge bg="secondary" className="small">transitive</Badge>
                       )}
                     </td>
                     <td>
@@ -385,12 +386,12 @@ const DependencyTable: React.FC<DependencyTableProps> = ({
                             </div>
                             
                             <div className="col-md-4">
-                              {!dep.is_direct && dep.parent && (
+                              {!dep.is_direct && (dep.immediate_parent || dep.parent) && (
                                 <div className="mb-3">
-                                  <strong className="text-warning">📦 Parent Dependency:</strong>
+                                  <strong className="text-warning">📦 Direct Parent:</strong>
                                   <div className="mt-1">
                                     <code className="bg-secondary text-dark p-1 rounded">
-                                      {dep.parent}
+                                      {dep.immediate_parent || dep.parent}
                                     </code>
                                   </div>
                                 </div>

@@ -49,7 +49,9 @@ def export_json_report(report: Report, output_path: str = None) -> Dict[str, Any
             "cve_ids": vuln.cve_ids,
             "advisory_url": vuln.advisory_url,
             "type": "direct" if dep_match and dep_match.is_direct else "transitive",
-            "dependency_path": dep_match.path if dep_match else []
+            "immediate_parent": vuln.immediate_parent,
+            "dependency_path": dep_match.path if dep_match else [],
+            "cvss_score": vuln.cvss_score
         }
         
         # Add optional fields if present

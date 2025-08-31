@@ -3,27 +3,13 @@ import './NewtonsCradleLoader.css';
 
 interface NewtonsCradleLoaderProps {
   message?: string;
-  progress?: number;
   className?: string;
 }
 
 const NewtonsCradleLoader: React.FC<NewtonsCradleLoaderProps> = ({ 
   message = "Processing...", 
-  progress = 0,
   className = "" 
 }) => {
-  const getContextualMessage = (progress: number): string => {
-    if (progress < 15) return "🔍 Processing your manifest files...";
-    if (progress < 40) return "📦 Resolving dependency tree...";
-    if (progress < 60) return "🔗 Generating lock files if needed...";
-    if (progress < 85) return "🛡️ Querying OSV database for vulnerabilities...";
-    if (progress < 95) return "📊 This can take a while - analyzing security data...";
-    return "✨ Almost done! Generating your security report...";
-  };
-
-  const displayMessage = message === "Processing..." && progress > 0 
-    ? getContextualMessage(progress) 
-    : message;
 
   return (
     <div className={`newtons-cradle-loader ${className}`} role="status" aria-live="polite">
@@ -46,12 +32,7 @@ const NewtonsCradleLoader: React.FC<NewtonsCradleLoaderProps> = ({
       </div>
       
       <div className="loading-message" aria-live="polite">
-        <p className="message-text">{displayMessage}</p>
-        {progress > 0 && (
-          <p className="progress-text" aria-label={`Progress: ${Math.round(progress)}%`}>
-            {Math.round(progress)}% complete
-          </p>
-        )}
+        <p className="message-text">{message}</p>
       </div>
     </div>
   );

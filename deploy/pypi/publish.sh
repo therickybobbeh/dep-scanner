@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# DepScan Package Publishing Script
-# Publishes to TestPyPI or PyPI
+# Multi-Vuln-Scanner Package Publishing Script
+# Currently: TestPyPI only (production PyPI disabled)
 
 set -e  # Exit on any error
 
@@ -17,27 +17,24 @@ ENVIRONMENT="test"
 
 # Parse command line arguments
 if [ "$1" = "prod" ] || [ "$1" = "production" ]; then
-    ENVIRONMENT="prod"
-elif [ "$1" = "test" ] || [ "$1" = "testpypi" ]; then
+    echo -e "${RED}❌ Production PyPI publishing is currently DISABLED${NC}"
+    echo -e "${YELLOW}We are using TestPyPI only for now${NC}"
+    echo "Use: $0 test (or run without arguments)"
+    exit 1
+elif [ "$1" = "test" ] || [ "$1" = "testpypi" ] || [ -z "$1" ]; then
     ENVIRONMENT="test"
 elif [ -n "$1" ]; then
     echo -e "${RED}❌ Invalid environment: $1${NC}"
-    echo "Usage: $0 [test|prod]"
-    echo "  test: Publish to TestPyPI (default)"
-    echo "  prod: Publish to PyPI"
+    echo "Usage: $0 [test]"
+    echo "  test: Publish to TestPyPI (default and only option)"
+    echo "  prod: DISABLED - Production PyPI publishing not available yet"
     exit 1
 fi
 
-# Set repository URL based on environment
-if [ "$ENVIRONMENT" = "prod" ]; then
-    REPO_URL="https://upload.pypi.org/legacy/"
-    REPO_NAME="PyPI"
-    echo -e "${BLUE}📦 Publishing to PyPI (PRODUCTION)${NC}"
-else
-    REPO_URL="https://test.pypi.org/legacy/"
-    REPO_NAME="TestPyPI"
-    echo -e "${BLUE}📦 Publishing to TestPyPI (testing)${NC}"
-fi
+# Set repository URL (TestPyPI only)
+REPO_URL="https://test.pypi.org/legacy/"
+REPO_NAME="TestPyPI"
+echo -e "${BLUE}📦 Publishing to TestPyPI (testing only)${NC}"
 
 echo "=================================="
 
@@ -67,29 +64,11 @@ echo ""
 echo -e "${BLUE}📦 Packages to upload:${NC}"
 ls -la dist/
 
-# Production safety check
-if [ "$ENVIRONMENT" = "prod" ]; then
-    echo ""
-    echo -e "${YELLOW}⚠️  WARNING: You are about to publish to PyPI (PRODUCTION)${NC}"
-    echo -e "${YELLOW}This will make the package publicly available to all pip users.${NC}"
-    echo ""
-    read -p "Are you sure you want to continue? (y/N): " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        echo "Publishing cancelled."
-        exit 0
-    fi
-    
-    # Additional check - ensure TestPyPI was tested first
-    echo ""
-    echo -e "${YELLOW}Have you tested this version on TestPyPI first? (y/N): ${NC}"
-    read -p "" -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        echo -e "${YELLOW}Please test on TestPyPI first with: ./deploy/pypi/publish.sh test${NC}"
-        exit 0
-    fi
-fi
+# TestPyPI confirmation
+echo ""
+echo -e "${YELLOW}📝 Publishing to TestPyPI for testing and validation${NC}"
+echo -e "${YELLOW}This is safe - TestPyPI is for testing packages before production${NC}"
+echo ""
 
 # Run final validation
 echo -e "${YELLOW}🔍 Running final validation...${NC}"
@@ -105,13 +84,8 @@ if twine upload --repository-url "$REPO_URL" dist/* 2>/dev/null; then
 else
     echo -e "${YELLOW}🔐 Stored credentials not found or invalid. Please enter credentials:${NC}"
     echo ""
-    if [ "$ENVIRONMENT" = "prod" ]; then
-        echo "Enter your PyPI username (__token__ if using API token):"
-        echo "Enter your PyPI password (API token if username is __token__):"
-    else
-        echo "Enter your TestPyPI username (__token__ if using API token):"
-        echo "Enter your TestPyPI password (API token if username is __token__):"
-    fi
+    echo "Enter your TestPyPI username (__token__ if using API token):"
+    echo "Enter your TestPyPI password (API token if username is __token__):"
     echo ""
     
     twine upload --repository-url "$REPO_URL" dist/*
@@ -122,32 +96,24 @@ echo ""
 echo -e "${GREEN}🎉 Package published successfully to ${REPO_NAME}!${NC}"
 echo ""
 
-if [ "$ENVIRONMENT" = "prod" ]; then
-    echo -e "${BLUE}📦 Your package is now available:${NC}"
-    echo "  pip install dep-scan==$VERSION"
-    echo ""
-    echo -e "${BLUE}Package URL:${NC}"
-    echo "  https://pypi.org/project/dep-scan/$VERSION/"
-    echo ""
-    echo -e "${BLUE}Next steps:${NC}"
-    echo "  1. Test installation: pip install --upgrade dep-scan"
-    echo "  2. Create GitHub release: git tag v$VERSION && git push origin v$VERSION"
-    echo "  3. Update documentation with new features"
-    echo "  4. Announce the release"
-else
-    echo -e "${BLUE}📦 Your package is now available on TestPyPI:${NC}"
-    echo "  pip install --index-url https://test.pypi.org/simple/ dep-scan==$VERSION"
-    echo ""
-    echo -e "${BLUE}Package URL:${NC}"
-    echo "  https://test.pypi.org/project/dep-scan/$VERSION/"
-    echo ""
-    echo -e "${BLUE}Next steps:${NC}"
-    echo "  1. Test installation: ./deploy/pypi/test.sh"
-    echo "  2. If tests pass, publish to PyPI: ./deploy/pypi/publish.sh prod"
-fi
+echo -e "${BLUE}📦 Your package is now available on TestPyPI:${NC}"
+echo "  pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ multi-vuln-scanner==$VERSION"
+echo ""
+echo -e "${BLUE}Package URL:${NC}"
+echo "  https://test.pypi.org/project/multi-vuln-scanner/$VERSION/"
+echo ""
+echo -e "${BLUE}Next steps:${NC}"
+echo "  1. Test installation: make -f Makefile.publish verify-install-test"
+echo "  2. Run functionality tests: scripts/test-package.py"
+echo "  3. Monitor cross-platform tests in GitHub Actions"
+echo "  4. Create GitHub release when ready: git tag v$VERSION && git push origin v$VERSION"
+echo ""
+echo -e "${YELLOW}Production PyPI:${NC}"
+echo "  Production publishing will be enabled after thorough TestPyPI validation"
 
 echo ""
 echo -e "${BLUE}Remember:${NC}"
-echo "  • Package versions cannot be re-uploaded"
-echo "  • Always test on TestPyPI before publishing to PyPI"
+echo "  • Package versions cannot be re-uploaded (even on TestPyPI)"
+echo "  • TestPyPI packages are automatically cleaned up periodically"
 echo "  • Keep your API tokens secure"
+echo "  • Production PyPI will be enabled once TestPyPI validation is complete"

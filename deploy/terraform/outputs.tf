@@ -3,19 +3,29 @@
 output "access_instructions" {
   description = "Instructions for accessing the deployed services"
   value = <<-EOT
-    Services deployed with direct public access:
+    Services deployed with Application Load Balancer:
     
-    1. Go to AWS ECS Console: https://console.aws.amazon.com/ecs/
-    2. Click on cluster: ${aws_ecs_cluster.main.name}
-    3. Click on Services, then click on a service
-    4. Click on Tasks tab, then click on a running task
-    5. In the Network section, find the Public IP
+    🌐 **Stable Access URLs:**
+    - Frontend: http://${aws_lb.main.dns_name}
+    - Backend API: http://${aws_lb.main.dns_name}/api/health
+    - API Docs: http://${aws_lb.main.dns_name}/api/docs
     
-    Access URLs (replace [PUBLIC_IP] with actual IP):
-    - Frontend: http://[PUBLIC_IP]:8080
-    - Backend API: http://[PUBLIC_IP]:8000/health
-    - API Docs: http://[PUBLIC_IP]:8000/docs
+    ✅ These URLs remain consistent across deployments!
+    
+    📍 AWS Console Access:
+    - ECS Console: https://console.aws.amazon.com/ecs/
+    - Load Balancer Console: https://console.aws.amazon.com/ec2/v2/home#LoadBalancers
   EOT
+}
+
+output "alb_dns_name" {
+  description = "DNS name of the Application Load Balancer"
+  value       = aws_lb.main.dns_name
+}
+
+output "alb_zone_id" {
+  description = "Zone ID of the Application Load Balancer"
+  value       = aws_lb.main.zone_id
 }
 
 output "backend_ecr_repository_url" {

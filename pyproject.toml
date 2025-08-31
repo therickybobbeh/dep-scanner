@@ -3,9 +3,9 @@ requires = ["setuptools>=70.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "dep-scan"
+name = "multi-vuln-scanner"
 version = "1.0.0"
-description = "Professional-grade dependency vulnerability scanner with CLI and web interfaces"
+description = "Professional-grade multi-ecosystem dependency vulnerability scanner with CLI and web interfaces"
 readme = {text = "Simple dependency vulnerability scanner", content-type = "text/plain"}
 license = {text = "MIT"}
 authors = [
@@ -73,14 +73,15 @@ dev = [
 ]
 
 [project.scripts]
-dep-scan = "backend.cli.main:app"
+multi-vuln-scanner = "backend.cli.main:app"
+dep-scan = "backend.cli.main:app"  # Backward compatibility alias
 
 [project.urls]
-Homepage = "https://github.com/therickybobbeh/dep-scanner"
-Documentation = "https://github.com/therickybobbeh/dep-scanner/tree/main/docs"
-Repository = "https://github.com/therickybobbeh/dep-scanner.git"
-Issues = "https://github.com/therickybobbeh/dep-scanner/issues"
-Changelog = "https://github.com/therickybobbeh/dep-scanner/releases"
+Homepage = "https://github.com/therickybobbeh/multi-vuln-scanner"
+Documentation = "https://github.com/therickybobbeh/multi-vuln-scanner/tree/main/docs"
+Repository = "https://github.com/therickybobbeh/multi-vuln-scanner.git"
+Issues = "https://github.com/therickybobbeh/multi-vuln-scanner/issues"
+Changelog = "https://github.com/therickybobbeh/multi-vuln-scanner/releases"
 
 [tool.setuptools]
 py-modules = ["backend.cli.main"]

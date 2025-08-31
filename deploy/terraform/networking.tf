@@ -20,22 +20,22 @@ resource "aws_security_group" "ecs_tasks" {
   description = "Security group for ECS tasks with direct public access"
   vpc_id      = data.aws_vpc.default.id
 
-  # Allow direct public access to backend API
+  # Allow ALB access to backend API
   ingress {
-    description = "Backend API - Direct Public Access"
-    from_port   = var.backend_port
-    to_port     = var.backend_port
-    protocol    = "tcp"
-    cidr_blocks = var.allowed_cidrs
+    description     = "Backend API from ALB"
+    from_port       = var.backend_port
+    to_port         = var.backend_port
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb.id]
   }
 
-  # Allow direct public access to frontend
+  # Allow ALB access to frontend
   ingress {
-    description = "Frontend - Direct Public Access"
-    from_port   = var.frontend_port
-    to_port     = var.frontend_port
-    protocol    = "tcp"
-    cidr_blocks = var.allowed_cidrs
+    description     = "Frontend from ALB"
+    from_port       = 8080
+    to_port         = 8080
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb.id]
   }
 
   # Allow inter-service communication

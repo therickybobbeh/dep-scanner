@@ -90,17 +90,6 @@ const formatPublishedDate = (dateString?: string): string => {
   }
 };
 
-// Get package.json dependencies for accurate direct vs transitive classification
-const getDirectDependencies = () => {
-  // This would ideally come from the scan metadata, but we can infer from common patterns
-  // The CLI should provide this information, but as a fallback we can check common JS dependencies
-  const commonDirectDeps = [
-    'axios', 'react', 'react-dom', 'react-router-dom', 'react-bootstrap', 
-    'bootstrap', 'lucide-react', 'recharts', 'date-fns'
-  ];
-  return new Set(commonDirectDeps);
-};
-
 // Normalize CLI report data structure
 const normalizeReportData = (report: CLIReport): CLIVulnerability[] => {
   // Handle both old and new CLI report formats
@@ -112,27 +101,15 @@ const normalizeReportData = (report: CLIReport): CLIVulnerability[] => {
     vulnerabilities = report.vulnerabilities;
   }
   
-  const directDeps = getDirectDependencies();
-  
   // Ensure each vulnerability has required fields and CVSS scores
   return vulnerabilities.map(vuln => {
-    // Use the CLI-provided type field first (most accurate)
+    // Use ONLY the CLI-provided type field - never guess or make up data
     let dependencyType = vuln.type;
     
-    // If no type provided, try to infer from package name and dependency path
+    // If CLI didn't provide type field, this is a backend bug that needs fixing
     if (!dependencyType) {
-      // Check if package is in direct dependencies
-      if (directDeps.has(vuln.package)) {
-        dependencyType = 'direct';
-      } 
-      // Check if dependency path suggests direct (package is root in path)
-      else if (vuln.dependency_path && vuln.dependency_path.length === 1) {
-        dependencyType = 'direct';
-      }
-      // Default to transitive if we can't determine
-      else {
-        dependencyType = 'transitive';
-      }
+      console.error(`Missing dependency type for package: ${vuln.package}`, vuln);
+      dependencyType = 'unknown'; // Make it obvious something is wrong
     }
     
     return {
@@ -376,7 +353,6 @@ const ReportPage: React.FC = () => {
           <Card.Body>
             <NewtonsCradleLoader 
               message={progress?.current_step || 'Processing...'}
-              progress={progress?.progress_percent || 0}
             />
           </Card.Body>
         </Card>

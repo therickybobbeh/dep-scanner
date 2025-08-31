@@ -111,11 +111,11 @@ resource "aws_ecs_task_definition" "backend" {
         },
         {
           name  = "ALLOWED_HOSTS"
-          value = "localhost,127.0.0.1,127.0.0.1:8000,localhost:8000,0.0.0.0,*"
+          value = "localhost,127.0.0.1,depscan-prod-alb-1243821159.us-east-1.elb.amazonaws.com"
         },
         {
           name  = "CORS_ORIGINS"
-          value = "http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173,http://3.238.84.248:8080"
+          value = "http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173,http://depscan-prod-alb-1243821159.us-east-1.elb.amazonaws.com"
         }
       ]
 
@@ -219,6 +219,14 @@ resource "aws_ecs_service" "backend" {
     assign_public_ip = true
   }
 
+  load_balancer {
+    target_group_arn = aws_lb_target_group.backend.arn
+    container_name   = "backend"
+    container_port   = var.backend_port
+  }
+
+  depends_on = [aws_lb_listener.frontend]
+
   tags = {
     Name = "${local.name_prefix}-backend-service"
   }
@@ -237,6 +245,14 @@ resource "aws_ecs_service" "frontend" {
     subnets          = data.aws_subnets.default.ids
     assign_public_ip = true
   }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.frontend.arn
+    container_name   = "frontend"
+    container_port   = 8080
+  }
+
+  depends_on = [aws_lb_listener.frontend]
 
   tags = {
     Name = "${local.name_prefix}-frontend-service"

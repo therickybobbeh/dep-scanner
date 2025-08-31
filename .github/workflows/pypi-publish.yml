@@ -1,0 +1,160 @@
+name: Publish to TestPyPI
+
+on:
+  # Manual trigger for testing
+  workflow_dispatch:
+      
+  # Trigger on release creation (TestPyPI only for now)
+  release:
+    types: [published]
+    
+  # Trigger on version tags (TestPyPI only for now)
+  push:
+    tags:
+      - 'v*.*.*'
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  # Build and test the package
+  build-and-test:
+    name: Build and Test Package
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Full history for proper versioning
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+    
+    - name: Install build dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install build twine check-manifest
+    
+    - name: Verify package metadata
+      run: |
+        python -m build --wheel --sdist
+        twine check dist/*
+        check-manifest
+    
+    - name: Install package for testing
+      run: |
+        pip install dist/*.whl
+    
+    - name: Test CLI installation
+      run: |
+        # Test that the CLI can be imported and shows help
+        multi-vuln-scanner --help
+        multi-vuln-scanner version
+        # Test backward compatibility
+        dep-scan --help
+        dep-scan version
+    
+    - name: Run basic functionality test
+      run: |
+        # Create a simple test package.json
+        echo '{"name": "test", "version": "1.0.0", "dependencies": {"lodash": "4.17.15"}}' > test-package.json
+        
+        # Test scanning (should find vulnerabilities in old lodash)
+        multi-vuln-scanner test-package.json --json test-results.json
+        
+        # Verify JSON output was created
+        ls -la test-results.json
+        python -c "import json; data = json.load(open('test-results.json')); print(f'Found {len(data.get(\"vulnerabilities\", []))} vulnerabilities')"
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: python-package-distributions
+        path: dist/
+        retention-days: 7
+
+  # Publish to TestPyPI first
+  publish-testpypi:
+    name: Publish to TestPyPI
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/multi-vuln-scanner
+    
+    permissions:
+      id-token: write  # IMPORTANT: for trusted publishing
+    
+    steps:
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: python-package-distributions
+        path: dist/
+    
+    - name: Publish to TestPyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        repository-url: https://test.pypi.org/legacy/
+        print-hash: true
+        verbose: true
+    
+    - name: Test installation from TestPyPI
+      run: |
+        # Wait a bit for TestPyPI to process
+        sleep 60
+        
+        # Try installing from TestPyPI
+        pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ multi-vuln-scanner
+        
+        # Test basic functionality
+        multi-vuln-scanner --help
+        multi-vuln-scanner version
+
+  # Note: Production PyPI publishing disabled for now
+  # Will be re-enabled after thorough TestPyPI testing
+
+  # Update GitHub release with TestPyPI links
+  update-release:
+    name: Update Release Notes
+    needs: publish-testpypi
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+    
+    permissions:
+      contents: write
+    
+    steps:
+    - name: Update release with PyPI information
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { owner, repo } = context.repo;
+          const release_id = context.payload.release.id;
+          
+          const updated_body = context.payload.release.body + `
+          
+          ## 📦 Installation (TestPyPI Only)
+          
+          Install from TestPyPI:
+          \`\`\`bash
+          pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ multi-vuln-scanner
+          \`\`\`
+          
+          ## 🔗 Links
+          - [TestPyPI Package](https://test.pypi.org/project/multi-vuln-scanner/)
+          
+          **Note**: Production PyPI publishing will be enabled after thorough testing on TestPyPI.
+          `;
+          
+          await github.rest.repos.updateRelease({
+            owner,
+            repo,
+            release_id,
+            body: updated_body
+          });

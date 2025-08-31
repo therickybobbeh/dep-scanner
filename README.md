@@ -1,8 +1,15 @@
-# 🛡️ DepScan - Professional Dependency Vulnerability Scanner
+# 🛡️ DepScan Pro - Professional Dependency Vulnerability Scanner
 
 > **Fast, accurate, and comprehensive vulnerability scanning for Python and JavaScript projects**
 
-DepScan is a professional-grade security tool that identifies known vulnerabilities in your project dependencies across multiple ecosystems. Get detailed security reports with actionable recommendations through both CLI and web interfaces.
+DepScan Pro is a professional-grade security tool that identifies known vulnerabilities in your project dependencies across multiple ecosystems. Get detailed security reports with actionable recommendations through both CLI and web interfaces.
+ 
+
+## 🌐 Live Demo
+- **Web Interface**: Available on request
+- **API Documentation**: Available when running locally at `http://localhost:8000/docs`
+
+
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
@@ -12,20 +19,23 @@ DepScan is a professional-grade security tool that identifies known vulnerabilit
 
 ### For Developers (CLI)
 ```bash
-# Install from PyPI
-pip install dep-scan
+# Install from TestPyPI (current)
+pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ multi-vuln-scanner
 
 # Scan your project
-dep-scan scan ./package.json
-dep-scan scan ./requirements.txt --output html
+multi-vuln-scanner scan ./package.json
+multi-vuln-scanner scan ./requirements.txt --output html
 ```
 
 ### For Teams (Web Interface)
 ```bash
 # Local development
-git clone https://github.com/your-repo/dep-scanner.git
-cd dep-scanner
-./scripts/dev-setup.sh
+git clone <your-repository-url>
+cd socketTest
+# Backend
+cd backend && pip install -e ".[dev]"
+# Frontend  
+cd ../frontend && npm install
 ```
 
 ### For Production (AWS Deployment)
@@ -68,7 +78,7 @@ cd deploy/terraform && terraform apply
 ## 📊 Example Output
 
 ```bash
-$ dep-scan scan package.json
+$ multi-vuln-scanner scan package.json
 
 🛡️ DepScan Security Report
 ═══════════════════════════════════════════
@@ -92,35 +102,24 @@ High Issues (4):
 ## 🔗 Documentation & Resources
 
 ### 📚 Core Documentation
-- **[📖 Complete Documentation](documentation/README.md)** - Comprehensive technical guide
 - **[🚀 Deployment Guide](DEPLOYMENT.md)** - All deployment options
-- **[🏗️ Architecture Overview](documentation/architecture/system-overview.md)** - Technical architecture
-- **[🔄 API Reference](documentation/api/rest-api.md)** - REST API documentation
+- **[🔄 API Reference](http://localhost:8000/docs)** - REST API documentation (when running locally)
 
 ### 🛠️ Development & Contributing
-- **[💻 Development Setup](documentation/guides/development-setup.md)** - Local development environment
-- **[🤝 Contributing Guide](documentation/guides/contributing.md)** - Code contribution workflow
-- **[🧪 Testing Strategy](documentation/guides/testing-strategy.md)** - Testing approach and coverage
-
-### 🎨 User Experience
-- **[📱 User Journeys](documentation/workflows/user-journeys.md)** - Complete user workflows
-- **[🔍 Scanning Process](documentation/workflows/scanning-process.md)** - How vulnerability detection works
-- **[⚙️ Configuration](documentation/guides/configuration.md)** - Customization options
+- **[💻 Quick Development Setup](#development-quick-start)** - See below for setup instructions
 
 ## 🚀 Deployment Options
 
 | Method | Best For | Complexity | Cost |
 |--------|----------|------------|------|
-| **pip install** | Individual developers | ⭐ | Free |
+| **TestPyPI install** | Individual developers | ⭐ | Free |
 | **Docker** | Teams & self-hosting | ⭐⭐ | Server costs only |
 | **AWS ECS** | Production web service | ⭐⭐⭐ | ~$17-27/month |
-| **PyPI Package** | Library distribution | ⭐⭐ | Free |
+| **Local Development** | Development/Testing | ⭐⭐ | Free |
 
 ### Quick Deployment Links
-- **[🐳 Docker Setup](deploy/docker/README.md)** - Container deployment
-- **[☁️ AWS Deployment](deploy/terraform/README.md)** - Production AWS infrastructure  
-- **[📦 PyPI Publishing](deploy/pypi/README.md)** - Package distribution
 - **[⚙️ Configuration Options](DEPLOYMENT.md#configuration-options)** - Environment setup
+- **[🚀 Full Deployment Guide](DEPLOYMENT.md)** - All deployment methods
 
 ## 🏗️ Architecture Overview
 
@@ -181,27 +180,28 @@ graph TB
 
 We welcome contributions of all kinds! Here's how to get started:
 
-- **🐛 Bug Reports**: [GitHub Issues](https://github.com/your-repo/dep-scanner/issues)
-- **💡 Feature Requests**: [GitHub Discussions](https://github.com/your-repo/dep-scanner/discussions)
+- **🐛 Bug Reports**: Create GitHub Issues in your repository
+- **💡 Feature Requests**: Use GitHub Discussions for feature requests
 - **📝 Documentation**: Improve guides and examples
-- **🔧 Code Contributions**: See [Contributing Guide](documentation/guides/contributing.md)
+- **🔧 Code Contributions**: Follow standard GitHub workflow with PRs
 - **📋 Testing**: Help expand test coverage
 
 ### Development Quick Start
 ```bash
 # Clone and setup
-git clone https://github.com/your-repo/dep-scanner.git
-cd dep-scanner
+git clone <your-repository-url>
+cd socketTest
 
 # Backend development
+cd backend
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 
 # Frontend development  
-cd frontend && npm install && npm run dev
+cd ../frontend && npm install && npm run dev
 
-# Run full test suite
-./scripts/test-all.sh
+# Run backend server
+cd ../backend && python -m backend.web.main
 ```
 
 ## 📄 License & Legal
@@ -215,10 +215,10 @@ cd frontend && npm install && npm run dev
 ## 🆘 Support & Help
 
 ### Getting Help
-- **📖 Documentation**: Start with [documentation/README.md](documentation/README.md)
-- **🔍 Search Issues**: Check [existing issues](https://github.com/your-repo/dep-scanner/issues)
-- **💬 Community**: Join [GitHub Discussions](https://github.com/your-repo/dep-scanner/discussions)
-- **📧 Security Issues**: security@yourdomain.com (private reporting)
+- **📖 Documentation**: Check this README and DEPLOYMENT.md
+- **🔍 Search Issues**: Check existing issues in your GitHub repository
+- **💬 Community**: Use GitHub Discussions for questions
+- **📧 Security Issues**: Report security issues privately through your repository
 
 ### Professional Support
 - **🏢 Enterprise Support**: Contact us for SLA-backed support
@@ -231,11 +231,12 @@ cd frontend && npm install && npm run dev
 
 ```bash
 # Get started in 30 seconds
-pip install dep-scan
-dep-scan scan package.json
+pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ multi-vuln-scanner
+multi-vuln-scanner scan package.json
 
-# Or try the web interface
-docker run -p 8000:8000 dep-scan:latest
+# Or run locally
+git clone <your-repository-url>
+cd socketTest/backend && python -m backend.web.main
 # Open http://localhost:8000
 ```
 

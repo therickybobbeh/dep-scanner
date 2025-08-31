@@ -4,21 +4,25 @@ DepScan offers multiple deployment options to fit different use cases, from simp
 
 ## 📦 Quick Install (Recommended for Most Users)
 
-### Option 1: Install from PyPI
+### Option 1: Install from TestPyPI (Current)
 ```bash
-pip install dep-scan
+pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ multi-vuln-scanner
 ```
 
 Then use anywhere:
 ```bash
+multi-vuln-scanner scan ./package.json
+multi-vuln-scanner scan ./requirements.txt --output csv
+# Backward compatibility
 dep-scan scan ./package.json
-dep-scan scan ./requirements.txt --output csv
 ```
+
+> **Note**: We currently publish only to TestPyPI. Production PyPI installation will be available in the future.
 
 ### Option 2: Local Development Install
 ```bash
-git clone https://github.com/yourusername/dep-scanner.git
-cd dep-scanner
+git clone <your-repository-url>
+cd socketTest/backend
 pip install -e .
 ```
 
@@ -73,33 +77,35 @@ docker-compose -f deploy/docker/docker-compose.yml up
 
 **For Library/CLI Distribution**
 
-Publish to PyPI for others to install via pip:
+Publish to TestPyPI (production PyPI coming later):
 
 ```bash
 # Build package
-./deploy/pypi/build.sh
+make -f Makefile.publish build
 
 # Test locally
-./deploy/pypi/test.sh
+make -f Makefile.publish test-package
 
 # Publish to TestPyPI
-./deploy/pypi/publish.sh test
+make -f Makefile.publish publish-test
 
-# Publish to PyPI
-./deploy/pypi/publish.sh prod
+# Production PyPI (disabled for now)
+# make -f Makefile.publish publish-prod
 ```
 
-**📖 Full PyPI Guide:** [deploy/pypi/README.md](deploy/pypi/README.md)
+**📖 Full TestPyPI Guide:** [.github/PYPI_SETUP.md](.github/PYPI_SETUP.md)
 
 ## 🎯 Choose Your Deployment
 
 | Use Case | Recommended Option | Cost | Complexity |
 |----------|-------------------|------|------------|
-| Personal CLI usage | `pip install dep-scan` | Free | ⭐ |
-| Team CLI usage | PyPI package | Free | ⭐⭐ |
+| Personal CLI usage | TestPyPI install | Free | ⭐ |
+| Team CLI usage | TestPyPI package | Free | ⭐⭐ |
 | Internal web app | Docker Compose | Server costs | ⭐⭐ |
 | Simple web service | AWS ECS MVP | ~$17-27/month | ⭐⭐⭐ |
 | Enterprise deployment | Custom scaling | Varies | ⭐⭐⭐⭐ |
+
+> **Note**: CLI installation currently uses TestPyPI. Production PyPI will be available once testing is complete.
 
 ## 🔧 Configuration Options
 
@@ -187,16 +193,16 @@ dep-scan scan --dry-run package.json
 ### Updates
 
 ```bash
-# Update CLI
-pip install --upgrade dep-scan
+# Update CLI (TestPyPI)
+pip install --upgrade --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ multi-vuln-scanner
 
 # Update AWS deployment
 git push origin main  # Triggers automatic deployment
 
-# Update PyPI package
+# Update TestPyPI package
 # Increment version in pyproject.toml, then:
-./deploy/pypi/build.sh
-./deploy/pypi/publish.sh prod
+make -f Makefile.publish build
+make -f Makefile.publish publish-test
 ```
 
 ### Monitoring
@@ -216,17 +222,17 @@ git push origin main  # Triggers automatic deployment
 
 ### Getting Help
 
-- **📖 Documentation**: Check specific deployment guides in `deploy/`
-- **🐛 Issues**: [GitHub Issues](https://github.com/yourusername/dep-scanner/issues)
-- **💬 Discussions**: [GitHub Discussions](https://github.com/yourusername/dep-scanner/discussions)
-- **📧 Security**: security@yourdomain.com
+- **📖 Documentation**: Check this guide and README.md
+- **🐛 Issues**: Create GitHub Issues in your repository
+- **💬 Discussions**: Use GitHub Discussions for questions
+- **📧 Security**: Report security issues through your repository
 
 ## 🚀 Quick Start Commands
 
 ```bash
-# Try it out immediately
-pip install dep-scan
-dep-scan scan package.json
+# Try it out immediately (TestPyPI)
+pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ multi-vuln-scanner
+multi-vuln-scanner scan package.json
 
 # Self-host with Docker
 docker run -p 8000:8000 dep-scan:latest
@@ -234,8 +240,8 @@ docker run -p 8000:8000 dep-scan:latest
 # Deploy to AWS (production)
 cd deploy && ./scripts/deploy.sh deploy
 
-# Publish new version
-./deploy/pypi/build.sh && ./deploy/pypi/publish.sh prod
+# Publish new version to TestPyPI
+make -f Makefile.publish build && make -f Makefile.publish publish-test
 ```
 
 ## 📈 Scaling & Performance

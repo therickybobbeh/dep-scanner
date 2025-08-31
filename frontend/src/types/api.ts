@@ -18,7 +18,7 @@ export interface Vulnerability {
   ecosystem: EcosystemType;
   vulnerability_id: string;
   severity: SeverityLevel | null;
-  severity_score?: number; // CVSS score
+  cvss_score?: number; // CVSS score (matches backend field name)
   cve_ids: string[];
   summary: string;
   details?: string;
@@ -27,6 +27,7 @@ export interface Vulnerability {
   published?: string;
   modified?: string;
   aliases: string[];
+  immediate_parent?: string; // Direct dependency that introduced this transitive vulnerability
   affected_dependencies?: DependencyPath[]; // Which dependencies are affected
 }
 

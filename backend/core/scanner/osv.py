@@ -274,6 +274,9 @@ class OSVScanner:
             if "database_specific" in osv_data:
                 self.logger.debug(f"Database specific: {osv_data['database_specific']}")
         
+        # Extract immediate parent for transitive dependencies
+        immediate_parent = self._extract_immediate_parent(dep)
+        
         # Extract severity and CVSS score (including database_specific fallback)
         severity, cvss_score = self._extract_severity_and_score(
             osv_data.get("severity", []),
@@ -336,8 +339,35 @@ class OSVScanner:
             fixed_range=fixed_range,
             published=published,
             modified=modified,
-            aliases=osv_data.get("aliases", [])
+            aliases=osv_data.get("aliases", []),
+            immediate_parent=immediate_parent
         )
+    
+    def _extract_immediate_parent(self, dep: Dep) -> str | None:
+        """
+        Extract the immediate parent package for transitive dependencies
+        
+        For direct dependencies (path length 1), returns None
+        For transitive dependencies, returns the immediate parent (second-to-last in path)
+        
+        Examples:
+        - ["axios"] -> None (direct dependency)
+        - ["axios", "form-data"] -> "axios" (transitive via axios)
+        - ["next-auth", "oauth", "jose"] -> "oauth" (transitive via oauth)
+        """
+        # Debug logging
+        self.logger.debug(f"Extracting immediate parent for {dep.name}: path={dep.path}, is_direct={dep.is_direct}")
+        
+        if not dep.path or len(dep.path) <= 1:
+            # Direct dependency or invalid path
+            self.logger.debug(f"  -> No parent (direct dependency or invalid path)")
+            return None
+        
+        # For transitive dependencies, the immediate parent is the second-to-last element
+        # Path structure: [root, intermediate1, intermediate2, ..., vulnerable_package]
+        immediate_parent = dep.path[-2]
+        self.logger.debug(f"  -> Immediate parent: {immediate_parent}")
+        return immediate_parent
     
     def _extract_severity_and_score(self, severity_list: list[dict], db_specific: dict | None = None, ecosystem_specific: dict | None = None) -> tuple[SeverityLevel, float | None]:
         """Extract and normalize severity and CVSS score from OSV data"""

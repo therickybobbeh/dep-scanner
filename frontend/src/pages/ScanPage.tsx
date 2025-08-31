@@ -7,6 +7,7 @@ import type { ScanRequest } from '../types/api';
 import { SeverityLevel } from '../types/common';
 
 const ScanPage: React.FC = () => {
+  const navigate = useNavigate();
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showLoadingModal, setShowLoadingModal] = useState(false);
@@ -16,7 +17,6 @@ const ScanPage: React.FC = () => {
     ignore_severities: [] as SeverityLevel[],
   });
   
-  const navigate = useNavigate();
 
   const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const uploadedFiles = event.target.files;

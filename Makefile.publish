@@ -1,0 +1,106 @@
+# Makefile for PyPI publishing tasks
+.PHONY: help build test-package clean publish-test publish-prod install-dev
+
+help:  ## Show this help message
+	@echo "PyPI Publishing Commands:"
+	@echo "========================"
+	@awk 'BEGIN {FS = ":.*##"} /^[a-zA-Z_-]+:.*##/ { printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
+
+install-dev:  ## Install development dependencies
+	pip install -e ".[dev]"
+	pip install build twine check-manifest
+
+clean:  ## Clean build artifacts
+	rm -rf build/
+	rm -rf dist/
+	rm -rf *.egg-info/
+	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+	find . -name "*.pyc" -delete
+
+build: clean  ## Build the package
+	python -m build
+	twine check dist/*
+
+test-package: build  ## Run comprehensive package tests
+	python scripts/test-package.py
+
+publish-test: test-package  ## Publish to TestPyPI (for testing)
+	@echo "🚀 Publishing to TestPyPI..."
+	twine upload --repository testpypi dist/*
+	@echo "✅ Published to TestPyPI"
+	@echo "📦 Install with: pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ multi-vuln-scanner"
+
+publish-prod: test-package  ## Publish to PyPI (DISABLED - TestPyPI only for now)
+	@echo "🚨 Production PyPI publishing is currently DISABLED"
+	@echo "📝 We're using TestPyPI only for now"
+	@echo "🔧 Use 'make publish-test' to publish to TestPyPI"
+	@exit 1
+
+check-pypi-config:  ## Check PyPI configuration
+	@echo "🔍 Checking PyPI configuration..."
+	@if [ -f ~/.pypirc ]; then \
+		echo "✅ ~/.pypirc found"; \
+		cat ~/.pypirc | grep -E "\[.*\]"; \
+	else \
+		echo "⚠️  ~/.pypirc not found"; \
+		echo "Run: pip install twine && twine configure"; \
+	fi
+	@echo ""
+	@echo "🔑 To configure PyPI credentials:"
+	@echo "   twine configure"
+	@echo ""
+	@echo "🔗 Or use environment variables:"
+	@echo "   export TWINE_USERNAME=__token__"
+	@echo "   export TWINE_PASSWORD=your-pypi-token"
+
+verify-install:  ## Verify package can be installed from PyPI (DISABLED - TestPyPI only)
+	@echo "🚨 Production PyPI verification is currently DISABLED"
+	@echo "📝 We're using TestPyPI only for now"
+	@echo "🔧 Use 'make verify-install-test' to test TestPyPI installation"
+	@exit 1
+
+verify-install-test:  ## Verify package can be installed from TestPyPI
+	pip install --force-reinstall --no-cache-dir --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ multi-vuln-scanner
+	multi-vuln-scanner --help
+	multi-vuln-scanner version
+
+# Version management
+bump-patch:  ## Bump patch version (1.0.0 -> 1.0.1)
+	@echo "Current version in pyproject.toml:"
+	@grep '^version = ' pyproject.toml
+	@echo "Manually update version in pyproject.toml"
+
+bump-minor:  ## Bump minor version (1.0.0 -> 1.1.0)
+	@echo "Current version in pyproject.toml:"
+	@grep '^version = ' pyproject.toml
+	@echo "Manually update version in pyproject.toml"
+
+bump-major:  ## Bump major version (1.0.0 -> 2.0.0)
+	@echo "Current version in pyproject.toml:"
+	@grep '^version = ' pyproject.toml
+	@echo "Manually update version in pyproject.toml"
+
+# GitHub workflow triggers
+trigger-github-test:  ## Trigger GitHub workflow for TestPyPI publishing
+	@echo "🔗 Go to: https://github.com/$(shell git config --get remote.origin.url | sed 's/.*github.com[:/]\([^/]*\/[^.]*\).*/\1/')/actions/workflows/pypi-publish.yml"
+	@echo "Click 'Run workflow' to publish to TestPyPI"
+
+trigger-github-prod:  ## Trigger GitHub workflow for production (DISABLED - TestPyPI only)
+	@echo "🚨 Production publishing is currently DISABLED"
+	@echo "📝 We're using TestPyPI only for now"
+	@echo "🔧 Use 'make trigger-github-test' to trigger TestPyPI publishing"
+
+# Status checks
+status:  ## Show current package status
+	@echo "📦 Package Information:"
+	@echo "====================="
+	@echo "Name: $(shell grep '^name = ' pyproject.toml | cut -d'"' -f2)"
+	@echo "Version: $(shell grep '^version = ' pyproject.toml | cut -d'"' -f2)"
+	@echo "Description: $(shell grep '^description = ' pyproject.toml | cut -d'"' -f2)"
+	@echo ""
+	@echo "🔗 Links:"
+	@echo "TestPyPI: https://test.pypi.org/project/$(shell grep '^name = ' pyproject.toml | cut -d'"' -f2)/"
+	@echo "PyPI: https://pypi.org/project/$(shell grep '^name = ' pyproject.toml | cut -d'"' -f2)/ (DISABLED - Future use)"
+	@echo ""
+	@echo "📂 Files:"
+	@if [ -d "dist" ]; then ls -la dist/; else echo "No dist/ directory (run 'make build')"; fi

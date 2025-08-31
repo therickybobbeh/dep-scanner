@@ -1,0 +1,108 @@
+name: Build Verification
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'backend/**'
+      - 'pyproject.toml'
+      - '.github/workflows/build-verify.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'backend/**'
+      - 'pyproject.toml'
+      - '.github/workflows/build-verify.yml'
+
+jobs:
+  verify-build:
+    name: Verify Package Build
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+    
+    - name: Install build tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install build twine check-manifest
+    
+    - name: Verify manifest
+      run: check-manifest
+    
+    - name: Build package
+      run: python -m build
+    
+    - name: Check package
+      run: twine check dist/*
+    
+    - name: Test wheel installation
+      run: |
+        # Install the wheel
+        pip install dist/*.whl
+        
+        # Test basic functionality
+        multi-vuln-scanner --help
+        multi-vuln-scanner version
+        # Test backward compatibility
+        dep-scan --help
+        dep-scan version
+    
+    - name: Test package contents
+      run: |
+        # Extract and examine the wheel
+        pip install wheel
+        python -c "
+import zipfile
+import os
+
+# Find the wheel file
+wheel_files = [f for f in os.listdir('dist') if f.endswith('.whl')]
+if not wheel_files:
+    print('❌ No wheel file found')
+    exit(1)
+
+wheel_file = wheel_files[0]
+print(f'📦 Examining wheel: {wheel_file}')
+
+# Extract and list contents
+with zipfile.ZipFile(f'dist/{wheel_file}', 'r') as zip_file:
+    files = zip_file.namelist()
+    print(f'📁 Wheel contains {len(files)} files')
+    
+    # Check for required files
+    required_patterns = ['backend/', '__init__.py', 'METADATA']
+    missing = []
+    for pattern in required_patterns:
+        if not any(pattern in f for f in files):
+            missing.append(pattern)
+    
+    if missing:
+        print(f'❌ Missing required files: {missing}')
+        exit(1)
+    
+    # Show some key files
+    important_files = [f for f in files if any(pattern in f for pattern in ['cli/main', '__init__', 'METADATA', 'entry_points'])]
+    print('🔑 Key files in package:')
+    for f in sorted(important_files):
+        print(f'  - {f}')
+    
+    print('✅ Package structure looks good')
+"
+    
+    - name: Upload build artifacts for inspection
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: failed-build-artifacts
+        path: |
+          dist/
+          build/
+        retention-days: 7

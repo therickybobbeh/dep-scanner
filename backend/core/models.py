@@ -39,6 +39,7 @@ class Vuln(BaseModel):
     published: datetime | None = None
     modified: datetime | None = None
     aliases: list[str] = Field(default_factory=list, description="Other identifiers for this vulnerability")
+    immediate_parent: str | None = Field(default=None, description="Direct dependency that introduced this transitive vulnerability")
     
 class ScanOptions(BaseModel):
     """Configuration options for a scan"""

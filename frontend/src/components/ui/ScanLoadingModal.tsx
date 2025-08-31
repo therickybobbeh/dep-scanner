@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Button, Alert } from 'react-bootstrap';
-import { X, RotateCcw } from 'lucide-react';
+import { RotateCcw } from 'lucide-react';
 import NewtonsCradleLoader from './NewtonsCradleLoader';
 import axios from 'axios';
 import type { ScanRequest } from '../../types/api';
@@ -18,60 +18,85 @@ const ScanLoadingModal: React.FC<ScanLoadingModalProps> = ({
   onSuccess,
   scanRequest
 }) => {
-  const [progress, setProgress] = useState(0);
+  const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isRetrying, setIsRetrying] = useState(false);
-
-  const getProgressMessage = (progress: number): string => {
-    if (progress < 15) return "🔧 Initializing security scanner...";
-    if (progress < 30) return "📄 Processing your manifest file...";
-    if (progress < 60) return "📦 Resolving dependency tree...";
-    if (progress < 85) return "🛡️ Querying OSV database - this can take a while...";
-    if (progress < 95) return "🔍 Analyzing security vulnerabilities...";
-    return "✅ Scan completed! Redirecting to results...";
-  };
-
-  const simulateProgress = () => {
-    setProgress(0);
-    setError(null);
-    
-    const progressInterval = setInterval(() => {
-      setProgress(prev => {
-        if (prev >= 90) {
-          clearInterval(progressInterval);
-          return 90; // Stop at 90% until actual completion
-        }
-        // Slower progress for OSV database phase (most time-consuming)
-        if (prev >= 30 && prev < 85) {
-          return prev + Math.random() * 2; // Slower increment
-        }
-        return prev + Math.random() * 8; // Faster increment for other phases
-      });
-    }, 500);
-
-    return progressInterval;
-  };
+  const [progress, setProgress] = useState(0);
+  const [currentStep, setCurrentStep] = useState('Preparing scan...');
+  const [jobId, setJobId] = useState<string | null>(null);
 
   const performScan = async () => {
     try {
-      const progressInterval = simulateProgress();
+      setIsScanning(true);
+      setError(null);
+      setProgress(5);
+      setCurrentStep('Starting scan...');
       
+      // Start the scan
       const response = await axios.post('/api/scan', scanRequest);
       const { job_id } = response.data;
-
-      // Complete progress and show success
-      clearInterval(progressInterval);
-      setProgress(100);
+      setJobId(job_id);
       
-      // Brief delay to show completion message
-      setTimeout(() => {
-        onSuccess(job_id);
-      }, 1000);
+      setCurrentStep('Scan started, monitoring progress...');
+      setProgress(10);
+      
+      // Poll for status updates
+      await pollScanStatus(job_id);
 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to start scan');
-      setProgress(0);
+      setIsScanning(false);
     }
+  };
+
+  const pollScanStatus = async (jobId: string) => {
+    const pollInterval = 1000; // Poll every second
+    const maxAttempts = 300; // Maximum 5 minutes
+    let attempts = 0;
+
+    const poll = async () => {
+      try {
+        attempts++;
+        
+        const response = await axios.get(`/api/status/${jobId}`);
+        const status = response.data;
+        
+        // Update progress
+        setProgress(status.progress_percent || 0);
+        setCurrentStep(status.current_step || 'Processing...');
+        
+        if (status.status === 'completed') {
+          // Scan completed successfully
+          setIsScanning(false);
+          setCurrentStep('Scan completed! Redirecting to results...');
+          setProgress(100);
+          
+          // Small delay to show completion message
+          setTimeout(() => {
+            onSuccess(jobId);
+          }, 500);
+          
+        } else if (status.status === 'failed') {
+          // Scan failed
+          throw new Error(status.error_message || 'Scan failed');
+          
+        } else if (status.status === 'running' || status.status === 'pending') {
+          // Still processing, continue polling
+          if (attempts < maxAttempts) {
+            setTimeout(poll, pollInterval);
+          } else {
+            throw new Error('Scan timeout - took longer than expected');
+          }
+        }
+        
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to get scan status');
+        setIsScanning(false);
+      }
+    };
+    
+    // Start polling
+    setTimeout(poll, pollInterval);
   };
 
   const handleRetry = async () => {
@@ -90,45 +115,38 @@ const ScanLoadingModal: React.FC<ScanLoadingModalProps> = ({
   // Reset state when modal closes
   useEffect(() => {
     if (!show) {
-      setProgress(0);
+      setIsScanning(false);
       setError(null);
       setIsRetrying(false);
+      setProgress(0);
+      setCurrentStep('Preparing scan...');
+      setJobId(null);
     }
   }, [show]);
 
   return (
     <Modal
       show={show}
-      onHide={error ? onHide : undefined} // Only allow close if there's an error
+      onHide={onHide} // Allow closing the modal
       centered
-      backdrop={error ? true : 'static'} // Prevent closing unless error
-      keyboard={false}
+      backdrop={true} // Normal backdrop behavior without greying out page
+      keyboard={true} // Allow ESC key to close
       size="lg"
       className="scan-loading-modal"
     >
-      <Modal.Header className={error ? "border-bottom" : "border-0"}>
-        <Modal.Title className="d-flex align-items-center w-100 justify-content-center">
+      <Modal.Header closeButton={!isScanning}>
+        <Modal.Title className="d-flex align-items-center">
           {error ? (
             <span className="text-danger">Scan Failed</span>
-          ) : progress >= 100 ? (
-            <span className="text-success">Scan Completed!</span>
-          ) : (
+          ) : isScanning ? (
             <span>Security Scan in Progress</span>
+          ) : (
+            <span>Ready to Scan</span>
           )}
         </Modal.Title>
-        {error && (
-          <Button
-            variant="link"
-            className="p-0 text-muted"
-            onClick={onHide}
-            aria-label="Close"
-          >
-            <X size={20} />
-          </Button>
-        )}
       </Modal.Header>
 
-      <Modal.Body className="text-center py-5">
+      <Modal.Body className="text-center py-4">
         {error ? (
           <Alert variant="danger" className="mb-4">
             <Alert.Heading>Something went wrong</Alert.Heading>
@@ -152,41 +170,50 @@ const ScanLoadingModal: React.FC<ScanLoadingModalProps> = ({
               </Button>
             </div>
           </Alert>
-        ) : (
+        ) : isScanning ? (
           <>
             <NewtonsCradleLoader 
-              message={getProgressMessage(progress)}
-              progress={progress}
+              message="🛡️ Scanning for vulnerabilities..."
               className="mb-4"
             />
             
-            <div className="progress mb-3" style={{ height: '8px' }}>
-              <div 
-                className="progress-bar bg-primary"
-                role="progressbar"
-                style={{ width: `${Math.min(progress, 100)}%` }}
-                aria-valuenow={Math.min(progress, 100)}
-                aria-valuemin={0}
-                aria-valuemax={100}
-              />
+            {/* Progress bar */}
+            <div className="mb-3">
+              <div className="progress mb-2" style={{ height: '8px' }}>
+                <div 
+                  className="progress-bar progress-bar-striped progress-bar-animated" 
+                  role="progressbar" 
+                  style={{ width: `${progress}%` }}
+                  aria-valuenow={progress}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                ></div>
+              </div>
+              <small className="text-muted">
+                {Math.round(progress)}% - {currentStep}
+              </small>
             </div>
+
+            {jobId && (
+              <small className="text-muted d-block mb-2">
+                Job ID: <code>{jobId}</code>
+              </small>
+            )}
             
             <small className="text-muted d-block">
-              {progress < 30 
-                ? "Setting up your security scan..."
-                : progress < 85 
-                ? "This may take a few minutes depending on the number of dependencies"
-                : "Almost finished! Preparing your security report..."
-              }
+              This may take a few minutes depending on the number of dependencies
             </small>
+          </>
+        ) : (
+          <>
+            <NewtonsCradleLoader 
+              message="🛡️ Preparing to scan..."
+              className="mb-4"
+            />
             
-            {progress >= 100 && (
-              <div className="mt-3">
-                <small className="text-success">
-                  🎉 Redirecting you to the security report in a moment...
-                </small>
-              </div>
-            )}
+            <small className="text-muted d-block">
+              Getting ready to analyze your dependencies for security vulnerabilities
+            </small>
           </>
         )}
       </Modal.Body>

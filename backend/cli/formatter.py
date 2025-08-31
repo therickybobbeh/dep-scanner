@@ -29,13 +29,15 @@ class CLIFormatter:
         table.add_column("Severity", style="bold", min_width=8)
         table.add_column("CVSS", style="magenta", min_width=6)  # CVSS score (0.0-10.0)
         table.add_column("CVE ID", style="red", min_width=15)
-        table.add_column("Type", style="green", min_width=8)
+        table.add_column("Via", style="green", min_width=10)
         table.add_column("Link", style="dim blue", min_width=12)  # Clickable link
         
         for vuln in report.vulnerable_packages:
-            # Find dependency info
-            dep_match = next((d for d in report.dependencies if d.name == vuln.package and d.version == vuln.version), None)
-            dep_type = "direct" if dep_match and dep_match.is_direct else "transitive"
+            # Determine how to display the dependency relationship
+            if vuln.immediate_parent:
+                via_text = vuln.immediate_parent
+            else:
+                via_text = "direct"
             
             # Format severity with color and CVSS score
             severity_text, cvss_score_str = self._format_severity_with_score(vuln.severity, vuln.cvss_score)
@@ -67,7 +69,7 @@ class CLIFormatter:
                 severity_text,
                 cvss_score_str,
                 cve_id,
-                dep_type,
+                via_text,
                 link_text
             )
         
@@ -268,6 +270,7 @@ class CLIFormatter:
                 "cve_ids": vuln.cve_ids,
                 "advisory_url": vuln.advisory_url,
                 "type": "direct" if is_direct else "transitive",
+                "immediate_parent": vuln.immediate_parent,
                 "dependency_path": dependency_path,
                 "fixed_range": vuln.fixed_range,
                 "details": vuln.details,

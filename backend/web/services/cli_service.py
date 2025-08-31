@@ -95,7 +95,7 @@ class CLIService:
                 await progress_callback("📊 Generating your security report...", 95.0)
             
             # Convert core scanner report to CLI JSON format
-            result = CLIService._convert_report_to_cli_format(report)
+            result = CLIService._convert_report_to_cli_format(report, scan_options)
             
             if progress_callback:
                 await progress_callback("✅ Security scan completed successfully!", 100.0)
@@ -134,7 +134,7 @@ class CLIService:
             }
     
     @staticmethod
-    def _convert_report_to_cli_format(report) -> Dict[str, Any]:
+    def _convert_report_to_cli_format(report, scan_options=None) -> Dict[str, Any]:
         """Convert core scanner Report to format expected by frontend"""
         
         # Get unique ecosystems
@@ -180,7 +180,8 @@ class CLIService:
                 "fixed_range": vuln.fixed_range,
                 "published": vuln.published.isoformat() if vuln.published else None,
                 "modified": vuln.modified.isoformat() if vuln.modified else None,
-                "aliases": []  # Not available in current data
+                "aliases": [],  # Not available in current data
+                "type": "direct" if is_direct else "transitive"  # Add dependency classification
             }
             frontend_vulnerabilities.append(frontend_vuln)
         
@@ -197,8 +198,8 @@ class CLIService:
                 "generated_at": datetime.now().isoformat(),
                 "ecosystems": ecosystems,
                 "scan_options": {
-                    "include_dev_dependencies": True,  # TODO: Get from actual options
-                    "ignore_severities": []
+                    "include_dev_dependencies": scan_options.include_dev_dependencies if scan_options else True,
+                    "ignore_severities": [sev.value for sev in scan_options.ignore_severities] if scan_options else []
                 }
             }
         }
