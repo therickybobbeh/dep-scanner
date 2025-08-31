@@ -3,8 +3,8 @@
 > **Fast, accurate, and comprehensive vulnerability scanning for Python and JavaScript projects**
 
 DepScan is a professional-grade security tool that identifies known vulnerabilities in your project dependencies across multiple ecosystems. Get detailed security reports with actionable recommendations through both CLI and web interfaces.
-[![Package Tests](https://github.com/yourusername/socketTest/actions/workflows/test-package.yml/badge.svg)](https://github.com/yourusername/socketTest/actions/workflows/test-package.yml)
-[![Build Verification](https://github.com/yourusername/socketTest/actions/workflows/build-verify.yml/badge.svg)](https://github.com/yourusername/socketTest/actions/workflows/build-verify.yml)
+[![CLI - TestPyPI](https://github.com/yourusername/socketTest/actions/workflows/cli-testpypi.yml/badge.svg)](https://github.com/yourusername/socketTest/actions/workflows/cli-testpypi.yml)
+[![Web App - AWS Deploy](https://github.com/yourusername/socketTest/actions/workflows/deploy.yml/badge.svg)](https://github.com/yourusername/socketTest/actions/workflows/deploy.yml)
 [![TestPyPI](https://img.shields.io/badge/TestPyPI-v1.0.0-blue)](https://test.pypi.org/project/multi-vuln-scanner/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)

@@ -1,0 +1,63 @@
+name: CLI - Publish to TestPyPI
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+  push:
+    tags:
+      - 'v*.*.*'
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+      - 'pyproject.toml'
+
+jobs:
+  publish-cli:
+    name: Build and Publish CLI to TestPyPI
+    runs-on: ubuntu-latest
+    
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/multi-vuln-scanner
+    
+    permissions:
+      id-token: write  # For trusted publishing
+      contents: write  # For updating releases
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: Build package
+      run: |
+        pip install build twine
+        python -m build
+        twine check dist/*
+    
+    - name: Test package locally
+      run: |
+        pip install dist/*.whl
+        multi-vuln-scanner --help
+        dep-scan --help
+        echo "✅ CLI package works locally"
+    
+    - name: Publish to TestPyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        repository-url: https://test.pypi.org/legacy/
+        print-hash: true
+    
+    - name: Verify TestPyPI installation
+      run: |
+        sleep 30  # Wait for TestPyPI
+        pip uninstall -y multi-vuln-scanner
+        pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ multi-vuln-scanner
+        multi-vuln-scanner --help
+        echo "✅ TestPyPI installation successful"
