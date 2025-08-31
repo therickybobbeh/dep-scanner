@@ -16,6 +16,9 @@ RUN npm ci --only=production
 # Copy source code
 COPY frontend/ .
 
+# Fix npm bug with rollup optional dependencies for ARM64
+RUN rm -rf node_modules package-lock.json && npm install
+
 # Build the frontend
 RUN npm run build
 
@@ -31,27 +34,17 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 # Copy custom nginx configuration for SPA
 COPY deploy/docker/nginx.conf /etc/nginx/conf.d/default.conf
 
-# Remove default nginx config
-RUN rm /etc/nginx/conf.d/default.conf
+# Set permissions for nginx content
+RUN chown -R nginx:nginx /usr/share/nginx/html
 
-# Copy the custom config
-COPY deploy/docker/nginx.conf /etc/nginx/conf.d/default.conf
-
-# Create nginx user and set permissions
-RUN chown -R nginx:nginx /usr/share/nginx/html && \
-    chown -R nginx:nginx /var/cache/nginx && \
-    chown -R nginx:nginx /var/log/nginx && \
-    chown -R nginx:nginx /etc/nginx/conf.d
-
-# Switch to non-root user
-USER nginx
+# Run as root (common in containers for nginx)
 
 # Expose port
-EXPOSE 80
+EXPOSE 8080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
-  CMD curl -f http://localhost/ || exit 1
+  CMD curl -f http://localhost:8080/ || exit 1
 
 # Start nginx
 CMD ["nginx", "-g", "daemon off;"]

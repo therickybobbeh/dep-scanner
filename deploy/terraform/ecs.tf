@@ -108,6 +108,14 @@ resource "aws_ecs_task_definition" "backend" {
         {
           name  = "AWS_REGION"
           value = local.region
+        },
+        {
+          name  = "ALLOWED_HOSTS"
+          value = "localhost,127.0.0.1,127.0.0.1:8000,localhost:8000,0.0.0.0,*"
+        },
+        {
+          name  = "CORS_ORIGINS"
+          value = "http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173,http://3.238.84.248:8080"
         }
       ]
 
@@ -166,13 +174,21 @@ resource "aws_ecs_task_definition" "frontend" {
         {
           name  = "ENVIRONMENT"
           value = var.environment
+        },
+        {
+          name  = "PORT"
+          value = "8080"
+        },
+        {
+          name  = "NGINX_PORT"
+          value = "8080"
         }
       ]
 
       healthCheck = {
         command = [
           "CMD-SHELL",
-          "curl -f http://localhost:${var.frontend_port}/health || exit 1"
+          "curl -f http://localhost:8080/health || exit 1"
         ]
         interval    = 30
         timeout     = 5

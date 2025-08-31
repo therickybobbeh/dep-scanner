@@ -39,7 +39,7 @@ variable "backend_port" {
 variable "frontend_port" {
   description = "Port for the frontend service"
   type        = number
-  default     = 80
+  default     = 8080
 }
 
 variable "backend_cpu" {
