@@ -116,12 +116,12 @@ jobs:
 
     - name: Download backend task definition
       run: |
-        aws ecs describe-task-definition --task-definition ${{ env.ECS_CLUSTER }}-backend \
+        aws ecs describe-task-definition --task-definition depscan-prod-backend \
           --query taskDefinition > backend-task-definition.json
 
     - name: Download frontend task definition  
       run: |
-        aws ecs describe-task-definition --task-definition ${{ env.ECS_CLUSTER }}-frontend \
+        aws ecs describe-task-definition --task-definition depscan-prod-frontend \
           --query taskDefinition > frontend-task-definition.json
 
     - name: Fill in the new backend image ID in the Amazon ECS task definition
@@ -156,14 +156,24 @@ jobs:
         cluster: ${{ env.ECS_CLUSTER }}
         wait-for-service-stability: true
 
-    - name: Verify deployment
+    - name: Get service access info
       run: |
-        echo "Backend service: ${{ env.BACKEND_SERVICE }}"
-        echo "Frontend service: ${{ env.FRONTEND_SERVICE }}"
-        echo "Deployment completed successfully!"
-        
-        # Get ALB URL (you may need to adjust this based on your setup)
-        aws elbv2 describe-load-balancers --query 'LoadBalancers[?contains(LoadBalancerName, `depscan`)].DNSName' --output text || echo "Load balancer info not available"
+        echo "✅ Deployment completed successfully!"
+        echo ""
+        echo "📍 To access your services:"
+        echo "1. Go to AWS ECS Console: https://console.aws.amazon.com/ecs/"
+        echo "2. Click cluster: ${{ env.ECS_CLUSTER }}"
+        echo "3. Click Services → Tasks → Running task → Network section"
+        echo "4. Find the Public IP address"
+        echo ""
+        echo "🌐 Access URLs:"
+        echo "- Frontend: http://[PUBLIC_IP]:80"
+        echo "- Backend API: http://[PUBLIC_IP]:8000/health"
+        echo "- API Docs: http://[PUBLIC_IP]:8000/docs"
+        echo ""
+        echo "📊 Services deployed:"
+        echo "- Backend: ${{ env.BACKEND_SERVICE }}"
+        echo "- Frontend: ${{ env.FRONTEND_SERVICE }}"
 
   rollback:
     name: Rollback on Failure

@@ -1,18 +1,21 @@
-# Outputs for DepScan AWS deployment
+# Outputs for DepScan AWS MVP deployment
 
-output "load_balancer_dns_name" {
-  description = "DNS name of the load balancer"
-  value       = aws_lb.main.dns_name
-}
-
-output "load_balancer_zone_id" {
-  description = "Zone ID of the load balancer"
-  value       = aws_lb.main.zone_id
-}
-
-output "load_balancer_url" {
-  description = "URL to access the application"
-  value       = var.domain_name != "" ? "https://${var.domain_name}" : "http://${aws_lb.main.dns_name}"
+output "access_instructions" {
+  description = "Instructions for accessing the deployed services"
+  value = <<-EOT
+    Services deployed with direct public access:
+    
+    1. Go to AWS ECS Console: https://console.aws.amazon.com/ecs/
+    2. Click on cluster: ${aws_ecs_cluster.main.name}
+    3. Click on Services, then click on a service
+    4. Click on Tasks tab, then click on a running task
+    5. In the Network section, find the Public IP
+    
+    Access URLs (replace [PUBLIC_IP] with actual IP):
+    - Frontend: http://[PUBLIC_IP]:${var.frontend_port}
+    - Backend API: http://[PUBLIC_IP]:${var.backend_port}/health
+    - API Docs: http://[PUBLIC_IP]:${var.backend_port}/docs
+  EOT
 }
 
 output "backend_ecr_repository_url" {
@@ -55,23 +58,7 @@ output "cloudwatch_log_group_name" {
   value       = aws_cloudwatch_log_group.ecs.name
 }
 
-# Certificate validation outputs (if using custom domain)
-output "certificate_arn" {
-  description = "ARN of the SSL certificate"
-  value       = var.domain_name != "" && var.certificate_arn == "" ? aws_acm_certificate.main[0].arn : var.certificate_arn
-}
-
-output "certificate_validation_records" {
-  description = "DNS validation records for SSL certificate"
-  value = var.domain_name != "" && var.certificate_arn == "" ? [
-    for dvo in aws_acm_certificate.main[0].domain_validation_options : {
-      name   = dvo.resource_record_name
-      value  = dvo.resource_record_value
-      type   = dvo.resource_record_type
-      domain = dvo.domain_name
-    }
-  ] : []
-}
+# SSL/Certificate outputs removed for MVP (direct HTTP access only)
 
 # Environment variables for GitHub Actions
 output "deployment_config" {

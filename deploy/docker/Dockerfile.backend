@@ -20,12 +20,12 @@ WORKDIR /app
 RUN groupadd -r appuser && useradd -r -g appuser appuser
 RUN chown -R appuser:appuser /app
 
+# Copy application code first (needed for pip install)
+COPY backend/ ./backend/
+
 # Copy and install Python dependencies
 COPY pyproject.toml ./
 RUN pip install -e .
-
-# Copy application code
-COPY backend/ ./backend/
 
 # Change ownership of all files to appuser
 RUN chown -R appuser:appuser /app

@@ -87,8 +87,8 @@ resource "aws_iam_role_policy" "github_actions" {
           "ecs:RegisterTaskDefinition"
         ]
         Resource = [
-          aws_ecs_service.backend.arn,
-          aws_ecs_service.frontend.arn,
+          "arn:aws:ecs:${local.region}:${local.account_id}:service/${aws_ecs_cluster.main.name}/${aws_ecs_service.backend.name}",
+          "arn:aws:ecs:${local.region}:${local.account_id}:service/${aws_ecs_cluster.main.name}/${aws_ecs_service.frontend.name}",
           "*"
         ]
       },

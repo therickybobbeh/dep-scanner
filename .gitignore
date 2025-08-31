@@ -101,24 +101,41 @@ backend/build/
 # Cache and databases
 
 # Terraform
+**/.terraform/
 **/.terraform/*
+**/.terraform.lock.hcl
+*/.terraform.lock.hcl
 *.tfstate
 *.tfstate.*
+*.tfstate.backup
 *.tfvars
+!*.tfvars.example
 !terraform.tfvars.example
 *.tfplan
-.terraform.lock.hcl
+*.tfplan.*
 crash.log
 crash.*.log
+terraform.rc
+.terraformrc
+.terraform/
+terraform.tfstate.d/
 
-# AWS
+# AWS & Cloud
 .aws/
 .aws-sam/
 samconfig.toml
 *_output.json
 *.pem
+*.key
+*.crt
 *aws-credentials*
 *.aws-config*
+aws-exports.js
+.serverless/
+
+# Docker & Container files
+docker-compose.override.yml
+.dockerignore
 
 # Logs
 *.log
@@ -134,18 +151,51 @@ pip-log.txt
 *.swp
 *~
 
-# Environment variables
+# Environment variables & Secrets
 .env
+.env.*
+!.env.example
+!.env.template
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+.env.staging
+.env.dev
+.env.prod
+secrets.json
+*secret*
+*credential*
+*password*
+*.credentials
 
-# Generated files
+# Generated files & Reports
 test_report.json
 *_report.json
 *_report.csv
+*_report.html
 report.html
+dep-scan-report.html
+final-report.html
+scan-results.*
+vulnerability-report.*
+security-report.*
+
+# Deployment & Infrastructure
+deploy/logs/
+deploy/tmp/
+deploy/*.zip
+deploy/*.tar.gz
+*.zip
+*.tar.gz
+*.tgz
+*.tar
+infrastructure/
+ansible/
+k8s/
+kubernetes/
+helm/charts/*/charts/
+helm/charts/*/Chart.lock
 
 # Runtime data
 pids/
@@ -200,5 +250,28 @@ temp/
 *.njsproj
 *.sln
 *.sw?
-/backend/dep-scan-report.html
-/backend/final-report.html
+# AI/ML & Modern Dev Tools
+.ai/
+.cursor/
+.copilot/
+*.model
+*.pkl
+*.joblib
+wandb/
+mlruns/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+*.db-shm
+*.db-wal
+
+# Additional Security Patterns
+*_rsa
+*_rsa.pub
+*_ed25519
+*_ed25519.pub
+id_*
+known_hosts
+authorized_keys

@@ -25,47 +25,47 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
 
-    - name: Install backend dependencies
-      run: |
-        cd backend
-        python -m pip install --upgrade pip
-        pip install -e .
-        pip install pytest pytest-asyncio pytest-httpx
+      - name: Install backend dependencies
+        run: |
+          cd backend
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install pytest pytest-asyncio pytest-httpx
 
-    - name: Run backend tests
-      run: |
-        cd backend
-        python -m pytest -v || echo "No tests found, skipping..."
+      - name: Run backend tests
+        run: |
+          cd backend
+          python -m pytest -v || echo "No tests found, skipping..."
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
-        cache: 'npm'
-        cache-dependency-path: frontend/package-lock.json
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
 
-    - name: Install frontend dependencies
-      run: |
-        cd frontend
-        npm ci
+      - name: Install frontend dependencies
+        run: |
+          cd frontend
+          npm ci
 
-    - name: Run frontend tests
-      run: |
-        cd frontend
-        npm test -- --run || echo "No tests found, skipping..."
+      - name: Run frontend tests
+        run: |
+          cd frontend
+          npm test -- --run || echo "No tests found, skipping..."
 
-    - name: Build frontend
-      run: |
-        cd frontend
-        npm run build
+      - name: Build frontend
+        run: |
+          cd frontend
+          npm run build
 
   deploy:
     name: Deploy to AWS
@@ -74,96 +74,106 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-        aws-region: ${{ env.AWS_REGION }}
-        role-session-name: GitHubActions
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: GitHubActions
 
-    - name: Login to Amazon ECR
-      id: login-ecr
-      uses: aws-actions/amazon-ecr-login@v2
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
 
-    - name: Build, tag, and push backend image
-      env:
-        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        IMAGE_TAG: ${{ github.sha }}
-      run: |
-        # Build backend image
-        docker build -t $ECR_REGISTRY/$BACKEND_ECR_REPOSITORY:$IMAGE_TAG -f deploy/docker/Dockerfile.backend .
-        docker build -t $ECR_REGISTRY/$BACKEND_ECR_REPOSITORY:latest -f deploy/docker/Dockerfile.backend .
-        
-        # Push backend image
-        docker push $ECR_REGISTRY/$BACKEND_ECR_REPOSITORY:$IMAGE_TAG
-        docker push $ECR_REGISTRY/$BACKEND_ECR_REPOSITORY:latest
+      - name: Build, tag, and push backend image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          # Build backend image
+          docker build -t $ECR_REGISTRY/$BACKEND_ECR_REPOSITORY:$IMAGE_TAG -f deploy/docker/Dockerfile.backend .
+          docker build -t $ECR_REGISTRY/$BACKEND_ECR_REPOSITORY:latest -f deploy/docker/Dockerfile.backend .
+          
+          # Push backend image
+          docker push $ECR_REGISTRY/$BACKEND_ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$BACKEND_ECR_REPOSITORY:latest
 
-    - name: Build, tag, and push frontend image
-      env:
-        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        IMAGE_TAG: ${{ github.sha }}
-      run: |
-        # Build frontend image
-        docker build -t $ECR_REGISTRY/$FRONTEND_ECR_REPOSITORY:$IMAGE_TAG -f deploy/docker/Dockerfile.frontend .
-        docker build -t $ECR_REGISTRY/$FRONTEND_ECR_REPOSITORY:latest -f deploy/docker/Dockerfile.frontend .
-        
-        # Push frontend image
-        docker push $ECR_REGISTRY/$FRONTEND_ECR_REPOSITORY:$IMAGE_TAG
-        docker push $ECR_REGISTRY/$FRONTEND_ECR_REPOSITORY:latest
+      - name: Build, tag, and push frontend image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          # Build frontend image
+          docker build -t $ECR_REGISTRY/$FRONTEND_ECR_REPOSITORY:$IMAGE_TAG -f deploy/docker/Dockerfile.frontend .
+          docker build -t $ECR_REGISTRY/$FRONTEND_ECR_REPOSITORY:latest -f deploy/docker/Dockerfile.frontend .
+          
+          # Push frontend image
+          docker push $ECR_REGISTRY/$FRONTEND_ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$FRONTEND_ECR_REPOSITORY:latest
 
-    - name: Download backend task definition
-      run: |
-        aws ecs describe-task-definition --task-definition ${{ env.ECS_CLUSTER }}-backend \
-          --query taskDefinition > backend-task-definition.json
+      - name: Download backend task definition
+        run: |
+          aws ecs describe-task-definition --task-definition depscan-prod-backend \
+            --query taskDefinition > backend-task-definition.json
 
-    - name: Download frontend task definition  
-      run: |
-        aws ecs describe-task-definition --task-definition ${{ env.ECS_CLUSTER }}-frontend \
-          --query taskDefinition > frontend-task-definition.json
+      - name: Download frontend task definition
+        run: |
+          aws ecs describe-task-definition --task-definition depscan-prod-frontend \
+            --query taskDefinition > frontend-task-definition.json
 
-    - name: Fill in the new backend image ID in the Amazon ECS task definition
-      id: backend-task-def
-      uses: aws-actions/amazon-ecs-render-task-definition@v1
-      with:
-        task-definition: backend-task-definition.json
-        container-name: backend
-        image: ${{ steps.login-ecr.outputs.registry }}/${{ env.BACKEND_ECR_REPOSITORY }}:${{ github.sha }}
+      - name: Fill in the new backend image ID in the Amazon ECS task definition
+        id: backend-task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: backend-task-definition.json
+          container-name: backend
+          image: ${{ steps.login-ecr.outputs.registry }}/${{ env.BACKEND_ECR_REPOSITORY }}:${{ github.sha }}
 
-    - name: Fill in the new frontend image ID in the Amazon ECS task definition
-      id: frontend-task-def
-      uses: aws-actions/amazon-ecs-render-task-definition@v1
-      with:
-        task-definition: frontend-task-definition.json
-        container-name: frontend
-        image: ${{ steps.login-ecr.outputs.registry }}/${{ env.FRONTEND_ECR_REPOSITORY }}:${{ github.sha }}
+      - name: Fill in the new frontend image ID in the Amazon ECS task definition
+        id: frontend-task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: frontend-task-definition.json
+          container-name: frontend
+          image: ${{ steps.login-ecr.outputs.registry }}/${{ env.FRONTEND_ECR_REPOSITORY }}:${{ github.sha }}
 
-    - name: Deploy Amazon ECS backend task definition
-      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
-      with:
-        task-definition: ${{ steps.backend-task-def.outputs.task-definition }}
-        service: ${{ env.BACKEND_SERVICE }}
-        cluster: ${{ env.ECS_CLUSTER }}
-        wait-for-service-stability: true
+      - name: Deploy Amazon ECS backend task definition
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.backend-task-def.outputs.task-definition }}
+          service: ${{ env.BACKEND_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
 
-    - name: Deploy Amazon ECS frontend task definition
-      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
-      with:
-        task-definition: ${{ steps.frontend-task-def.outputs.task-definition }}
-        service: ${{ env.FRONTEND_SERVICE }}
-        cluster: ${{ env.ECS_CLUSTER }}
-        wait-for-service-stability: true
+      - name: Deploy Amazon ECS frontend task definition
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.frontend-task-def.outputs.task-definition }}
+          service: ${{ env.FRONTEND_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
 
-    - name: Verify deployment
-      run: |
-        echo "Backend service: ${{ env.BACKEND_SERVICE }}"
-        echo "Frontend service: ${{ env.FRONTEND_SERVICE }}"
-        echo "Deployment completed successfully!"
-        
-        # Get ALB URL (you may need to adjust this based on your setup)
-        aws elbv2 describe-load-balancers --query 'LoadBalancers[?contains(LoadBalancerName, `depscan`)].DNSName' --output text || echo "Load balancer info not available"
+      - name: Get service access info
+        run: |
+          echo "✅ Deployment completed successfully!"
+          echo ""
+          echo "📍 To access your services:"
+          echo "1. Go to AWS ECS Console: https://console.aws.amazon.com/ecs/"
+          echo "2. Click cluster: ${{ env.ECS_CLUSTER }}"
+          echo "3. Click Services → Tasks → Running task → Network section"
+          echo "4. Find the Public IP address"
+          echo ""
+          echo "🌐 Access URLs:"
+          echo "- Frontend: http://[PUBLIC_IP]:80"
+          echo "- Backend API: http://[PUBLIC_IP]:8000/health"
+          echo "- API Docs: http://[PUBLIC_IP]:8000/docs"
+          echo ""
+          echo "📊 Services deployed:"
+          echo "- Backend: ${{ env.BACKEND_SERVICE }}"
+          echo "- Frontend: ${{ env.FRONTEND_SERVICE }}"
 
   rollback:
     name: Rollback on Failure
@@ -172,31 +182,31 @@ jobs:
     if: failure()
     
     steps:
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-        aws-region: ${{ env.AWS_REGION }}
-        role-session-name: GitHubActionsRollback
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: GitHubActionsRollback
 
-    - name: Rollback backend service
-      run: |
-        # Get the previous task definition
-        PREVIOUS_TASK_DEF=$(aws ecs list-task-definitions --family-prefix ${{ env.ECS_CLUSTER }}-backend --status ACTIVE --sort DESC --max-items 2 --query 'taskDefinitionArns[1]' --output text)
-        if [ "$PREVIOUS_TASK_DEF" != "None" ] && [ "$PREVIOUS_TASK_DEF" != "" ]; then
-          echo "Rolling back backend to: $PREVIOUS_TASK_DEF"
-          aws ecs update-service --cluster ${{ env.ECS_CLUSTER }} --service ${{ env.BACKEND_SERVICE }} --task-definition $PREVIOUS_TASK_DEF
-        else
-          echo "No previous backend task definition found for rollback"
-        fi
+      - name: Rollback backend service
+        run: |
+          # Get the previous task definition
+          PREVIOUS_TASK_DEF=$(aws ecs list-task-definitions --family-prefix ${{ env.ECS_CLUSTER }}-backend --status ACTIVE --sort DESC --max-items 2 --query 'taskDefinitionArns[1]' --output text)
+          if [ "$PREVIOUS_TASK_DEF" != "None" ] && [ "$PREVIOUS_TASK_DEF" != "" ]; then
+            echo "Rolling back backend to: $PREVIOUS_TASK_DEF"
+            aws ecs update-service --cluster ${{ env.ECS_CLUSTER }} --service ${{ env.BACKEND_SERVICE }} --task-definition $PREVIOUS_TASK_DEF
+          else
+            echo "No previous backend task definition found for rollback"
+          fi
 
-    - name: Rollback frontend service
-      run: |
-        # Get the previous task definition
-        PREVIOUS_TASK_DEF=$(aws ecs list-task-definitions --family-prefix ${{ env.ECS_CLUSTER }}-frontend --status ACTIVE --sort DESC --max-items 2 --query 'taskDefinitionArns[1]' --output text)
-        if [ "$PREVIOUS_TASK_DEF" != "None" ] && [ "$PREVIOUS_TASK_DEF" != "" ]; then
-          echo "Rolling back frontend to: $PREVIOUS_TASK_DEF"
-          aws ecs update-service --cluster ${{ env.ECS_CLUSTER }} --service ${{ env.FRONTEND_SERVICE }} --task-definition $PREVIOUS_TASK_DEF
-        else
-          echo "No previous frontend task definition found for rollback"
-        fi
+      - name: Rollback frontend service
+        run: |
+          # Get the previous task definition
+          PREVIOUS_TASK_DEF=$(aws ecs list-task-definitions --family-prefix ${{ env.ECS_CLUSTER }}-frontend --status ACTIVE --sort DESC --max-items 2 --query 'taskDefinitionArns[1]' --output text)
+          if [ "$PREVIOUS_TASK_DEF" != "None" ] && [ "$PREVIOUS_TASK_DEF" != "" ]; then
+            echo "Rolling back frontend to: $PREVIOUS_TASK_DEF"
+            aws ecs update-service --cluster ${{ env.ECS_CLUSTER }} --service ${{ env.FRONTEND_SERVICE }} --task-definition $PREVIOUS_TASK_DEF
+          else
+            echo "No previous frontend task definition found for rollback"
+          fi

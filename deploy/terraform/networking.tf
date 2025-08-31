@@ -12,71 +12,33 @@ data "aws_subnets" "default" {
   }
 }
 
-# Security Group for ALB
-resource "aws_security_group" "alb" {
-  name_prefix = "${local.name_prefix}-alb-"
-  description = "Security group for Application Load Balancer"
-  vpc_id      = data.aws_vpc.default.id
+# ALB Security Group removed for MVP - using direct ECS access
 
-  # HTTP
-  ingress {
-    description = "HTTP"
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = var.allowed_cidrs
-  }
-
-  # HTTPS
-  ingress {
-    description = "HTTPS"
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = var.allowed_cidrs
-  }
-
-  # All outbound traffic
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Name = "${local.name_prefix}-alb-sg"
-  }
-
-  lifecycle {
-    create_before_destroy = true
-  }
-}
-
-# Security Group for ECS Tasks
+# Security Group for ECS Tasks - Direct Public Access
 resource "aws_security_group" "ecs_tasks" {
   name_prefix = "${local.name_prefix}-ecs-tasks-"
-  description = "Security group for ECS tasks"
+  description = "Security group for ECS tasks with direct public access"
   vpc_id      = data.aws_vpc.default.id
 
-  # Allow traffic from ALB
+  # Allow direct public access to backend API
   ingress {
-    description     = "HTTP from ALB"
-    from_port       = var.backend_port
-    to_port         = var.backend_port
-    protocol        = "tcp"
-    security_groups = [aws_security_group.alb.id]
+    description = "Backend API - Direct Public Access"
+    from_port   = var.backend_port
+    to_port     = var.backend_port
+    protocol    = "tcp"
+    cidr_blocks = var.allowed_cidrs
   }
 
+  # Allow direct public access to frontend
   ingress {
-    description     = "HTTP from ALB"
-    from_port       = var.frontend_port
-    to_port         = var.frontend_port
-    protocol        = "tcp"
-    security_groups = [aws_security_group.alb.id]
+    description = "Frontend - Direct Public Access"
+    from_port   = var.frontend_port
+    to_port     = var.frontend_port
+    protocol    = "tcp"
+    cidr_blocks = var.allowed_cidrs
   }
 
-  # Allow backend to communicate with frontend
+  # Allow inter-service communication
   ingress {
     description = "Inter-service communication"
     from_port   = 0
