@@ -1,17 +1,21 @@
 name: CLI - Publish to TestPyPI
 
 on:
+  # Manual trigger
   workflow_dispatch:
-  release:
-    types: [published]
+  
+  # Trigger on pushes to main (any backend changes)
   push:
-    tags:
-      - 'v*.*.*'
-    branches:
-      - main
+    branches: [ main ]
     paths:
       - 'backend/**'
       - 'pyproject.toml'
+      - 'MANIFEST.in'
+      - '.github/workflows/cli-testpypi.yml'
+  
+  # Trigger on releases
+  release:
+    types: [published]
 
 jobs:
   publish-cli:

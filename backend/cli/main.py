@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 DepScan CLI - Dependency Vulnerability Scanner
-Refactored for better modularity and maintainability
+Multi-ecosystem dependency vulnerability scanner with CLI and web interfaces.
 """
 import asyncio
 import json

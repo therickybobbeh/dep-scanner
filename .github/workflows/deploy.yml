@@ -7,6 +7,7 @@ on:
       - 'backend/**'
       - 'frontend/**'
       - 'deploy/**'
+      - '.github/workflows/deploy.yml'
   workflow_dispatch:
 
 env:
