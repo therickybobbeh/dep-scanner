@@ -55,24 +55,23 @@ class TestFileHandlingEdgeCases:
         test_file.write_text(json.dumps(large_package_json, indent=2))
         
         # Mock the core scanner to avoid actual network calls
-        with patch('backend.cli.scanner.CoreScanner') as mock_core:
-            mock_instance = Mock()
-            mock_core.return_value = mock_instance
-            mock_instance.scan_manifest_files = AsyncMock(return_value=Report(
-                job_id="large-test",
-                status=JobStatus.COMPLETED,
-                total_dependencies=1000,
-                vulnerable_count=0,
-                vulnerable_packages=[],
-                dependencies=[],
-                suppressed_count=0,
-                meta={}
-            ))
-            
-            result = await scanner.scan_single_file(str(test_file), ScanOptions())
-            
-            # Should handle large files without issues
-            assert result.total_dependencies == 1000
+        mock_instance = Mock()
+        mock_instance.scan_manifest_files = AsyncMock(return_value=Report(
+            job_id="large-test",
+            status=JobStatus.COMPLETED,
+            total_dependencies=1000,
+            vulnerable_count=0,
+            vulnerable_packages=[],
+            dependencies=[],
+            suppressed_count=0,
+            meta={}
+        ))
+        scanner.core_scanner = mock_instance
+        
+        result = await scanner.scan_single_file(str(test_file), ScanOptions())
+        
+        # Should handle large files without issues
+        assert result.total_dependencies == 1000
     
     @pytest.mark.asyncio
     async def test_scanner_with_binary_file(self, tmp_path):
@@ -151,24 +150,23 @@ class TestFileHandlingEdgeCases:
         test_file.write_text("# 测试依赖项\nrequests==2.25.1\n# café dependencies", encoding='utf-8')
         
         # Mock core scanner
-        with patch('backend.cli.scanner.CoreScanner') as mock_core:
-            mock_instance = Mock()
-            mock_core.return_value = mock_instance
-            mock_instance.scan_manifest_files = AsyncMock(return_value=Report(
-                job_id="unicode-test",
-                status=JobStatus.COMPLETED,
-                total_dependencies=1,
-                vulnerable_count=0,
-                vulnerable_packages=[],
-                dependencies=[],
-                suppressed_count=0,
-                meta={}
-            ))
-            
-            result = await scanner.scan_single_file(str(test_file), ScanOptions())
-            
-            # Should handle unicode content
-            assert result.total_dependencies == 1
+        mock_instance = Mock()
+        mock_instance.scan_manifest_files = AsyncMock(return_value=Report(
+            job_id="unicode-test",
+            status=JobStatus.COMPLETED,
+            total_dependencies=1,
+            vulnerable_count=0,
+            vulnerable_packages=[],
+            dependencies=[],
+            suppressed_count=0,
+            meta={}
+        ))
+        scanner.core_scanner = mock_instance
+        
+        result = await scanner.scan_single_file(str(test_file), ScanOptions())
+        
+        # Should handle unicode content
+        assert result.total_dependencies == 1
 
 
 class TestNetworkAndAPIEdgeCases:
@@ -356,24 +354,23 @@ class TestErrorRecoveryAndRobustness:
         (tmp_path / "invalid.json").write_text("invalid json{")
         
         # Mock core scanner to succeed despite some invalid files
-        with patch('backend.cli.scanner.CoreScanner') as mock_core:
-            mock_instance = Mock()
-            mock_core.return_value = mock_instance
-            mock_instance.scan_manifest_files = AsyncMock(return_value=Report(
-                job_id="partial-test",
-                status=JobStatus.COMPLETED,
-                total_dependencies=2,
-                vulnerable_count=0,
-                vulnerable_packages=[],
-                dependencies=[],
-                suppressed_count=0,
-                meta={}
-            ))
-            
-            result = await scanner.scan_repository(str(tmp_path), ScanOptions())
-            
-            # Should succeed with valid files
-            assert result.total_dependencies == 2
+        mock_instance = Mock()
+        mock_instance.scan_manifest_files = AsyncMock(return_value=Report(
+            job_id="partial-test",
+            status=JobStatus.COMPLETED,
+            total_dependencies=2,
+            vulnerable_count=0,
+            vulnerable_packages=[],
+            dependencies=[],
+            suppressed_count=0,
+            meta={}
+        ))
+        scanner.core_scanner = mock_instance
+        
+        result = await scanner.scan_repository(str(tmp_path), ScanOptions())
+        
+        # Should succeed with valid files
+        assert result.total_dependencies == 2
     
     @pytest.mark.asyncio
     async def test_scanner_with_concurrent_file_modification(self, tmp_path):
@@ -418,13 +415,12 @@ class TestErrorRecoveryAndRobustness:
         test_file.write_text('{"name": "test"}')
         
         # Mock core scanner to raise exception
-        with patch('backend.cli.scanner.CoreScanner') as mock_core:
-            mock_instance = Mock()
-            mock_core.return_value = mock_instance
-            mock_instance.scan_manifest_files = AsyncMock(side_effect=RuntimeError("Simulated error"))
-            
-            with pytest.raises(RuntimeError):
-                await scanner.scan_single_file(str(test_file), ScanOptions())
+        mock_instance = Mock()
+        mock_instance.scan_manifest_files = AsyncMock(side_effect=RuntimeError("Simulated error"))
+        scanner.core_scanner = mock_instance
+        
+        with pytest.raises(RuntimeError):
+            await scanner.scan_single_file(str(test_file), ScanOptions())
             
             # Verify scanner state is clean after exception
             assert scanner.current_progress is None
@@ -464,29 +460,32 @@ class TestErrorRecoveryAndRobustness:
         try:
             # Create many temporary files
             for i in range(100):
-                temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.json')
+                temp_file = tempfile.NamedTemporaryFile(delete=False, prefix='package', suffix='.json')
                 temp_file.write(b'{"name": "test"}')
                 temp_file.close()
-                temp_files.append(temp_file.name)
+                # Rename to package.json to make it a supported format
+                package_file = temp_file.name.replace(Path(temp_file.name).name, 'package.json')
+                import os
+                os.rename(temp_file.name, package_file)
+                temp_files.append(package_file)
             
             # Mock core scanner
-            with patch('backend.cli.scanner.CoreScanner') as mock_core:
-                mock_instance = Mock()
-                mock_core.return_value = mock_instance
-                mock_instance.scan_manifest_files = AsyncMock(return_value=Report(
-                    job_id="resource-test",
-                    status=JobStatus.COMPLETED,
-                    total_dependencies=1,
-                    vulnerable_count=0,
-                    vulnerable_packages=[],
-                    dependencies=[],
-                    suppressed_count=0,
-                    meta={}
-                ))
-                
-                # Should handle resource constraints gracefully
-                result = await scanner.scan_single_file(temp_files[0], ScanOptions())
-                assert result.total_dependencies == 1
+            mock_instance = Mock()
+            mock_instance.scan_manifest_files = AsyncMock(return_value=Report(
+                job_id="resource-test",
+                status=JobStatus.COMPLETED,
+                total_dependencies=1,
+                vulnerable_count=0,
+                vulnerable_packages=[],
+                dependencies=[],
+                suppressed_count=0,
+                meta={}
+            ))
+            scanner.core_scanner = mock_instance
+            
+            # Should handle resource constraints gracefully
+            result = await scanner.scan_single_file(temp_files[0], ScanOptions())
+            assert result.total_dependencies == 1
                 
         finally:
             # Cleanup temporary files

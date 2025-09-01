@@ -156,7 +156,7 @@ python -c "import zipfile; zipfile.ZipFile('dist/multi_vuln_scanner-*.whl').prin
 The package version is defined in `pyproject.toml`:
 ```toml
 [project]
-version = "1.0.1"
+version = "1.0.2"
 ```
 
 For automatic versioning, consider using tools like:

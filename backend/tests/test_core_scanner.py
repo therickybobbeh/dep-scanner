@@ -425,6 +425,39 @@ class TestCoreScannerEdgeCases:
     def scanner(self):
         return CoreScanner()
     
+    @pytest.fixture
+    def mock_dependencies(self):
+        """Mock dependencies for testing"""
+        return [
+            Dep(name="requests", version="2.25.1", ecosystem="PyPI", path=["requests"], is_direct=True),
+            Dep(name="lodash", version="4.17.19", ecosystem="npm", path=["lodash"], is_direct=True),
+            Dep(name="urllib3", version="1.26.5", ecosystem="PyPI", path=["requests", "urllib3"], is_direct=False)
+        ]
+    
+    @pytest.fixture
+    def mock_vulnerabilities(self):
+        """Mock vulnerabilities for testing"""
+        return [
+            Vuln(
+                package="requests",
+                version="2.25.1", 
+                ecosystem="PyPI",
+                vulnerability_id="PYSEC-2022-43012",
+                severity=SeverityLevel.HIGH,
+                summary="SSRF vulnerability in requests",
+                fixed_range=None
+            ),
+            Vuln(
+                package="lodash",
+                version="4.17.19",
+                ecosystem="npm", 
+                vulnerability_id="GHSA-35jh-r3h4-6jhm",
+                severity=SeverityLevel.MEDIUM,
+                summary="Prototype pollution in lodash",
+                fixed_range=None
+            )
+        ]
+    
     @pytest.mark.asyncio
     async def test_empty_manifest_files(self, scanner):
         """Test scanning with empty manifest files dict"""

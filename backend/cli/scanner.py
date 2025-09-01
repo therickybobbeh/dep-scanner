@@ -268,7 +268,7 @@ class DepScanner:
         if self.current_progress and self.current_task is not None:
             
             # Map callback messages to progress stages
-            if "generating" in message.lower() or "registry" in message.lower() or "pypi" in message.lower():
+            if "generating" in message.lower() or "generate" in message.lower() or "registry" in message.lower() or "pypi" in message.lower():
                 # Lock file generation stage (30-50%)
                 if "running" in message.lower():
                     self._update_progress_stage("generation", 0.5)

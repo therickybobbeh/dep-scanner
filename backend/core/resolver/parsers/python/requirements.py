@@ -116,14 +116,10 @@ class RequirementsParser(BaseDependencyParser):
                 # Check for explicit direct/transitive markers
                 elif 'transitive' in comment_part.lower():
                     is_direct = False
-                    # For transitive dependencies without explicit path, create a minimal path
-                    if not path:
-                        path = ["unknown-parent", name]
+                    # Path will be set later after name is extracted
                 elif 'direct' in comment_part.lower():
                     is_direct = True
-                    # For direct dependencies, ensure single-element path
-                    if not path:
-                        path = [name]
+                    # Path will be set later after name is extracted
                 
                 line = requirement_part
             

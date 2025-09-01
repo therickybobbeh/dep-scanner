@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "multi-vuln-scanner"
-version = "1.0.1"
+version = "1.0.2"
 description = "Fast, accurate, and comprehensive vulnerability scanning for Python and JavaScript projects - Professional-grade security tool with CLI and web interfaces"
 readme = "README_PYPI.md"
 license = "MIT"
