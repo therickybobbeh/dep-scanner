@@ -381,28 +381,20 @@ graph TB
 ```mermaid
 stateDiagram-v2
     [*] --> Initial
-    
-    state "ScanPage Workflow" as ScanWorkflow {
-        Initial --> FileUpload : user_selects_files
-        FileUpload --> FileValidation : files_selected
-        FileValidation --> OptionsConfiguration : files_valid
-        FileValidation --> FileUpload : validation_error
-        OptionsConfiguration --> ScanSubmission : user_submits
-        ScanSubmission --> RedirectToReport : scan_started
-        ScanSubmission --> OptionsConfiguration : submission_error
-    }
-    
-    state "ReportPage Workflow" as ReportWorkflow {
-        [*] --> LoadingProgress
-        LoadingProgress --> PollingStatus : job_id_received
-        PollingStatus --> PollingStatus : scan_in_progress
-        PollingStatus --> DisplayingResults : scan_completed
-        PollingStatus --> DisplayingError : scan_failed
-        DisplayingResults --> ExportingResults : user_exports
-        ExportingResults --> DisplayingResults : export_complete
-    }
-    
-    RedirectToReport --> LoadingProgress
+    Initial --> FileUpload : user_selects_files
+    FileUpload --> FileValidation : files_selected
+    FileValidation --> OptionsConfig : files_valid
+    FileValidation --> FileUpload : validation_error
+    OptionsConfig --> ScanSubmission : user_submits
+    ScanSubmission --> ReportRedirect : scan_started
+    ScanSubmission --> OptionsConfig : submission_error
+    ReportRedirect --> LoadingProgress : navigate_to_report
+    LoadingProgress --> PollingStatus : job_id_received
+    PollingStatus --> PollingStatus : scan_in_progress
+    PollingStatus --> DisplayResults : scan_completed
+    PollingStatus --> DisplayError : scan_failed
+    DisplayResults --> ExportResults : user_exports
+    ExportResults --> DisplayResults : export_complete
     
     note right of FileValidation
         Validate file types,
@@ -411,7 +403,7 @@ stateDiagram-v2
     end note
     
     note right of PollingStatus
-        Poll /status/{job_id}
+        Poll status endpoint
         every 2 seconds for
         real-time updates
     end note
@@ -442,16 +434,16 @@ sequenceDiagram
     ScanPage->>ReportPage: Navigate with job_id
     
     ReportPage->>ReportPage: useEffect(mount)
-    ReportPage->>API: GET /status/{job_id}
+    ReportPage->>API: GET /status/[job_id]
     
     loop Every 2 seconds while scanning
-        ReportPage->>API: Poll GET /status/{job_id}
+        ReportPage->>API: Poll GET /status/[job_id]
         API-->>ReportPage: Progress update
         ReportPage->>ReportPage: Update progress state
     end
     
     API-->>ReportPage: Scan completed
-    ReportPage->>API: GET /report/{job_id}
+    ReportPage->>API: GET /report/[job_id]
     API-->>ReportPage: Full report data
     ReportPage->>ReportPage: Display results
     

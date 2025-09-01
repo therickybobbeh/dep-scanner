@@ -21,7 +21,7 @@ dep-scan scan ./package.json
 
 ### Option 2: Local Development Install
 ```bash
-git clone <your-repository-url>
+git clone https://github.com/therickybobbeh/dep-scanner.git
 cd socketTest/backend
 pip install -e .
 ```

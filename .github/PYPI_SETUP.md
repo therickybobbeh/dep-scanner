@@ -75,13 +75,13 @@ This will:
 The workflow automatically triggers on:
 
 1. **GitHub Releases**: When you create a release
-2. **Version Tags**: When you push tags like `v1.0.0`
+2. **Version Tags**: When you push tags like `v1.0.1`
 
 #### Creating a Release:
 ```bash
 # Tag the release
-git tag v1.0.0
-git push origin v1.0.0
+git tag v1.0.1
+git push origin v1.0.1
 
 # Or create through GitHub web interface
 # Go to Releases → Create a new release
@@ -156,7 +156,7 @@ python -c "import zipfile; zipfile.ZipFile('dist/multi_vuln_scanner-*.whl').prin
 The package version is defined in `pyproject.toml`:
 ```toml
 [project]
-version = "1.0.0"
+version = "1.0.1"
 ```
 
 For automatic versioning, consider using tools like:

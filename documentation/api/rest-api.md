@@ -17,19 +17,19 @@ The DepScan REST API is built with FastAPI and provides comprehensive vulnerabil
 
 ```mermaid
 graph LR
-    subgraph "API Endpoints"
-        SCAN[🔍 POST /scan<br/>Start Vulnerability Scan]
-        STATUS[📈 GET /status/{job_id}<br/>Get Scan Progress]
-        REPORT[📋 GET /report/{job_id}<br/>Get Scan Results]
-        VALIDATE[✅ POST /validate-consistency<br/>Validate File Consistency]
-        HEALTH[❤️ GET /health<br/>Health Check]
-        ROOT[🏠 GET /<br/>React SPA / API Info]
+    subgraph Endpoints ["API Endpoints"]
+        SCAN["🔍 POST /scan<br/>Start Vulnerability Scan"]
+        STATUS["📈 GET /status/[job_id]<br/>Get Scan Progress"]
+        REPORT["📋 GET /report/[job_id]<br/>Get Scan Results"]
+        VALIDATE["✅ POST /validate-consistency<br/>Validate File Consistency"]
+        HEALTH["❤️ GET /health<br/>Health Check"]
+        ROOT["🏠 GET /<br/>React SPA / API Info"]
     end
     
-    subgraph "Workflow"
-        START[📤 Upload Files]
-        MONITOR[👁️ Monitor Progress]
-        RESULTS[📊 View Results]
+    subgraph Workflow ["User Workflow"]
+        START["📤 Upload Files"]
+        MONITOR["👁️ Monitor Progress"]
+        RESULTS["📊 View Results"]
     end
     
     START --> SCAN

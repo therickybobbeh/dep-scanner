@@ -11,7 +11,7 @@ The DepScan backend is built on a modular, async-first architecture using Python
 - **Type Safety**: Full Pydantic models and Python type hints
 - **Stateless**: No persistent storage, fully stateless for horizontal scaling
 - **Error Resilience**: Comprehensive error handling and graceful degradation
-- **Performance Optimized**: Connection pooling, batching, and intelligent caching
+- **Performance Optimized**: Connection pooling and request batching
 
 ## 🏗️ Backend Component Architecture
 
@@ -46,7 +46,7 @@ graph TB
         MODELS[📋 Pydantic Models<br/>Type Safety]
         CONFIG[⚙️ Configuration<br/>Environment + Settings]
         LOGGING[📊 Logging<br/>Structured Logs]
-        RATE_LIMIT[⏱️ Rate Limiting<br/>Request Throttling]
+        UTILS[🔧 Utilities<br/>Helper Functions]
     end
     
     %% Presentation Layer Connections
@@ -75,7 +75,7 @@ graph TB
     JS_RESOLVER -.-> MODELS
     OSV_SCANNER -.-> MODELS
     API -.-> CONFIG
-    API -.-> RATE_LIMIT
+    API -.-> UTILS
     CLI -.-> CONFIG
     OSV_CLIENT -.-> LOGGING
     
@@ -90,7 +90,7 @@ graph TB
     class SCANNER,SCAN_SVC,CLI_SVC business
     class PY_RESOLVER,JS_RESOLVER,OSV_SCANNER,LOCK_GEN domain
     class PY_PARSERS,JS_PARSERS,OSV_CLIENT,REGISTRY_CLIENTS data
-    class MODELS,CONFIG,LOGGING,RATE_LIMIT crosscutting
+    class MODELS,CONFIG,LOGGING,UTILS crosscutting
 ```
 
 ## 📊 Core Data Flow
@@ -352,7 +352,7 @@ graph TB
         SCANNER[🛡️ OSV Scanner<br/>Batch Processing]
         BATCHER[📦 Request Batcher<br/>Batch Size: 100]
         RETRY[🔄 Retry Handler<br/>Exponential Backoff]
-        RATE_LIMITER[⏱️ Rate Limiter<br/>Request Throttling]
+        VALIDATOR[✅ Response Validator<br/>Data Validation]
     end
     
     subgraph "Data Processing"
@@ -367,7 +367,7 @@ graph TB
         HTTP_CLIENT[🔗 HTTP Client<br/>Connection Pooling]
     end
     
-    subgraph "Caching & Performance"
+    subgraph "Performance & Reliability"
         CONNECTION_POOL[🏊 Connection Pool<br/>Reuse HTTP Connections]
         TIMEOUT_HANDLER[⏰ Timeout Handler<br/>Request Timeouts]
     end
@@ -375,8 +375,8 @@ graph TB
     %% Main Processing Flow
     SCANNER --> DEDUPER
     DEDUPER --> BATCHER
-    BATCHER --> RATE_LIMITER
-    RATE_LIMITER --> RETRY
+    BATCHER --> VALIDATOR
+    VALIDATOR --> RETRY
     
     %% External Communication
     RETRY --> HTTP_CLIENT
@@ -398,7 +398,7 @@ graph TB
     classDef external fill:#fce4ec
     classDef performance fill:#e1f5fe
     
-    class SCANNER,BATCHER,RETRY,RATE_LIMITER scanner
+    class SCANNER,BATCHER,RETRY,VALIDATOR scanner
     class DEDUPER,CONVERTER,ENRICHER processing
     class OSV_API,OSV_INDIVIDUAL,HTTP_CLIENT external
     class CONNECTION_POOL,TIMEOUT_HANDLER performance
@@ -418,14 +418,14 @@ graph TB
         CORS[🌐 CORS Middleware<br/>Cross-Origin Requests]
         SECURITY[🔒 Security Headers<br/>XSS, CSRF Protection]
         TRUSTED_HOST[🏠 Trusted Host<br/>Host Validation]
-        RATE_LIMIT_MW[⏱️ Rate Limiting<br/>Request Throttling]
+        REQUEST_HANDLER[🔄 Request Handler<br/>Request Processing]
     end
     
     subgraph "Dependency Injection"
         APP_STATE[🗂️ App State<br/>Scan Jobs + Reports]
         SCAN_SERVICE[📊 Scan Service<br/>Business Logic]
         CLI_SERVICE[⚡ CLI Service<br/>CLI Integration]
-        RATE_LIMIT_CHECK[✅ Rate Limit Check<br/>Validation Logic]
+        INPUT_VALIDATOR[✅ Input Validator<br/>Request Validation]
     end
     
     subgraph "Route Groups"
@@ -449,13 +449,13 @@ graph TB
     MIDDLEWARE --> CORS
     MIDDLEWARE --> SECURITY
     MIDDLEWARE --> TRUSTED_HOST
-    MIDDLEWARE --> RATE_LIMIT_MW
+    MIDDLEWARE --> REQUEST_HANDLER
     
     %% Dependency Injection
     ROUTES --> APP_STATE
     ROUTES --> SCAN_SERVICE
     ROUTES --> CLI_SERVICE
-    ROUTES --> RATE_LIMIT_CHECK
+    ROUTES --> INPUT_VALIDATOR
     
     %% Route Organization
     ROUTES --> SCAN_ROUTES
@@ -475,8 +475,8 @@ graph TB
     classDef background fill:#fce4ec
     
     class APP,MIDDLEWARE,ROUTES fastapi
-    class CORS,SECURITY,TRUSTED_HOST,RATE_LIMIT_MW middleware
-    class APP_STATE,SCAN_SERVICE,CLI_SERVICE,RATE_LIMIT_CHECK injection
+    class CORS,SECURITY,TRUSTED_HOST,REQUEST_HANDLER middleware
+    class APP_STATE,SCAN_SERVICE,CLI_SERVICE,INPUT_VALIDATOR injection
     class SCAN_ROUTES,REPORT_ROUTES,HEALTH_ROUTES,STATIC_ROUTES routes
     class ASYNC_TASKS,TASK_MANAGER,CLEANUP background
 ```
@@ -540,7 +540,7 @@ graph LR
     
     subgraph "Configuration Categories"
         API_CONFIG[🌐 API Configuration<br/>Ports, CORS, Hosts]
-        SECURITY_CONFIG[🔒 Security Configuration<br/>Rate Limits, Headers]
+        SECURITY_CONFIG[🔒 Security Configuration<br/>Headers, Validation]
         EXTERNAL_CONFIG[🌍 External Services<br/>OSV.dev, Registries]
         PERFORMANCE_CONFIG[⚡ Performance Configuration<br/>Timeouts, Batch Sizes]
     end
@@ -593,10 +593,10 @@ graph LR
 - **Garbage collection**: Explicit cleanup of completed scan data
 - **Dependency deduplication**: Remove duplicate packages before scanning
 
-### **Rate Limiting & Caching**
-- **Intelligent rate limiting**: Respect external API limits
-- **Request throttling**: Prevent overwhelming external services
+### **Request Optimization**
+- **Request batching**: Batch OSV.dev queries efficiently
 - **Connection reuse**: Minimize connection overhead
+- **Response validation**: Ensure data integrity
 
 ## 🔒 Security Architecture
 
@@ -606,7 +606,7 @@ graph LR
 - **Content sanitization**: Safe handling of user-provided manifest files
 
 ### **API Security**
-- **Rate limiting**: Protection against abuse and DoS
+- **Input validation**: Strict request validation and sanitization
 - **Security headers**: XSS, CSRF, and clickjacking protection
 - **CORS configuration**: Restricted cross-origin access
 - **Host validation**: Trusted host middleware

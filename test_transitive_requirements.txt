@@ -1,0 +1,9 @@
+# Test file with known vulnerabilities to check transitive dependency detection
+# These packages have known transitive vulnerabilities
+
+# Direct dependency that has vulnerable transitive dependencies
+requests==2.25.1  # This version has urllib3 vulnerabilities in transitive deps
+flask==2.0.1      # This version has vulnerable Jinja2 and Werkzeug dependencies
+pyyaml==5.4.1     # Known vulnerable version
+pillow==8.3.1     # Known vulnerable version with transitive issues
+numpy==1.21.0     # Version that might have transitive vulnerabilities

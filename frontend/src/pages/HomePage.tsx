@@ -32,7 +32,7 @@ const HomePage: React.FC = () => {
                   variant="outline-primary" 
                   size="lg" 
                   className="px-4 py-3"
-                  onClick={() => window.open('https://github.com/therickybobbeh/socketTest', '_blank')}
+                  onClick={() => window.open('https://github.com/therickybobbeh/dep-scanner', '_blank')}
                 >
                   View on GitHub
                 </Button>

@@ -1,45 +1,35 @@
-# 🛡️ DepScan - Professional Dependency Vulnerability Scanner
+# 🛡️ DepScan - Dependency Vulnerability Scanner
 
-> **Fast, accurate, and comprehensive vulnerability scanning for Python and JavaScript projects**
+> **Fast, accurate vulnerability scanning for Python and JavaScript projects**
 
-DepScan is a professional-grade security tool that identifies known vulnerabilities in your project dependencies across multiple ecosystems. Get detailed security reports with actionable recommendations through both CLI and web interfaces.
+Professional-grade security tool that identifies known vulnerabilities in your project dependencies. Get detailed security reports with actionable recommendations through CLI and web interfaces.
 
 [![TestPyPI](https://img.shields.io/badge/TestPyPI-v1.0.1-blue)](https://test.pypi.org/project/multi-vuln-scanner/1.0.1/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![Node.js 18+](https://img.shields.io/badge/node.js-18+-green.svg)](https://nodejs.org/)
 
-## 🌐 Live Demo & Quick Install
+## 🚀 Quick Start
 
-### 🚀 Try it Now - CLI Installation
+### Install & Run
 ```bash
-pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ multi-vuln-scanner
-```
-
-### 🌐 Live Demo URLs
-Running on AWS deployed through github actions to AWS, not quite production grade yet this is demo enviornments.
-- **🖥️ Web Interface**: [http://depscan-prod-alb-1243821159.us-east-1.elb.amazonaws.com
-  ](http://depscan-prod-alb-1243821159.us-east-1.elb.amazonaws.com
-  )
-- **📚 API Documentation**: [http://depscan-prod-alb-1243821159.us-east-1.elb.amazonaws.com/docs](http://depscan-prod-alb-1243821159.us-east-1.elb.amazonaws.com/docs)
-
-
-## 📦 Installation
-
-### Install from TestPyPI (Current Release)
-```bash
-# Install latest version (recommended)
+# Install from TestPyPI
 pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ multi-vuln-scanner
 
-# Install specific version
-pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ multi-vuln-scanner==1.0.1
+# Scan your project
+multi-vuln-scanner scan package.json
+multi-vuln-scanner scan requirements.txt
 ```
 
-> **Note**: Pip automatically installs the latest version when no version is specified. Version numbers come from `pyproject.toml` - no git tags needed.
+### Live Demo
+- **🖥️ Web Interface**: [Demo Environment](http://depscan-prod-alb-1243821159.us-east-1.elb.amazonaws.com)
+- **📚 API Documentation**: [API Docs](http://depscan-prod-alb-1243821159.us-east-1.elb.amazonaws.com/docs)
+
+
+## 📖 Usage Examples
 
 ### Install from Source
 ```bash
-git clone https://github.com/therickybobbeh/socketTest.git
+git clone https://github.com/therickybobbeh/dep-scanner.git
 cd socketTest
 pip install -e .
 ```
@@ -54,7 +44,7 @@ pip install -e .
 pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ multi-vuln-scanner
 
 # Or install from source
-git clone https://github.com/therickybobbeh/socketTest.git
+git clone https://github.com/therickybobbeh/dep-scanner.git
 cd socketTest
 pip install -e .
 ```
@@ -147,16 +137,7 @@ High Issues (4):
 ⏱️ Scan completed in 8.3 seconds
 ```
 
-## 🔗 Documentation & Resources
-
-### 📚 Core Documentation
-- **[🚀 Deployment Guide](DEPLOYMENT.md)** - All deployment options
-- **[🔄 API Reference](http://localhost:8000/docs)** - REST API documentation (when running locally)
-
-### 🛠️ Development & Contributing
-- **[💻 Quick Development Setup](#development-quick-start)** - See below for setup instructions
-
-## 🚀 Deployment Options
+## Deployment Options
 
 | Method | Best For | Complexity | Cost |
 |--------|----------|------------|------|
@@ -165,48 +146,70 @@ High Issues (4):
 | **AWS ECS** | Production web service | ⭐⭐⭐ | ~$17-27/month |
 | **Local Development** | Development/Testing | ⭐⭐ | Free |
 
-### Quick Deployment Links
-- **[⚙️ Configuration Options](DEPLOYMENT.md#configuration-options)** - Environment setup
-- **[🚀 Full Deployment Guide](DEPLOYMENT.md)** - All deployment methods
+See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed deployment instructions.
 
 ## 🏗️ Architecture Overview
 
 ```mermaid
 graph TB
-    subgraph "🖥️ Interfaces"
+    subgraph Interfaces ["🖥️ User Interfaces"]
         CLI[CLI Scanner]
         WEB[Web Dashboard]
     end
     
-    subgraph "🔧 Core Engine"
+    subgraph Core ["🔧 Core Engine"]
         API[FastAPI Server]
-        CORE[Scanner Core]
+        SCANNER[Scanner Core]
         CACHE[Result Cache]
     end
     
-    subgraph "🔍 Processing Pipeline"
+    subgraph Pipeline ["🔍 Processing Pipeline"]
         RESOLVE[Dependency Resolvers]
         PARSE[File Parsers]
-        SCAN[Vulnerability Scanner]
+        VULNSCAN[Vulnerability Scanner]
     end
     
-    subgraph "🌐 External Services"
+    subgraph External ["🌐 External Services"]
         OSV[OSV.dev Database]
         PYPI[PyPI Registry]
         NPM[npm Registry]
     end
     
-    CLI --> CORE
+    CLI --> SCANNER
     WEB --> API
-    API --> CORE
-    CORE --> RESOLVE
+    API --> SCANNER
+    SCANNER --> RESOLVE
     RESOLVE --> PARSE
-    CORE --> SCAN
-    SCAN --> OSV
+    SCANNER --> VULNSCAN
+    VULNSCAN --> OSV
     PARSE --> PYPI
     PARSE --> NPM
-    CORE --> CACHE
+    SCANNER --> CACHE
 ```
+
+## 📚 Documentation
+
+### Core Documentation
+- **[🚀 Quick Install](#-quick-install-1)** - Get started in 30 seconds
+- **[📖 Usage Guide](#-quick-start)** - CLI and web interface instructions  
+- **[🚀 Deployment Guide](DEPLOYMENT.md)** - All deployment options and configurations
+- **[🏗️ Architecture Overview](#-architecture-overview)** - System design and components
+
+### Deployment & Operations  
+- **[AWS Deployment](deploy/README.md)** - Complete AWS setup with Terraform
+- **[Docker Setup](deploy/docker/)** - Containerized deployment options
+- **[TestPyPI Publishing](.github/PYPI_SETUP.md)** - Package publishing workflow
+
+### Development & Contributing
+- **[🤝 Contributing Guide](CONTRIBUTING.md)** - How to contribute to the project
+- **[🔒 Security Policy](SECURITY.md)** - Vulnerability reporting and security practices
+- **[📋 Development Setup](CONTRIBUTING.md#development-setup)** - Local development environment
+
+### Reference Materials
+- **[📄 Changelog](CHANGELOG.md)** - Version history and release notes
+- **[⚖️ License](LICENSE)** - MIT license details
+- **[📦 Third-party Licenses](THIRD_PARTY_LICENSES.md)** - Dependency licensing information
+- **[🔗 API Reference](http://localhost:8000/docs)** - Interactive API documentation (when running locally)
 
 ## ⚡ Performance & Scale
 
@@ -224,33 +227,16 @@ graph TB
 - ✅ **Zero Data Collection** - No tracking or analytics
 - ✅ **Offline Capable** - Works without internet after initial setup
 
-## 🤝 Contributing & Community
+## Contributing
 
-We welcome contributions of all kinds! Here's how to get started:
+We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines on:
 
-- **🐛 Bug Reports**: Create GitHub Issues in your repository
-- **💡 Feature Requests**: Use GitHub Discussions for feature requests
-- **📝 Documentation**: Improve guides and examples
-- **🔧 Code Contributions**: Follow standard GitHub workflow with PRs
-- **📋 Testing**: Help expand test coverage
+- **Bug Reports & Feature Requests**
+- **Development Setup & Workflow** 
+- **Code Standards & Testing**
+- **Pull Request Process**
 
-### Development Quick Start
-```bash
-# Clone and setup
-git clone <your-repository-url>
-cd socketTest
-
-# Backend development
-cd backend
-python -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
-
-# Frontend development  
-cd ../frontend && npm install && npm run dev
-
-# Run backend server
-cd ../backend && python -m backend.web.main
-```
+Quick start: `pip install -e ".[dev]"` then see the contributing guide for full setup.
 
 ## 📄 License & Legal
 
@@ -260,18 +246,13 @@ cd ../backend && python -m backend.web.main
 - Third-party licenses: [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md)
 - Security policy: [SECURITY.md](SECURITY.md)
 
-## 🆘 Support & Help
+## Support
 
 ### Getting Help
-- **📖 Documentation**: Check this README and DEPLOYMENT.md
-- **🔍 Search Issues**: Check existing issues in your GitHub repository
-- **💬 Community**: Use GitHub Discussions for questions
-- **📧 Security Issues**: Report security issues privately through your repository
-
-### Professional Support
-- **🏢 Enterprise Support**: Contact us for SLA-backed support
-- **🎓 Training**: Team training and implementation guidance
-- **🔧 Custom Development**: Feature development and integration services
+- **📚 Documentation**: Check the [Documentation](#documentation) section above
+- **🐛 Issues**: Search existing [GitHub Issues](https://github.com/therickybobbeh/dep-scanner/issues)  
+- **💬 Community**: Use [GitHub Discussions](https://github.com/therickybobbeh/dep-scanner/discussions) for questions
+- **🔒 Security**: Report security issues via [Security Policy](SECURITY.md)
 
 ---
 

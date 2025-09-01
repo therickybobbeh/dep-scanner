@@ -1,0 +1,6 @@
+# Simple test to verify transitive dependency detection
+# requests has several transitive dependencies that might have vulnerabilities
+requests==2.25.1
+
+# Django often has many transitive dependencies  
+Django==3.2.13
