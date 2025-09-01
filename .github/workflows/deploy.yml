@@ -38,15 +38,13 @@ jobs:
 
     - name: Install backend dependencies
       run: |
-        cd backend
         python -m pip install --upgrade pip
         pip install -e .
         pip install pytest pytest-asyncio pytest-httpx
 
     - name: Run backend tests
       run: |
-        cd backend
-        python -m pytest -v || echo "No tests found, skipping..."
+        python -m pytest backend/tests -v || echo "No tests found, skipping..."
 
     - name: Set up Node.js
       uses: actions/setup-node@v4
