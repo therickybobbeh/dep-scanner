@@ -3,12 +3,26 @@
 > **Fast, accurate, and comprehensive vulnerability scanning for Python and JavaScript projects**
 
 DepScan is a professional-grade security tool that identifies known vulnerabilities in your project dependencies across multiple ecosystems. Get detailed security reports with actionable recommendations through both CLI and web interfaces.
-[![CLI - TestPyPI](https://github.com/therickybobbeh/socketTest/actions/workflows/cli-testpypi.yml/badge.svg)](https://github.com/therickybobbeh/socketTest/actions/workflows/cli-testpypi.yml)
-[![Web App - AWS Deploy](https://github.com/therickybobbeh/socketTest/actions/workflows/deploy.yml/badge.svg)](https://github.com/therickybobbeh/socketTest/actions/workflows/deploy.yml)
-[![TestPyPI](https://img.shields.io/badge/TestPyPI-v1.0.0-blue)](https://test.pypi.org/project/multi-vuln-scanner/1.0.0/)
+
+[![TestPyPI](https://img.shields.io/badge/TestPyPI-v1.0.1-blue)](https://test.pypi.org/project/multi-vuln-scanner/1.0.1/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![Node.js 18+](https://img.shields.io/badge/node.js-18+-green.svg)](https://nodejs.org/)
+
+## 🌐 Live Demo & Quick Install
+
+### 🚀 Try it Now - CLI Installation
+```bash
+pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ multi-vuln-scanner
+```
+
+### 🌐 Live Demo URLs
+Running on AWS deployed through github actions to AWS, not quite production grade yet this is demo enviornments.
+- **🖥️ Web Interface**: [http://depscan-prod-alb-1243821159.us-east-1.elb.amazonaws.com
+  ](http://depscan-prod-alb-1243821159.us-east-1.elb.amazonaws.com
+  )
+- **📚 API Documentation**: [http://depscan-prod-alb-1243821159.us-east-1.elb.amazonaws.com/docs](http://depscan-prod-alb-1243821159.us-east-1.elb.amazonaws.com/docs)
+
 
 ## 📦 Installation
 
@@ -18,7 +32,7 @@ DepScan is a professional-grade security tool that identifies known vulnerabilit
 pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ multi-vuln-scanner
 
 # Install specific version
-pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ multi-vuln-scanner==1.0.0
+pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ multi-vuln-scanner==1.0.1
 ```
 
 > **Note**: Pip automatically installs the latest version when no version is specified. Version numbers come from `pyproject.toml` - no git tags needed.
@@ -30,9 +44,6 @@ cd socketTest
 pip install -e .
 ```
 
-## 🌐 Live Demo
-- **Web Interface**: Available on request
-- **API Documentation**: Available when running locally at `http://localhost:8000/docs`
 
 ## 🚀 Quick Start
 
@@ -66,7 +77,7 @@ multi-vuln-scanner scan . --verbose
 ### For Teams (Web Interface)
 ```bash
 # Local development
-git clone <your-repository-url>
+git clone https://github.com/therickybobbeh/dep-scanner.git
 cd socketTest
 # Backend
 cd backend && pip install -e ".[dev]"
@@ -75,6 +86,7 @@ cd ../frontend && npm install
 ```
 
 ### For Production (AWS Deployment)
+Can manually deploy to AWS using Terraform scripts in `deploy/terraform`. Recommended to use GitHub Actions for CI/CD.
 ```bash
 # One-command AWS deployment
 cd deploy/terraform && terraform apply
@@ -271,7 +283,7 @@ pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://
 multi-vuln-scanner scan package.json
 
 # Or run locally
-git clone <your-repository-url>
+git clone https://github.com/therickybobbeh/dep-scanner.git
 cd socketTest/backend && python -m backend.web.main
 # Open http://localhost:8000
 ```
