@@ -1,10 +1,11 @@
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Container, Row, Col, Card, Form, Button, Alert, ListGroup, Badge } from 'react-bootstrap';
-import { Upload, FileText, X } from 'lucide-react';
-import { ScanLoadingModal } from '../components/ui';
+import { Upload, FileText, X, Eye, Play } from 'lucide-react';
+import { ScanLoadingModal, SampleFileModal } from '../components/ui';
 import type { ScanRequest } from '../types/api';
 import { SeverityLevel } from '../types/common';
+import samplePackageLock from '../data/samplePackageLock.json';
 
 const ScanPage: React.FC = () => {
   const navigate = useNavigate();
@@ -16,6 +17,7 @@ const ScanPage: React.FC = () => {
     include_dev_dependencies: true,
     ignore_severities: [] as SeverityLevel[],
   });
+  const [showSampleModal, setShowSampleModal] = useState(false);
   
 
   const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
@@ -115,6 +117,35 @@ const ScanPage: React.FC = () => {
     setScanRequest(null);
   };
 
+  const handleTestSample = async () => {
+    try {
+      setError(null);
+      
+      // Create a request using the sample package-lock.json
+      const newScanRequest: ScanRequest = {
+        repo_path: undefined,
+        manifest_files: {
+          'package-lock.json': JSON.stringify(samplePackageLock, null, 2)
+        },
+        options: {
+          include_dev_dependencies: options.include_dev_dependencies,
+          ignore_severities: options.ignore_severities,
+          ignore_rules: []
+        }
+      };
+
+      // Store scan request and show loading modal
+      setScanRequest(newScanRequest);
+      setShowLoadingModal(true);
+      
+      // Clear any uploaded file since we're using the sample
+      setFile(null);
+
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to prepare sample scan');
+    }
+  };
+
 
 
   const supportedFiles = [
@@ -137,6 +168,42 @@ const ScanPage: React.FC = () => {
                   ⏱️ Note: Security scans query the OSV database and may take a few minutes depending on the number of dependencies
                 </small>
               </p>
+            </Card.Body>
+          </Card>
+        </Col>
+      </Row>
+
+      {/* Demo Section */}
+      <Row className="mb-4">
+        <Col>
+          <Card className="border-0 shadow-sm">
+            <Card.Body>
+              <div className="d-flex align-items-center justify-content-between">
+                <div>
+                  <h6 className="mb-1">🎯 Try a Demo</h6>
+                  <p className="mb-0 text-muted">
+                    Test the scanner with a sample vulnerable package-lock.json
+                  </p>
+                </div>
+                <div className="d-flex gap-2">
+                  <Button 
+                    variant="outline-secondary" 
+                    size="sm"
+                    onClick={() => setShowSampleModal(true)}
+                  >
+                    <Eye size={16} className="me-1" />
+                    View Sample
+                  </Button>
+                  <Button 
+                    variant="primary" 
+                    size="sm"
+                    onClick={handleTestSample}
+                  >
+                    <Play size={16} className="me-1" />
+                    Test Sample
+                  </Button>
+                </div>
+              </div>
             </Card.Body>
           </Card>
         </Col>
@@ -277,6 +344,13 @@ const ScanPage: React.FC = () => {
           scanRequest={scanRequest}
         />
       )}
+      
+      {/* Sample File Modal */}
+      <SampleFileModal
+        show={showSampleModal}
+        onHide={() => setShowSampleModal(false)}
+        onTestSample={handleTestSample}
+      />
     </Container>
   );
 };
