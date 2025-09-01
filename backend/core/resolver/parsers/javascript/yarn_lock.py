@@ -78,7 +78,6 @@ class YarnLockParser(BaseDependencyParser):
         """
         entries = []
         current_entry = {}
-        current_key = None
         
         for line in content.split('\n'):
             line = line.rstrip()
@@ -86,29 +85,51 @@ class YarnLockParser(BaseDependencyParser):
             if not line or line.startswith('#'):
                 continue
             
-            # Check if this is a new package entry (starts without indentation)
-            if not line.startswith(' ') and not line.startswith('\t'):
+            # Check if this is a new package entry (starts without indentation and ends with :)
+            if not line.startswith((' ', '\t')) and line.endswith(':'):
+                # Save previous entry
                 if current_entry:
                     entries.append(current_entry)
                     current_entry = {}
                 
-                # Extract package name and version specifier
-                if ':' in line:
-                    package_spec = line.split(':')[0].strip()
-                    current_entry['package_spec'] = package_spec
-                    current_key = 'package_spec'
+                # Start new entry - extract package name and version specifier
+                package_spec = line[:-1].strip().strip('"')  # Remove trailing : and quotes
+                current_entry['package_spec'] = package_spec
                 continue
             
             # Parse indented properties
-            if ':' in line:
-                key, value = line.split(':', 1)
-                key = key.strip()
-                value = value.strip().strip('"')
-                current_entry[key] = value
-                current_key = key
-            elif current_key and line.strip():
-                # Multi-line values
-                current_entry[current_key] += ' ' + line.strip().strip('"')
+            if line.startswith((' ', '\t')):
+                stripped = line.strip()
+                
+                # Handle key-value pairs with colons
+                if ':' in stripped:
+                    # Split on first colon only to handle URLs
+                    key, value = stripped.split(':', 1)
+                    key = key.strip()
+                    value = value.strip().strip('"')
+                    current_entry[key] = value
+                    
+                # Handle special case: version "x.y.z" (no colon)
+                elif stripped.startswith('version '):
+                    version_value = stripped[8:].strip().strip('"')  # Remove 'version ' prefix
+                    current_entry['version'] = version_value
+                    
+                # Handle special case: integrity (no colon)
+                elif stripped.startswith('integrity '):
+                    integrity_value = stripped[10:].strip()  # Remove 'integrity ' prefix
+                    current_entry['integrity'] = integrity_value
+                    
+                # Handle dependency lines under dependencies:
+                elif stripped and 'dependencies' in current_entry and current_entry['dependencies'] == '':
+                    # This is a dependency line under dependencies:
+                    if 'dependency_list' not in current_entry:
+                        current_entry['dependency_list'] = []
+                    # Parse dependency line like: "@babel/highlight" "^7.22.13"
+                    parts = stripped.split()
+                    if len(parts) >= 2:
+                        dep_name = parts[0].strip('"')
+                        dep_version = parts[1].strip('"')
+                        current_entry['dependency_list'].append((dep_name, dep_version))
         
         # Don't forget the last entry
         if current_entry:

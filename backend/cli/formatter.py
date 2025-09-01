@@ -32,12 +32,19 @@ class CLIFormatter:
         table.add_column("Via", style="green", min_width=10)
         table.add_column("Link", style="dim blue", min_width=12)  # Clickable link
         
+        # Build lookup for direct vs transitive classification
+        direct_packages = {dep.name.lower() for dep in report.dependencies if dep.is_direct}
+        
         for vuln in report.vulnerable_packages:
-            # Determine how to display the dependency relationship
+            # Determine how to display the dependency relationship using same logic as JSON formatter
+            is_direct = vuln.package.lower() in direct_packages
+            
             if vuln.immediate_parent:
                 via_text = vuln.immediate_parent
-            else:
+            elif is_direct:
                 via_text = "direct"
+            else:
+                via_text = "transitive"
             
             # Format severity with color and CVSS score
             severity_text, cvss_score_str = self._format_severity_with_score(vuln.severity, vuln.cvss_score)

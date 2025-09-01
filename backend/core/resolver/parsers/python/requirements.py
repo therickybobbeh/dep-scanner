@@ -95,7 +95,7 @@ class RequirementsParser(BaseDependencyParser):
         """
         try:
             # Check for dependency type comments (# direct, # transitive, # via package-name)
-            is_direct = True  # Default assumption
+            is_direct = True  # Default assumption for simple requirements.txt
             path = []
             
             if '#' in line:
@@ -116,8 +116,14 @@ class RequirementsParser(BaseDependencyParser):
                 # Check for explicit direct/transitive markers
                 elif 'transitive' in comment_part.lower():
                     is_direct = False
+                    # For transitive dependencies without explicit path, create a minimal path
+                    if not path:
+                        path = ["unknown-parent", name]
                 elif 'direct' in comment_part.lower():
                     is_direct = True
+                    # For direct dependencies, ensure single-element path
+                    if not path:
+                        path = [name]
                 
                 line = requirement_part
             
@@ -133,9 +139,12 @@ class RequirementsParser(BaseDependencyParser):
             if not name:
                 return None
             
-            # Use extracted path if available, otherwise default to just the package name
+            # Use extracted path if available, otherwise create based on dependency type
             if not path:
-                path = [name]
+                if is_direct:
+                    path = [name]  # Direct dependency: single-element path
+                else:
+                    path = ["unknown-parent", name]  # Transitive dependency: at least 2 elements
             elif name not in path:
                 # Ensure the current package is at the end of the path
                 path = path + [name]
