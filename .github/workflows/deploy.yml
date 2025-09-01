@@ -152,7 +152,7 @@ jobs:
         echo "Backend task definition:"
         if [ -f backend-task-definition.json ]; then
           echo "✅ Backend task definition file exists"
-          echo "Task definition ARN from file:"
+          echo "Task definition ARN from downloaded file:"
           cat backend-task-definition.json | jq -r '.taskDefinitionArn // "NOT_FOUND"'
         else
           echo "❌ Backend task definition file not found"
@@ -161,23 +161,44 @@ jobs:
         echo "Frontend task definition:"  
         if [ -f frontend-task-definition.json ]; then
           echo "✅ Frontend task definition file exists"
-          echo "Task definition ARN from file:"
+          echo "Task definition ARN from downloaded file:"
           cat frontend-task-definition.json | jq -r '.taskDefinitionArn // "NOT_FOUND"'
         else
           echo "❌ Frontend task definition file not found"
         fi
         
-        echo "Render step outputs:"
+        echo "Render step outputs (these are the rendered files):"
         echo "Backend: ${{ steps.backend-task-def.outputs.task-definition }}"
         echo "Frontend: ${{ steps.frontend-task-def.outputs.task-definition }}"
-
-    - name: Deploy Amazon ECS services in parallel
-      run: |
-        # Extract task definition ARNs from the rendered files
-        BACKEND_TASK_DEF=$(cat ${{ steps.backend-task-def.outputs.task-definition }} | jq -r '.taskDefinitionArn')
-        FRONTEND_TASK_DEF=$(cat ${{ steps.frontend-task-def.outputs.task-definition }} | jq -r '.taskDefinitionArn')
         
-        echo "Deploying with task definition ARNs:"
+        echo "Contents of rendered files:"
+        echo "Backend rendered file structure:"
+        cat ${{ steps.backend-task-def.outputs.task-definition }} | jq 'keys'
+        echo "Frontend rendered file structure:"  
+        cat ${{ steps.frontend-task-def.outputs.task-definition }} | jq 'keys'
+
+    - name: Register and deploy task definitions in parallel
+      run: |
+        # Register new task definitions and get ARNs (in parallel for speed)
+        echo "Registering task definitions in parallel..."
+        
+        aws ecs register-task-definition \
+          --cli-input-json file://${{ steps.backend-task-def.outputs.task-definition }} > backend-register-output.json &
+        BACKEND_REG_PID=$!
+        
+        aws ecs register-task-definition \
+          --cli-input-json file://${{ steps.frontend-task-def.outputs.task-definition }} > frontend-register-output.json &
+        FRONTEND_REG_PID=$!
+        
+        # Wait for both registrations to complete
+        wait $BACKEND_REG_PID
+        wait $FRONTEND_REG_PID
+        
+        # Extract the ARNs from registration outputs
+        BACKEND_TASK_DEF=$(cat backend-register-output.json | jq -r '.taskDefinition.taskDefinitionArn')
+        FRONTEND_TASK_DEF=$(cat frontend-register-output.json | jq -r '.taskDefinition.taskDefinitionArn')
+        
+        echo "Deploying with registered task definition ARNs:"
         echo "Backend: $BACKEND_TASK_DEF"
         echo "Frontend: $FRONTEND_TASK_DEF"
         
