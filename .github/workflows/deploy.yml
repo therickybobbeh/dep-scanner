@@ -147,19 +147,51 @@ jobs:
         container-name: frontend
         image: ${{ steps.login-ecr.outputs.registry }}/${{ env.FRONTEND_ECR_REPOSITORY }}:${{ github.sha }}
 
+    - name: Debug task definitions
+      run: |
+        echo "Backend task definition:"
+        if [ -f backend-task-definition.json ]; then
+          echo "✅ Backend task definition file exists"
+          echo "Task definition ARN from file:"
+          cat backend-task-definition.json | jq -r '.taskDefinitionArn // "NOT_FOUND"'
+        else
+          echo "❌ Backend task definition file not found"
+        fi
+        
+        echo "Frontend task definition:"  
+        if [ -f frontend-task-definition.json ]; then
+          echo "✅ Frontend task definition file exists"
+          echo "Task definition ARN from file:"
+          cat frontend-task-definition.json | jq -r '.taskDefinitionArn // "NOT_FOUND"'
+        else
+          echo "❌ Frontend task definition file not found"
+        fi
+        
+        echo "Render step outputs:"
+        echo "Backend: ${{ steps.backend-task-def.outputs.task-definition }}"
+        echo "Frontend: ${{ steps.frontend-task-def.outputs.task-definition }}"
+
     - name: Deploy Amazon ECS services in parallel
       run: |
+        # Get task definition ARNs from rendered files
+        BACKEND_TASK_DEF="${{ steps.backend-task-def.outputs.task-definition }}"
+        FRONTEND_TASK_DEF="${{ steps.frontend-task-def.outputs.task-definition }}"
+        
+        echo "Deploying with task definitions:"
+        echo "Backend: $BACKEND_TASK_DEF"
+        echo "Frontend: $FRONTEND_TASK_DEF"
+        
         # Deploy both services simultaneously for faster deployment
         aws ecs update-service \
           --cluster ${{ env.ECS_CLUSTER }} \
           --service ${{ env.BACKEND_SERVICE }} \
-          --task-definition ${{ steps.backend-task-def.outputs.task-definition }} &
+          --task-definition "$BACKEND_TASK_DEF" &
         BACKEND_DEPLOY_PID=$!
         
         aws ecs update-service \
           --cluster ${{ env.ECS_CLUSTER }} \
           --service ${{ env.FRONTEND_SERVICE }} \
-          --task-definition ${{ steps.frontend-task-def.outputs.task-definition }} &
+          --task-definition "$FRONTEND_TASK_DEF" &
         FRONTEND_DEPLOY_PID=$!
         
         # Wait for both deployments to start
