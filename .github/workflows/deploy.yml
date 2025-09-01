@@ -133,7 +133,7 @@ jobs:
 
     - name: Fill in the new backend image ID in the Amazon ECS task definition
       id: backend-task-def
-      uses: aws-actions/amazon-ecs-render-task-definition@v2
+      uses: aws-actions/amazon-ecs-render-task-definition@v1
       with:
         task-definition: backend-task-definition.json
         container-name: backend
@@ -141,7 +141,7 @@ jobs:
 
     - name: Fill in the new frontend image ID in the Amazon ECS task definition
       id: frontend-task-def
-      uses: aws-actions/amazon-ecs-render-task-definition@v2
+      uses: aws-actions/amazon-ecs-render-task-definition@v1
       with:
         task-definition: frontend-task-definition.json
         container-name: frontend
