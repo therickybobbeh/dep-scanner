@@ -173,11 +173,11 @@ jobs:
 
     - name: Deploy Amazon ECS services in parallel
       run: |
-        # Get task definition ARNs from rendered files
-        BACKEND_TASK_DEF="${{ steps.backend-task-def.outputs.task-definition }}"
-        FRONTEND_TASK_DEF="${{ steps.frontend-task-def.outputs.task-definition }}"
+        # Extract task definition ARNs from the rendered files
+        BACKEND_TASK_DEF=$(cat ${{ steps.backend-task-def.outputs.task-definition }} | jq -r '.taskDefinitionArn')
+        FRONTEND_TASK_DEF=$(cat ${{ steps.frontend-task-def.outputs.task-definition }} | jq -r '.taskDefinitionArn')
         
-        echo "Deploying with task definitions:"
+        echo "Deploying with task definition ARNs:"
         echo "Backend: $BACKEND_TASK_DEF"
         echo "Frontend: $FRONTEND_TASK_DEF"
         
