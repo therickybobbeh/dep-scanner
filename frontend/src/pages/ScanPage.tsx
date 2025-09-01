@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { useNavigate, useBlocker } from 'react-router-dom';
+import React, { useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Container, Row, Col, Card, Form, Button, Alert, ListGroup, Badge } from 'react-bootstrap';
 import { Upload, FileText, X } from 'lucide-react';
 import { ScanLoadingModal } from '../components/ui';
@@ -120,26 +120,6 @@ const ScanPage: React.FC = () => {
     setIsScanning(false);
   };
 
-  // Block navigation when scanning
-  const blocker = useBlocker(
-    ({ currentLocation, nextLocation }) =>
-      isScanning && currentLocation.pathname !== nextLocation.pathname
-  );
-
-  // Handle navigation blocking
-  useEffect(() => {
-    if (blocker.state === 'blocked') {
-      const confirmed = window.confirm(
-        'A security scan is currently in progress. Are you sure you want to leave this page? This will interrupt the scan.'
-      );
-      if (confirmed) {
-        setIsScanning(false); // Allow navigation
-        blocker.proceed();
-      } else {
-        blocker.reset();
-      }
-    }
-  }, [blocker, isScanning]);
 
 
   const supportedFiles = [
