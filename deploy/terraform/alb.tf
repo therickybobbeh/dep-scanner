@@ -56,7 +56,7 @@ resource "aws_lb_target_group" "frontend" {
   health_check {
     enabled             = true
     healthy_threshold   = 2
-    interval            = 30
+    interval            = 15  # Reduced from 30 for faster health checks
     matcher             = "200"
     path                = "/health"
     port                = "traffic-port"
@@ -81,7 +81,7 @@ resource "aws_lb_target_group" "backend" {
   health_check {
     enabled             = true
     healthy_threshold   = 2
-    interval            = 30
+    interval            = 15  # Reduced from 30 for faster health checks
     matcher             = "200"
     path                = "/health"
     port                = "traffic-port"

@@ -5,7 +5,7 @@
 DepScan is a professional-grade security tool that identifies known vulnerabilities in your project dependencies across multiple ecosystems. Get detailed security reports with actionable recommendations through both CLI and web interfaces.
 [![CLI - TestPyPI](https://github.com/therickybobbeh/socketTest/actions/workflows/cli-testpypi.yml/badge.svg)](https://github.com/therickybobbeh/socketTest/actions/workflows/cli-testpypi.yml)
 [![Web App - AWS Deploy](https://github.com/therickybobbeh/socketTest/actions/workflows/deploy.yml/badge.svg)](https://github.com/therickybobbeh/socketTest/actions/workflows/deploy.yml)
-[![TestPyPI](https://img.shields.io/badge/TestPyPI-v1.0.0-blue)](https://test.pypi.org/project/multi-vuln-scanner/)
+[![TestPyPI](https://img.shields.io/badge/TestPyPI-v1.0.0-blue)](https://test.pypi.org/project/multi-vuln-scanner/1.0.0/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![Node.js 18+](https://img.shields.io/badge/node.js-18+-green.svg)](https://nodejs.org/)
@@ -14,8 +14,14 @@ DepScan is a professional-grade security tool that identifies known vulnerabilit
 
 ### Install from TestPyPI (Current Release)
 ```bash
+# Install latest version (recommended)
 pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ multi-vuln-scanner
+
+# Install specific version
+pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ multi-vuln-scanner==1.0.0
 ```
+
+> **Note**: Pip automatically installs the latest version when no version is specified. Version numbers come from `pyproject.toml` - no git tags needed.
 
 ### Install from Source
 ```bash

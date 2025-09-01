@@ -213,6 +213,17 @@ resource "aws_ecs_service" "backend" {
   desired_count   = var.backend_desired_count
   launch_type     = "FARGATE"
 
+  # Faster deployment configuration
+  deployment_configuration {
+    minimum_healthy_percent = 50  # Allow more aggressive deployments
+    maximum_percent         = 200
+    
+    deployment_circuit_breaker {
+      enable   = true  # Enable circuit breaker for faster failure detection
+      rollback = true  # Automatic rollback on failure
+    }
+  }
+
   network_configuration {
     security_groups  = [aws_security_group.ecs_tasks.id]
     subnets          = data.aws_subnets.default.ids
@@ -239,6 +250,17 @@ resource "aws_ecs_service" "frontend" {
   task_definition = aws_ecs_task_definition.frontend.arn
   desired_count   = var.frontend_desired_count
   launch_type     = "FARGATE"
+
+  # Faster deployment configuration
+  deployment_configuration {
+    minimum_healthy_percent = 50  # Allow more aggressive deployments
+    maximum_percent         = 200
+    
+    deployment_circuit_breaker {
+      enable   = true  # Enable circuit breaker for faster failure detection
+      rollback = true  # Automatic rollback on failure
+    }
+  }
 
   network_configuration {
     security_groups  = [aws_security_group.ecs_tasks.id]

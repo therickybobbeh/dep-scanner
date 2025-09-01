@@ -18,15 +18,30 @@ const HomePage: React.FC = () => {
                 Scan your Python and JavaScript projects for known security vulnerabilities.
                 Get detailed reports with fix recommendations.
               </p>
-              <Button 
-                as={Link as any} 
-                to="/scan" 
-                variant="primary" 
-                size="lg" 
-                className="px-5 py-3"
-              >
-                Start Scanning
-              </Button>
+              <div className="d-flex flex-column flex-sm-row gap-3 justify-content-center">
+                <Button 
+                  as={Link as any} 
+                  to="/scan" 
+                  variant="primary" 
+                  size="lg" 
+                  className="px-5 py-3"
+                >
+                  Start Scanning
+                </Button>
+                <Button 
+                  variant="outline-primary" 
+                  size="lg" 
+                  className="px-4 py-3"
+                  onClick={() => window.open('https://github.com/therickybobbeh/socketTest', '_blank')}
+                >
+                  View on GitHub
+                </Button>
+              </div>
+              <div className="mt-4">
+                <small className="text-muted">
+                  Or install CLI: <code>pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ multi-vuln-scanner</code>
+                </small>
+              </div>
             </Card.Body>
           </Card>
         </Col>

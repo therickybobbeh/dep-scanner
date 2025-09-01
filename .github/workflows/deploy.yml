@@ -90,31 +90,36 @@ jobs:
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v2
 
-    - name: Build, tag, and push backend image
+    # Parallel Docker builds for faster deployment
+    - name: Build backend and frontend images in parallel
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         IMAGE_TAG: ${{ github.sha }}
       run: |
-        # Build backend image
-        docker build -t $ECR_REGISTRY/$BACKEND_ECR_REPOSITORY:$IMAGE_TAG -f deploy/docker/Dockerfile.backend .
-        docker build -t $ECR_REGISTRY/$BACKEND_ECR_REPOSITORY:latest -f deploy/docker/Dockerfile.backend .
+        # Build and tag backend image (single build, multiple tags)
+        docker build -t $ECR_REGISTRY/$BACKEND_ECR_REPOSITORY:$IMAGE_TAG -f deploy/docker/Dockerfile.backend . &
+        BACKEND_PID=$!
         
-        # Push backend image
-        docker push $ECR_REGISTRY/$BACKEND_ECR_REPOSITORY:$IMAGE_TAG
-        docker push $ECR_REGISTRY/$BACKEND_ECR_REPOSITORY:latest
-
-    - name: Build, tag, and push frontend image
-      env:
-        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        IMAGE_TAG: ${{ github.sha }}
-      run: |
-        # Build frontend image
-        docker build -t $ECR_REGISTRY/$FRONTEND_ECR_REPOSITORY:$IMAGE_TAG -f deploy/docker/Dockerfile.frontend .
-        docker build -t $ECR_REGISTRY/$FRONTEND_ECR_REPOSITORY:latest -f deploy/docker/Dockerfile.frontend .
+        # Build and tag frontend image (single build, multiple tags)  
+        docker build -t $ECR_REGISTRY/$FRONTEND_ECR_REPOSITORY:$IMAGE_TAG -f deploy/docker/Dockerfile.frontend . &
+        FRONTEND_PID=$!
         
-        # Push frontend image
-        docker push $ECR_REGISTRY/$FRONTEND_ECR_REPOSITORY:$IMAGE_TAG
-        docker push $ECR_REGISTRY/$FRONTEND_ECR_REPOSITORY:latest
+        # Wait for both builds to complete
+        wait $BACKEND_PID
+        wait $FRONTEND_PID
+        
+        # Tag latest versions (instant operation)
+        docker tag $ECR_REGISTRY/$BACKEND_ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$BACKEND_ECR_REPOSITORY:latest
+        docker tag $ECR_REGISTRY/$FRONTEND_ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$FRONTEND_ECR_REPOSITORY:latest
+        
+        # Push all tags in parallel
+        docker push $ECR_REGISTRY/$BACKEND_ECR_REPOSITORY:$IMAGE_TAG &
+        docker push $ECR_REGISTRY/$BACKEND_ECR_REPOSITORY:latest &
+        docker push $ECR_REGISTRY/$FRONTEND_ECR_REPOSITORY:$IMAGE_TAG &  
+        docker push $ECR_REGISTRY/$FRONTEND_ECR_REPOSITORY:latest &
+        
+        # Wait for all pushes to complete
+        wait
 
     - name: Download backend task definition
       run: |
@@ -128,7 +133,7 @@ jobs:
 
     - name: Fill in the new backend image ID in the Amazon ECS task definition
       id: backend-task-def
-      uses: aws-actions/amazon-ecs-render-task-definition@v1
+      uses: aws-actions/amazon-ecs-render-task-definition@v2
       with:
         task-definition: backend-task-definition.json
         container-name: backend
@@ -136,27 +141,38 @@ jobs:
 
     - name: Fill in the new frontend image ID in the Amazon ECS task definition
       id: frontend-task-def
-      uses: aws-actions/amazon-ecs-render-task-definition@v1
+      uses: aws-actions/amazon-ecs-render-task-definition@v2
       with:
         task-definition: frontend-task-definition.json
         container-name: frontend
         image: ${{ steps.login-ecr.outputs.registry }}/${{ env.FRONTEND_ECR_REPOSITORY }}:${{ github.sha }}
 
-    - name: Deploy Amazon ECS backend task definition
-      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
-      with:
-        task-definition: ${{ steps.backend-task-def.outputs.task-definition }}
-        service: ${{ env.BACKEND_SERVICE }}
-        cluster: ${{ env.ECS_CLUSTER }}
-        wait-for-service-stability: true
-
-    - name: Deploy Amazon ECS frontend task definition
-      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
-      with:
-        task-definition: ${{ steps.frontend-task-def.outputs.task-definition }}
-        service: ${{ env.FRONTEND_SERVICE }}
-        cluster: ${{ env.ECS_CLUSTER }}
-        wait-for-service-stability: true
+    - name: Deploy Amazon ECS services in parallel
+      run: |
+        # Deploy both services simultaneously for faster deployment
+        aws ecs update-service \
+          --cluster ${{ env.ECS_CLUSTER }} \
+          --service ${{ env.BACKEND_SERVICE }} \
+          --task-definition ${{ steps.backend-task-def.outputs.task-definition }} &
+        BACKEND_DEPLOY_PID=$!
+        
+        aws ecs update-service \
+          --cluster ${{ env.ECS_CLUSTER }} \
+          --service ${{ env.FRONTEND_SERVICE }} \
+          --task-definition ${{ steps.frontend-task-def.outputs.task-definition }} &
+        FRONTEND_DEPLOY_PID=$!
+        
+        # Wait for both deployments to start
+        wait $BACKEND_DEPLOY_PID
+        wait $FRONTEND_DEPLOY_PID
+        
+        echo "✅ Both services deployed successfully in parallel"
+        
+        # Optional: Wait for stability (can be removed for even faster deployments)
+        echo "⏳ Waiting for services to stabilize..."
+        aws ecs wait services-stable \
+          --cluster ${{ env.ECS_CLUSTER }} \
+          --services ${{ env.BACKEND_SERVICE }} ${{ env.FRONTEND_SERVICE }}
 
     - name: Get service access info
       run: |
