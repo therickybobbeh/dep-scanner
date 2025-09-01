@@ -2,7 +2,6 @@ from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Depe
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.security import HTTPBearer
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -86,11 +85,8 @@ app = FastAPI(
     ]
 )
 
-# Security middleware (allow testclient for testing)
-app.add_middleware(
-    TrustedHostMiddleware,
-    allowed_hosts=settings.allowed_hosts_list + ["testserver"]
-)
+# Note: TrustedHostMiddleware removed since we're behind ALB
+# The ALB provides host header validation at the load balancer level
 
 # Simplified middleware - removed complex validation since CLI handles it
 

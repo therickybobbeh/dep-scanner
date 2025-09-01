@@ -47,8 +47,17 @@ jobs:
         dep-scan --help
         echo "✅ CLI package works locally"
     
+    - name: Check if token exists
+      id: check-token
+      run: |
+        if [ -n "${{ secrets.TESTPYPI_API_TOKEN }}" ]; then
+          echo "has_token=true" >> $GITHUB_OUTPUT
+        else
+          echo "has_token=false" >> $GITHUB_OUTPUT
+        fi
+    
     - name: Publish to TestPyPI
-      if: ${{ secrets.TESTPYPI_API_TOKEN }}
+      if: steps.check-token.outputs.has_token == 'true'
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
         repository-url: https://test.pypi.org/legacy/
@@ -57,14 +66,14 @@ jobs:
         print-hash: true
     
     - name: Skip publishing (no credentials)
-      if: ${{ !secrets.TESTPYPI_API_TOKEN }}
+      if: steps.check-token.outputs.has_token == 'false'
       run: |
         echo "⚠️ Skipping TestPyPI publishing - no TESTPYPI_API_TOKEN secret configured"
         echo "Package built successfully and is ready for publishing"
         echo "To publish, add your TestPyPI API token as a repository secret"
     
     - name: Verify TestPyPI installation
-      if: ${{ secrets.TESTPYPI_API_TOKEN }}
+      if: steps.check-token.outputs.has_token == 'true'
       run: |
         sleep 30  # Wait for TestPyPI
         pip uninstall -y multi-vuln-scanner
