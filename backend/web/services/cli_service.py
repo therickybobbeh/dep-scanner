@@ -172,7 +172,7 @@ class CLIService:
                 "ecosystem": ecosystem,
                 "vulnerability_id": vuln.vulnerability_id,
                 "severity": vuln.severity.value if vuln.severity else "UNKNOWN",
-                "severity_score": None,  # Not available in current data
+                "cvss_score": vuln.cvss_score,  # Include actual CVSS score from OSV data
                 "cve_ids": vuln.cve_ids,
                 "summary": vuln.summary,
                 "details": vuln.details,
@@ -180,7 +180,7 @@ class CLIService:
                 "fixed_range": vuln.fixed_range,
                 "published": vuln.published.isoformat() if vuln.published else None,
                 "modified": vuln.modified.isoformat() if vuln.modified else None,
-                "aliases": [],  # Not available in current data
+                "aliases": vuln.aliases if vuln.aliases else [],  # Include actual aliases
                 "type": "direct" if is_direct else "transitive"  # Add dependency classification
             }
             frontend_vulnerabilities.append(frontend_vuln)

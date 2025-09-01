@@ -54,15 +54,16 @@ interface CLIReport {
 
 // Utility functions for CVSS and severity processing
 const getCVSSScoreFromSeverity = (severity: string): number => {
-  // Based on CLI implementation in backend/core/scanner/osv.py
+  // Conservative fallback scores - only used when actual CVSS score is unavailable
+  // These are more conservative than the original hardcoded values
   const scoreMap = {
-    'CRITICAL': 9.5,
-    'HIGH': 7.5,
-    'MEDIUM': 5.0,
-    'LOW': 2.5,
-    'UNKNOWN': 0.0
+    'CRITICAL': 9.0,  // Conservative lower bound for CRITICAL
+    'HIGH': 7.0,      // Conservative lower bound for HIGH  
+    'MEDIUM': 4.0,    // Conservative lower bound for MEDIUM
+    'LOW': 1.0,       // Conservative lower bound for LOW
+    'UNKNOWN': 0.0    // No score for unknown
   };
-  return scoreMap[severity?.toUpperCase() as keyof typeof scoreMap] || 5.0;
+  return scoreMap[severity?.toUpperCase() as keyof typeof scoreMap] || 0.0; // Default to 0.0 instead of 5.0
 };
 
 const getCVSSRange = (severity: string): string => {

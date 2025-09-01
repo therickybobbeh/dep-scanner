@@ -4,7 +4,7 @@
 
 Multi-Vuln-Scanner is a professional-grade security tool that identifies known vulnerabilities in your project dependencies across multiple ecosystems. Get detailed security reports with actionable recommendations through both CLI and web interfaces.
 
-[![TestPyPI](https://img.shields.io/badge/TestPyPI-v1.0.0-blue)](https://test.pypi.org/project/multi-vuln-scanner/1.0.0/)
+[![TestPyPI](https://img.shields.io/badge/TestPyPI-v1.0.1-blue)](https://test.pypi.org/project/multi-vuln-scanner/1.0.1/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 
@@ -17,7 +17,7 @@ Multi-Vuln-Scanner is a professional-grade security tool that identifies known v
 pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ multi-vuln-scanner
 
 # Install specific version
-pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ multi-vuln-scanner==1.0.0
+pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ multi-vuln-scanner==1.0.1
 ```
 
 ### Use the Scanner
@@ -99,10 +99,10 @@ High Issues (4):
 
 ## 🔗 Links & Resources
 
-- **Repository**: https://github.com/therickybobbeh/multi-vuln-scanner
-- **Documentation**: https://github.com/therickybobbeh/multi-vuln-scanner/tree/main/docs
-- **Issues**: https://github.com/therickybobbeh/multi-vuln-scanner/issues
-- **Changelog**: https://github.com/therickybobbeh/multi-vuln-scanner/releases
+- **Repository**: https://github.com/therickybobbeh/dep-scanner
+- **Documentation**: https://github.com/therickybobbeh/dep-scanner/tree/main/docs
+- **Issues**: https://github.com/therickybobbeh/dep-scanner/issues
+- **Changelog**: https://github.com/therickybobbeh/dep-scanner/releases
 
 ## 📄 License
 
