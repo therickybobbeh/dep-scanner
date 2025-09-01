@@ -1,32 +1,53 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider, Outlet } from 'react-router-dom';
 import { Container } from 'react-bootstrap';
 import HomePage from './pages/HomePage';
 import ScanPage from './pages/ScanPage';
 import ReportPage from './pages/ReportPage';
 import Header from './components/Header';
 
-function App() {
+// Layout component
+function Layout() {
   return (
-    <Router
-      future={{
-        v7_startTransition: true,
-        v7_relativeSplatPath: true,
-      }}
-    >
-      <div className="min-vh-100">
-        <Header />
-        <main>
-          <Container fluid>
-            <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/new-scan" element={<ScanPage />} />
-              <Route path="/results/:jobId" element={<ReportPage />} />
-            </Routes>
-          </Container>
-        </main>
-      </div>
-    </Router>
+    <div className="min-vh-100">
+      <Header />
+      <main>
+        <Container fluid>
+          <Outlet />
+        </Container>
+      </main>
+    </div>
   );
+}
+
+// Create the router with data router API
+const router = createBrowserRouter([
+  {
+    path: "/",
+    element: <Layout />,
+    children: [
+      {
+        index: true,
+        element: <HomePage />,
+      },
+      {
+        path: "scan",
+        element: <ScanPage />,
+      },
+      {
+        path: "report/:jobId",
+        element: <ReportPage />,
+      },
+    ],
+  },
+], {
+  future: {
+    v7_startTransition: true,
+    v7_relativeSplatPath: true,
+  }
+});
+
+function App() {
+  return <RouterProvider router={router} />;
 }
 
 export default App;

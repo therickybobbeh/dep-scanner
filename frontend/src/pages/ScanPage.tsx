@@ -111,7 +111,7 @@ const ScanPage: React.FC = () => {
     setShowLoadingModal(false);
     setScanRequest(null);
     setIsScanning(false);
-    navigate(`/results/${jobId}`);
+    navigate(`/report/${jobId}`);
   };
 
   const handleModalClose = () => {

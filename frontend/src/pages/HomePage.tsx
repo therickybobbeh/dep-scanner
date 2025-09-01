@@ -21,7 +21,7 @@ const HomePage: React.FC = () => {
               <div className="d-flex flex-column flex-sm-row gap-3 justify-content-center">
                 <Button 
                   as={Link as any} 
-                  to="/new-scan" 
+                  to="/scan" 
                   variant="primary" 
                   size="lg" 
                   className="px-5 py-3"
