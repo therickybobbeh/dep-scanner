@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Modal, Button, Alert, Badge } from 'react-bootstrap';
 import { RotateCcw } from 'lucide-react';
 import NewtonsCradleLoader from './NewtonsCradleLoader';
-import axios from 'axios';
+import api from '../../utils/api';
 import type { ScanRequest } from '../../types/api';
 
 interface ScanLoadingModalProps {
@@ -33,7 +33,7 @@ const ScanLoadingModal: React.FC<ScanLoadingModalProps> = ({
       setCurrentStep('Starting scan...');
       
       // Start the scan
-      const response = await axios.post('/api/scan', scanRequest);
+      const response = await api.post('/scan', scanRequest);
       const { job_id } = response.data;
       setJobId(job_id);
       
@@ -58,7 +58,7 @@ const ScanLoadingModal: React.FC<ScanLoadingModalProps> = ({
       try {
         attempts++;
         
-        const response = await axios.get(`/api/status/${jobId}`);
+        const response = await api.get(`/status/${jobId}`);
         const status = response.data;
         
         // Update progress

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { Download, Shield, AlertTriangle, CheckCircle, Clock, Table as TableIcon } from 'lucide-react';
-import axios from 'axios';
+import api from '../utils/api';
 import { Container, Row, Col, Card, Button, ButtonGroup, Form, Alert, Badge, Nav } from 'react-bootstrap';
 import StatsCard from '../components/ui/StatsCard';
 import SeverityBadge from '../components/ui/SeverityBadge';
@@ -140,12 +140,12 @@ const ReportPage: React.FC = () => {
 
     const fetchStatus = async () => {
       try {
-        const statusResponse = await axios.get(`/api/status/${jobId}`);
+        const statusResponse = await api.get(`/status/${jobId}`);
         const progressData: ScanProgress = statusResponse.data;
         setProgress(progressData);
 
         if (progressData.status === 'completed') {
-          const reportResponse = await axios.get(`/api/report/${jobId}`);
+          const reportResponse = await api.get(`/report/${jobId}`);
           setReport(reportResponse.data);
           setLoading(false);
         } else if (progressData.status === 'failed') {
