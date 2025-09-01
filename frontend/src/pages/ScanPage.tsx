@@ -16,7 +16,6 @@ const ScanPage: React.FC = () => {
     include_dev_dependencies: true,
     ignore_severities: [] as SeverityLevel[],
   });
-  const [isScanning, setIsScanning] = useState(false);
   
 
   const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
@@ -97,11 +96,9 @@ const ScanPage: React.FC = () => {
       // Store scan request and show loading modal
       setScanRequest(newScanRequest);
       setShowLoadingModal(true);
-      setIsScanning(true);
 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to prepare scan');
-      setIsScanning(false); // Reset scanning state on error
     }
   };
 
@@ -110,14 +107,12 @@ const ScanPage: React.FC = () => {
   const handleModalSuccess = (jobId: string) => {
     setShowLoadingModal(false);
     setScanRequest(null);
-    setIsScanning(false);
     navigate(`/report/${jobId}`);
   };
 
   const handleModalClose = () => {
     setShowLoadingModal(false);
     setScanRequest(null);
-    setIsScanning(false);
   };
 
 
