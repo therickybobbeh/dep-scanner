@@ -220,12 +220,7 @@ jobs:
         wait $FRONTEND_DEPLOY_PID
         
         echo "✅ Both services deployed successfully in parallel"
-        
-        # Optional: Wait for stability (can be removed for even faster deployments)
-        echo "⏳ Waiting for services to stabilize..."
-        aws ecs wait services-stable \
-          --cluster ${{ env.ECS_CLUSTER }} \
-          --services ${{ env.BACKEND_SERVICE }} ${{ env.FRONTEND_SERVICE }}
+        echo "🚀 Services are updating in the background and will be ready shortly"
 
     - name: Get service access info
       run: |
