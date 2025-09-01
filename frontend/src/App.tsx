@@ -19,8 +19,8 @@ function App() {
           <Container fluid>
             <Routes>
               <Route path="/" element={<HomePage />} />
-              <Route path="/scan" element={<ScanPage />} />
-              <Route path="/report/:jobId" element={<ReportPage />} />
+              <Route path="/new-scan" element={<ScanPage />} />
+              <Route path="/results/:jobId" element={<ReportPage />} />
             </Routes>
           </Container>
         </main>

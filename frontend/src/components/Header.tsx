@@ -21,7 +21,7 @@ const Header: React.FC = () => {
             </Nav.Link>
             <Button 
               as={Link as any} 
-              to="/scan" 
+              to="/new-scan" 
               variant="primary" 
               size="sm"
             >
