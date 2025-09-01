@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Button, Alert } from 'react-bootstrap';
+import { Modal, Button, Alert, Badge } from 'react-bootstrap';
 import { RotateCcw } from 'lucide-react';
 import NewtonsCradleLoader from './NewtonsCradleLoader';
 import axios from 'axios';
@@ -105,6 +105,21 @@ const ScanLoadingModal: React.FC<ScanLoadingModalProps> = ({
     setIsRetrying(false);
   };
 
+  const handleModalClose = () => {
+    if (isScanning) {
+      // Show confirmation dialog when trying to close during scan
+      const confirmed = window.confirm(
+        'A security scan is currently in progress. Are you sure you want to cancel it? This will interrupt the scan and you\'ll lose your progress.'
+      );
+      if (confirmed) {
+        onHide();
+      }
+    } else {
+      // Allow normal closing when not scanning
+      onHide();
+    }
+  };
+
   // Start scan when modal opens
   useEffect(() => {
     if (show && !error) {
@@ -124,13 +139,34 @@ const ScanLoadingModal: React.FC<ScanLoadingModalProps> = ({
     }
   }, [show]);
 
+  // Prevent browser exit during scan
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isScanning) {
+        e.preventDefault();
+        e.returnValue = 'A security scan is currently in progress. Are you sure you want to leave? This will interrupt the scan.';
+        return e.returnValue;
+      }
+    };
+
+    // Add event listener when scanning starts
+    if (isScanning) {
+      window.addEventListener('beforeunload', handleBeforeUnload);
+    }
+
+    // Cleanup event listener
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [isScanning]);
+
   return (
     <Modal
       show={show}
-      onHide={onHide} // Allow closing the modal
+      onHide={handleModalClose} // Use custom close handler with confirmation
       centered
-      backdrop={true} // Normal backdrop behavior without greying out page
-      keyboard={true} // Allow ESC key to close
+      backdrop={isScanning ? 'static' : true} // Prevent backdrop click during scan
+      keyboard={!isScanning} // Disable ESC key during scan
       size="lg"
       className="scan-loading-modal"
     >
@@ -139,7 +175,10 @@ const ScanLoadingModal: React.FC<ScanLoadingModalProps> = ({
           {error ? (
             <span className="text-danger">Scan Failed</span>
           ) : isScanning ? (
-            <span>Security Scan in Progress</span>
+            <span>
+              Security Scan in Progress 
+              <Badge bg="warning" className="ms-2 small">Exit Blocked</Badge>
+            </span>
           ) : (
             <span>Ready to Scan</span>
           )}
@@ -200,9 +239,14 @@ const ScanLoadingModal: React.FC<ScanLoadingModalProps> = ({
               </small>
             )}
             
-            <small className="text-muted d-block">
-              This may take a few minutes depending on the number of dependencies
-            </small>
+            <div className="text-muted small">
+              <div className="mb-1">
+                This may take a few minutes depending on the number of dependencies
+              </div>
+              <div className="text-warning">
+                ⚠️ Please don't close this window or navigate away during the scan
+              </div>
+            </div>
           </>
         ) : (
           <>

@@ -22,13 +22,8 @@ jobs:
     name: Build and Publish CLI to TestPyPI
     runs-on: ubuntu-latest
     
-    environment:
-      name: testpypi
-      url: https://test.pypi.org/p/multi-vuln-scanner
-    
-    permissions:
-      id-token: write  # For trusted publishing
-      contents: write  # For updating releases
+    # Removed environment and trusted publishing for now
+    # You can re-enable after setting up trusted publisher on TestPyPI
     
     steps:
     - name: Checkout code
@@ -53,12 +48,23 @@ jobs:
         echo "✅ CLI package works locally"
     
     - name: Publish to TestPyPI
+      if: ${{ secrets.TESTPYPI_API_TOKEN }}
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
         repository-url: https://test.pypi.org/legacy/
+        username: __token__
+        password: ${{ secrets.TESTPYPI_API_TOKEN }}
         print-hash: true
     
+    - name: Skip publishing (no credentials)
+      if: ${{ !secrets.TESTPYPI_API_TOKEN }}
+      run: |
+        echo "⚠️ Skipping TestPyPI publishing - no TESTPYPI_API_TOKEN secret configured"
+        echo "Package built successfully and is ready for publishing"
+        echo "To publish, add your TestPyPI API token as a repository secret"
+    
     - name: Verify TestPyPI installation
+      if: ${{ secrets.TESTPYPI_API_TOKEN }}
       run: |
         sleep 30  # Wait for TestPyPI
         pip uninstall -y multi-vuln-scanner

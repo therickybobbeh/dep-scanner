@@ -168,7 +168,7 @@ For contributors who want to develop the package:
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/dep-scanner.git
+git clone https://github.com/therickybobbeh/dep-scanner.git
 cd dep-scanner
 
 # Install in development mode
@@ -231,9 +231,9 @@ flake8 backend/
 ## 📞 Support & Contributing
 
 **For Package Users:**
-- Issues: [GitHub Issues](https://github.com/yourusername/dep-scanner/issues)
-- Documentation: [GitHub Wiki](https://github.com/yourusername/dep-scanner/wiki)
-- Examples: [Examples Directory](https://github.com/yourusername/dep-scanner/tree/main/examples)
+- Issues: [GitHub Issues](https://github.com/therickybobbeh/dep-scanner/issues)
+- Documentation: [GitHub Wiki](https://github.com/therickybobbeh/dep-scanner/wiki)
+- Examples: [Examples Directory](https://github.com/therickybobbeh/dep-scanner/tree/main/examples)
 
 **For Contributors:**
 - Development Guide: [CONTRIBUTING.md](../../CONTRIBUTING.md)

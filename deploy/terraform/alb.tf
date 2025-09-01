@@ -212,3 +212,4 @@ resource "aws_lb_listener_rule" "backend_docs" {
     Name = "${local.name_prefix}-docs-rule"
   }
 }
+

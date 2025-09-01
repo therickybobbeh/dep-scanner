@@ -7,7 +7,7 @@ import { ApiResponse } from '../types/common';
 
 // Create axios instance with base configuration
 const api: AxiosInstance = axios.create({
-  baseURL: '/api',
+  baseURL: '', // No /api prefix - direct endpoints
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',

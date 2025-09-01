@@ -9,16 +9,26 @@ export default defineConfig({
     port: 3000,
     host: '0.0.0.0', // Allow external connections in Docker
     proxy: {
-      '/api': {
-        // Prefer local backend in dev; override with VITE_API_URL as needed
+      // Proxy API endpoints directly to backend
+      '/scan': {
         target: process.env.VITE_API_URL || 'http://localhost:8000',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
-        configure: (proxy, _options) => {
-          proxy.on('error', (err, _req, _res) => {
-            console.error('Proxy error:', err.message);
-          });
-        },
+      },
+      '/status': {
+        target: process.env.VITE_API_URL || 'http://localhost:8000',
+        changeOrigin: true,
+      },
+      '/report': {
+        target: process.env.VITE_API_URL || 'http://localhost:8000',
+        changeOrigin: true,
+      },
+      '/health': {
+        target: process.env.VITE_API_URL || 'http://localhost:8000',
+        changeOrigin: true,
+      },
+      '/validate-consistency': {
+        target: process.env.VITE_API_URL || 'http://localhost:8000',
+        changeOrigin: true,
       }
     }
   },

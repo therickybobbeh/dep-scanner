@@ -89,7 +89,7 @@ cp terraform.tfvars.example terraform.tfvars
 aws_region    = "us-east-1"              # Choose your preferred region
 project_name  = "depscan"                # Will prefix all resources
 environment   = "mvp"                    # Environment identifier
-github_repo   = "yourusername/yourrepo"  # For GitHub Actions OIDC
+github_repo   = "therickybobbeh/yourrepo"  # For GitHub Actions OIDC
 
 # OPTIONAL: Resource Sizing (keep small for MVP)
 backend_cpu      = 256    # 0.25 vCPU (minimal)

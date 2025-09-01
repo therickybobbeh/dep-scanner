@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useCallback, useEffect } from 'react';
+import { useNavigate, useBlocker } from 'react-router-dom';
 import { Container, Row, Col, Card, Form, Button, Alert, ListGroup, Badge } from 'react-bootstrap';
 import { Upload, FileText, X } from 'lucide-react';
 import { ScanLoadingModal } from '../components/ui';
@@ -16,6 +16,7 @@ const ScanPage: React.FC = () => {
     include_dev_dependencies: true,
     ignore_severities: [] as SeverityLevel[],
   });
+  const [isScanning, setIsScanning] = useState(false);
   
 
   const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
@@ -96,9 +97,11 @@ const ScanPage: React.FC = () => {
       // Store scan request and show loading modal
       setScanRequest(newScanRequest);
       setShowLoadingModal(true);
+      setIsScanning(true);
 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to prepare scan');
+      setIsScanning(false); // Reset scanning state on error
     }
   };
 
@@ -107,13 +110,36 @@ const ScanPage: React.FC = () => {
   const handleModalSuccess = (jobId: string) => {
     setShowLoadingModal(false);
     setScanRequest(null);
+    setIsScanning(false);
     navigate(`/report/${jobId}`);
   };
 
   const handleModalClose = () => {
     setShowLoadingModal(false);
     setScanRequest(null);
+    setIsScanning(false);
   };
+
+  // Block navigation when scanning
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      isScanning && currentLocation.pathname !== nextLocation.pathname
+  );
+
+  // Handle navigation blocking
+  useEffect(() => {
+    if (blocker.state === 'blocked') {
+      const confirmed = window.confirm(
+        'A security scan is currently in progress. Are you sure you want to leave this page? This will interrupt the scan.'
+      );
+      if (confirmed) {
+        setIsScanning(false); // Allow navigation
+        blocker.proceed();
+      } else {
+        blocker.reset();
+      }
+    }
+  }, [blocker, isScanning]);
 
 
   const supportedFiles = [

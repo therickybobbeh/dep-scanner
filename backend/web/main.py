@@ -440,6 +440,7 @@ async def health_check():
     return {"status": "healthy", "timestamp": datetime.now().isoformat()}
 
 
+
 @app.get("/")
 async def read_root():
     """Root endpoint - serve React app in production, API info in development"""
