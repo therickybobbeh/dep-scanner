@@ -411,8 +411,8 @@ Structured JSON format compatible with security tools:
       "version": "4.17.15",
       "ecosystem": "npm",
       "vulnerability_id": "GHSA-jf85-cpcp-j695",
-      "severity": "HIGH",
-      "cvss_score": 7.5,
+      "severity": "CRITICAL",
+      "cvss_score": 9.1,
       "cve_ids": ["CVE-2020-8203"],
       "summary": "Prototype Pollution in lodash",
       "fixed_range": ">=4.17.19"

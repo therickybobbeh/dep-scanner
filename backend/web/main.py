@@ -11,7 +11,6 @@ import time
 from ..core.models import ScanRequest, ScanProgress
 from .services.app_state import AppState, get_app_state
 from .services.scan_service import ScanService
-from .services.rate_limiter import check_rate_limit, check_status_rate_limit
 from ..core.config import settings
 
 @asynccontextmanager
@@ -59,9 +58,6 @@ app = FastAPI(
     2. Monitor progress via WebSocket at `/ws/{job_id}` or polling `/status/{job_id}`
     3. Retrieve results from `/report/{job_id}` when completed
     4. Export results in various formats using `/export/{job_id}.{format}`
-    
-    ### Rate Limiting
-    API endpoints are rate-limited to ensure fair usage. Check response headers for rate limit status.
     """,
     version="1.0.0",
     lifespan=lifespan,
@@ -106,11 +102,6 @@ async def add_security_headers(request: Request, call_next):
         "font-src 'self' cdn.jsdelivr.net"
     )
     
-    # Add rate limit headers if available
-    if hasattr(request.state, 'rate_limit_remaining'):
-        response.headers["X-RateLimit-Remaining"] = str(request.state.rate_limit_remaining)
-        response.headers["X-RateLimit-Reset"] = str(request.state.rate_limit_reset)
-    
     return response
 
 # Remove duplicate - already configured above
@@ -129,7 +120,7 @@ app.add_middleware(
         "Authorization",
         "X-Requested-With"
     ],
-    expose_headers=["X-RateLimit-Remaining", "X-RateLimit-Reset"],
+    expose_headers=[],
     max_age=600,  # Cache preflight requests for 10 minutes
 )
 
@@ -162,9 +153,6 @@ def get_scan_service(state: AppState = Depends(get_app_state)) -> ScanService:
     ### Response
     Returns a job ID for tracking scan progress. Use the WebSocket endpoint `/ws/{job_id}` 
     for real-time progress updates or poll `/status/{job_id}` for status checks.
-    
-    ### Rate Limiting
-    This endpoint is rate-limited to 10 requests per minute per IP address.
     """,
     responses={
         200: {
@@ -183,14 +171,6 @@ def get_scan_service(state: AppState = Depends(get_app_state)) -> ScanService:
                 }
             }
         },
-        429: {
-            "description": "Rate limit exceeded",
-            "content": {
-                "application/json": {
-                    "example": {"detail": "Rate limit exceeded. Please try again later."}
-                }
-            }
-        },
         500: {
             "description": "Internal server error",
             "content": {
@@ -204,8 +184,7 @@ def get_scan_service(state: AppState = Depends(get_app_state)) -> ScanService:
 )
 async def start_scan(
     scan_request: ScanRequest, 
-    scan_service: ScanService = Depends(get_scan_service),
-    _: None = Depends(check_rate_limit)
+    scan_service: ScanService = Depends(get_scan_service)
 ):
     """Start a new vulnerability scan"""
     try:
@@ -242,9 +221,6 @@ async def start_scan(
     - `running` - Actively scanning dependencies
     - `completed` - Scan finished successfully
     - `failed` - Scan encountered an error
-    
-    ### Rate Limiting
-    This endpoint is rate-limited to prevent excessive polling.
     """,
     responses={
         200: {
@@ -277,8 +253,7 @@ async def start_scan(
 )
 async def get_scan_status(
     job_id: str, 
-    scan_service: ScanService = Depends(get_scan_service),
-    _: None = Depends(check_status_rate_limit)
+    scan_service: ScanService = Depends(get_scan_service)
 ):
     """Get current status and progress of a scan"""
     progress = scan_service.get_progress(job_id)
@@ -324,7 +299,8 @@ async def get_scan_status(
                                 "version": "4.17.15",
                                 "ecosystem": "npm",
                                 "vulnerability_id": "GHSA-jf85-cpcp-j695",
-                                "severity": "HIGH",
+                                "severity": "CRITICAL",
+                                "cvss_score": 9.1,
                                 "cve_ids": ["CVE-2020-8203"],
                                 "summary": "Prototype Pollution in lodash",
                                 "fixed_range": ">=4.17.19"

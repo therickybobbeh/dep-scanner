@@ -264,15 +264,16 @@ class OSVScanner:
         """Convert OSV vulnerability data to our Vuln model"""
         
         # Log vulnerability processing for debugging
-        self.logger.debug(f"Processing vulnerability {osv_data.get('id', 'unknown')} for {dep.name}@{dep.version}")
+        vuln_id = osv_data.get('id', 'unknown')
+        self.logger.debug(f"Processing vulnerability {vuln_id} for {dep.name}@{dep.version}")
         
         if self.logger.isEnabledFor(logging.DEBUG):
             # Only log detailed info if debug logging is enabled
             self.logger.debug(f"OSV data keys: {list(osv_data.keys())}")
             if "severity" in osv_data:
-                self.logger.debug(f"Severity field: {osv_data['severity']}")
+                self.logger.debug(f"Severity field for {vuln_id}: {osv_data['severity']}")
             if "database_specific" in osv_data:
-                self.logger.debug(f"Database specific: {osv_data['database_specific']}")
+                self.logger.debug(f"Database specific for {vuln_id}: {osv_data['database_specific']}")
         
         # Extract immediate parent for transitive dependencies
         immediate_parent = self._extract_immediate_parent(dep)
@@ -283,6 +284,10 @@ class OSVScanner:
             osv_data.get("database_specific"),
             osv_data.get("ecosystem_specific")
         )
+        
+        # Log final score assignment for debugging
+        if self.logger.isEnabledFor(logging.DEBUG):
+            self.logger.debug(f"Final score for {vuln_id}: CVSS={cvss_score}, Severity={severity.value if severity else 'None'}")
         
         # Extract CVE IDs from aliases
         cve_ids = [alias for alias in osv_data.get("aliases", []) if alias.startswith("CVE-")]
@@ -380,31 +385,38 @@ class OSVScanner:
                 return 0.0
         
         def _parse_cvss_score(cvss_string: str) -> float:
-            """Parse CVSS score - simplified: just extract numeric score if present"""
+            """Parse CVSS score from CVSS vector string using proper CVSS 3.1 calculation"""
             try:
                 # If it's already a number, use it
                 if isinstance(cvss_string, (int, float)):
                     return float(cvss_string)
                 
-                # Try to extract score from CVSS vector string
+                # Try to extract embedded score first
                 # Sometimes the score is embedded like "CVSS:3.1/.../ score:7.5"
                 import re
                 score_match = re.search(r'score[:\s]+(\d+\.?\d*)', cvss_string, re.IGNORECASE)
                 if score_match:
                     return float(score_match.group(1))
                 
-                # Default scores based on severity indicators in the vector
-                if 'C:H' in cvss_string or 'I:H' in cvss_string or 'A:H' in cvss_string:
-                    # High impact on any CIA metric
-                    if 'AV:N' in cvss_string and 'AC:L' in cvss_string:
-                        return 8.5  # Network exploitable, low complexity
-                    return 7.5  # High severity
-                elif 'C:L' in cvss_string or 'I:L' in cvss_string or 'A:L' in cvss_string:
-                    return 5.5  # Medium severity
-                else:
-                    return 7.5  # Default HIGH if we can't parse
-            except (ValueError, TypeError):
-                return 7.5  # Default to HIGH if parsing fails
+                # Parse CVSS 3.1 vector string
+                if not cvss_string.startswith("CVSS:3."):
+                    # If not CVSS 3.x, use fallback calculation
+                    return self._calculate_cvss_fallback(cvss_string)
+                
+                # Extract metrics from CVSS vector
+                metrics = {}
+                parts = cvss_string.split('/')
+                for part in parts[1:]:  # Skip "CVSS:3.1"
+                    if ':' in part:
+                        key, value = part.split(':', 1)
+                        metrics[key] = value
+                
+                # Calculate CVSS 3.1 score
+                return self._calculate_cvss31_score(metrics)
+                
+            except (ValueError, TypeError) as e:
+                self.logger.debug(f"CVSS parsing failed for '{cvss_string}': {e}")
+                return self._calculate_cvss_fallback(cvss_string)
 
         cvss_score = None
         severity_level = SeverityLevel.UNKNOWN
@@ -415,7 +427,10 @@ class OSVScanner:
                 if sev.get("type") in ["CVSS_V3", "CVSS_V4", "CVSS_V2"]:
                     score_str = sev.get("score", "")
                     
-                    # First check if we have a direct numeric score
+                    # Enhanced score extraction - look for numeric score in multiple places
+                    score = None
+                    
+                    # Check for direct numeric score first
                     if isinstance(score_str, (int, float)):
                         score = float(score_str)
                     elif isinstance(score_str, str):
@@ -428,11 +443,27 @@ class OSVScanner:
                                 score = _parse_cvss_score(score_str)
                             else:
                                 score = _to_float(score_str)
-                    else:
-                        score = _to_float(score_str)
+                    
+                    # Look for numeric score in other fields of the severity object
+                    if score is None or score <= 0:
+                        # Check for baseScore, base_score, cvss_score fields
+                        for score_field in ['baseScore', 'base_score', 'cvss_score', 'score_value']:
+                            field_val = sev.get(score_field)
+                            if field_val is not None:
+                                try:
+                                    score = float(field_val)
+                                    self.logger.debug(f"Found CVSS score {score} in field '{score_field}'")
+                                    break
+                                except (ValueError, TypeError):
+                                    continue
+                    
+                    # If we still don't have a score, try to calculate from vector
+                    if score is None or score <= 0:
+                        score = _to_float(score_str) if score_str else 7.5
                     
                     cvss_score = score
                     
+                    # Classify severity based on actual CVSS score
                     if score >= 9.0:
                         severity_level = SeverityLevel.CRITICAL
                     elif score >= 7.0:
@@ -441,37 +472,31 @@ class OSVScanner:
                         severity_level = SeverityLevel.MEDIUM
                     elif score > 0:
                         severity_level = SeverityLevel.LOW
+                    else:
+                        severity_level = SeverityLevel.UNKNOWN
+                    
+                    self.logger.debug(f"CVSS score extraction: type={sev.get('type')}, score={score}, severity={severity_level.value}")
                     break
 
-            # If no CVSS found, look for other severity descriptors
+            # If no CVSS found, look for other severity descriptors (but don't assume scores)
             if cvss_score is None:
                 for sev in severity_list:
                     severity_str = sev.get("severity", "").upper()
                     if severity_str in ["CRITICAL", "HIGH", "MEDIUM", "LOW"]:
                         severity_level = SeverityLevel(severity_str)
-                        # Estimate CVSS score based on severity level
-                        cvss_score = {"CRITICAL": 9.5, "HIGH": 7.5, "MEDIUM": 5.0, "LOW": 2.5}.get(severity_str)
+                        # Don't assign a score without actual data - leave it None to trigger lookup elsewhere
+                        self.logger.debug(f"Found severity descriptor '{severity_str}' without numeric score")
                         break
                     if severity_str == "MODERATE":
                         severity_level = SeverityLevel.MEDIUM
-                        cvss_score = 5.0
+                        self.logger.debug("Found 'MODERATE' severity descriptor")
                         break
 
         # Check database_specific severity (e.g., GitHub advisories)
         if cvss_score is None and db_specific and isinstance(db_specific, dict):
-            sev_str = db_specific.get("severity") or db_specific.get("github_severity")
-            if isinstance(sev_str, str):
-                sev_str = sev_str.upper()
-                if sev_str in ["CRITICAL", "HIGH", "MEDIUM", "LOW"]:
-                    severity_level = SeverityLevel(sev_str)
-                    cvss_score = {"CRITICAL": 9.5, "HIGH": 7.5, "MEDIUM": 5.0, "LOW": 2.5}.get(sev_str)
-                elif sev_str == "MODERATE":
-                    severity_level = SeverityLevel.MEDIUM
-                    cvss_score = 5.0
-
-            # Some databases expose numeric score
-            if cvss_score is None:
-                score_val = _to_float(db_specific.get("score", 0))
+            # First try to find actual numeric scores in database_specific
+            for score_field in ['cvss_score', 'base_score', 'score', 'cvss', 'severity_score']:
+                score_val = _to_float(db_specific.get(score_field, 0))
                 if score_val > 0:
                     cvss_score = score_val
                     if score_val >= 9.0:
@@ -482,6 +507,22 @@ class OSVScanner:
                         severity_level = SeverityLevel.MEDIUM
                     else:
                         severity_level = SeverityLevel.LOW
+                    self.logger.debug(f"Found CVSS score {score_val} in database_specific['{score_field}']")
+                    break
+            
+            # If no numeric score found, check severity strings - but be more conservative
+            if cvss_score is None:
+                sev_str = db_specific.get("severity") or db_specific.get("github_severity")
+                if isinstance(sev_str, str):
+                    sev_str = sev_str.upper()
+                    if sev_str in ["CRITICAL", "HIGH", "MEDIUM", "LOW"]:
+                        severity_level = SeverityLevel(sev_str)
+                        # Use more conservative estimates when we don't have actual scores
+                        cvss_score = {"CRITICAL": 9.0, "HIGH": 7.0, "MEDIUM": 5.0, "LOW": 3.0}.get(sev_str)
+                        self.logger.debug(f"Using conservative CVSS estimate {cvss_score} for severity '{sev_str}'")
+                    elif sev_str == "MODERATE":
+                        severity_level = SeverityLevel.MEDIUM
+                        cvss_score = 5.0
 
         # Check ecosystem_specific data
         if cvss_score is None and ecosystem_specific and isinstance(ecosystem_specific, dict):
@@ -498,6 +539,87 @@ class OSVScanner:
                     severity_level = SeverityLevel.LOW
 
         return severity_level, cvss_score
+    
+    def _calculate_cvss31_score(self, metrics: dict[str, str]) -> float:
+        """Calculate CVSS 3.1 base score from parsed metrics"""
+        try:
+            # Base metrics with defaults
+            av = metrics.get('AV', 'N')  # Attack Vector
+            ac = metrics.get('AC', 'L')  # Attack Complexity  
+            pr = metrics.get('PR', 'N')  # Privileges Required
+            ui = metrics.get('UI', 'N')  # User Interaction
+            s = metrics.get('S', 'U')    # Scope
+            c = metrics.get('C', 'N')    # Confidentiality Impact
+            i = metrics.get('I', 'N')    # Integrity Impact
+            a = metrics.get('A', 'N')    # Availability Impact
+            
+            # Convert to numeric values based on CVSS 3.1 specification
+            av_score = {'N': 0.85, 'A': 0.62, 'L': 0.55, 'P': 0.2}.get(av, 0.85)
+            ac_score = {'L': 0.77, 'H': 0.44}.get(ac, 0.77)
+            
+            # PR score depends on scope
+            if s == 'C':  # Changed scope
+                pr_score = {'N': 0.85, 'L': 0.68, 'H': 0.50}.get(pr, 0.85)
+            else:  # Unchanged scope
+                pr_score = {'N': 0.85, 'L': 0.62, 'H': 0.27}.get(pr, 0.85)
+                
+            ui_score = {'N': 0.85, 'R': 0.62}.get(ui, 0.85)
+            
+            # Impact scores
+            c_impact = {'H': 0.56, 'L': 0.22, 'N': 0.0}.get(c, 0.0)
+            i_impact = {'H': 0.56, 'L': 0.22, 'N': 0.0}.get(i, 0.0)
+            a_impact = {'H': 0.56, 'L': 0.22, 'N': 0.0}.get(a, 0.0)
+            
+            # Calculate Impact Sub Score (ISS)
+            impact_sub_score = 1 - ((1 - c_impact) * (1 - i_impact) * (1 - a_impact))
+            
+            # Calculate Impact Score
+            if s == 'C':  # Changed scope
+                impact_score = 7.52 * (impact_sub_score - 0.029) - 3.25 * pow(impact_sub_score - 0.02, 15)
+            else:  # Unchanged scope
+                impact_score = 6.42 * impact_sub_score
+            
+            # Calculate Exploitability Score
+            exploitability = 8.22 * av_score * ac_score * pr_score * ui_score
+            
+            # Calculate Base Score
+            if impact_sub_score <= 0:
+                base_score = 0.0
+            elif s == 'C':  # Changed scope
+                base_score = min(10.0, impact_score + exploitability)
+            else:  # Unchanged scope  
+                base_score = min(10.0, impact_score + exploitability)
+            
+            # Round up to nearest 0.1
+            base_score = round(base_score * 10) / 10.0
+            
+            self.logger.debug(f"CVSS 3.1 calculation: AV:{av} AC:{ac} PR:{pr} UI:{ui} S:{s} C:{c} I:{i} A:{a} -> {base_score}")
+            return base_score
+            
+        except Exception as e:
+            self.logger.debug(f"CVSS 3.1 calculation failed: {e}")
+            return 7.5
+    
+    def _calculate_cvss_fallback(self, cvss_string: str) -> float:
+        """Fallback CVSS calculation for non-3.1 vectors or when parsing fails"""
+        try:
+            # Simple heuristic based on vector content
+            high_impact = any(x in cvss_string for x in ['C:H', 'I:H', 'A:H'])
+            network_vector = 'AV:N' in cvss_string
+            low_complexity = 'AC:L' in cvss_string
+            no_privileges = 'PR:N' in cvss_string
+            
+            if high_impact and network_vector and low_complexity and no_privileges:
+                # High impact, network accessible, low complexity, no privileges = likely 8.0+
+                return 8.5
+            elif high_impact and network_vector:
+                return 7.5
+            elif high_impact:
+                return 6.5
+            else:
+                return 5.0
+        except Exception:
+            return 7.5
     
     def _extract_severity(self, severity_list: list[dict], db_specific: dict | None = None, ecosystem_specific: dict | None = None) -> SeverityLevel:
         """Extract and normalize severity from OSV data"""

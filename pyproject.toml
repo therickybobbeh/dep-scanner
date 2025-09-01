@@ -5,17 +5,17 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "multi-vuln-scanner"
 version = "1.0.0"
-description = "Professional-grade multi-ecosystem dependency vulnerability scanner with CLI and web interfaces"
-readme = {text = "Simple dependency vulnerability scanner", content-type = "text/plain"}
+description = "Fast, accurate, and comprehensive vulnerability scanning for Python and JavaScript projects - Professional-grade security tool with CLI and web interfaces"
+readme = "README_PYPI.md"
 license = {text = "MIT"}
 authors = [
-    {name = "DepScan Team", email = "depscan@example.com"},
+    {name = "DepScan Team", email = "contact@depscan.dev"},
 ]
 maintainers = [
-    {name = "DepScan Team", email = "depscan@example.com"},
+    {name = "DepScan Team", email = "contact@depscan.dev"},
 ]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Intended Audience :: System Administrators", 
     "License :: OSI Approved :: MIT License",
@@ -28,6 +28,10 @@ classifiers = [
     "Topic :: Security",
     "Topic :: Software Development :: Quality Assurance",
     "Topic :: System :: Systems Administration",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+    "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
+    "Environment :: Console",
+    "Environment :: Web Environment",
 ]
 keywords = [
     "security", 
@@ -39,6 +43,14 @@ keywords = [
     "npm",
     "python",
     "audit",
+    "cli",
+    "web-interface",
+    "multi-ecosystem",
+    "fastapi",
+    "javascript",
+    "sast",
+    "devsecops",
+    "supply-chain",
 ]
 requires-python = ">=3.10"
 dependencies = [
